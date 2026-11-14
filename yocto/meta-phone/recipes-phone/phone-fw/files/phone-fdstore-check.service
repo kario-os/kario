@@ -1,0 +1,17 @@
+[Unit]
+Description=Phone shell crash check: the restarted shell takes the apps over from the fd store (boot selftest only)
+ConditionKernelCommandLine=phone.selftest=1
+
+[Service]
+Environment=PHONE_APP_SCOPES=1 PHONE_FDSTORE=1 HOME=/tmp
+ExecStart=/bin/sh -c 'exec /usr/bin/phone-shell --script /usr/share/phone/fdstore.script --resume-file /tmp/fdstore-resume.json --timeout-scale 4 >>/tmp/fdstore.out 2>&1'
+# Apps in scopes of their own (PHONE_APP_SCOPES), as on the display: the
+# service's group holds no app, so systemd can start the restarted shell.
+FileDescriptorStoreMax=16
+NotifyAccess=main
+KillMode=process
+# Restarted only after the script's deliberate crash (exit status 3), so a
+# failing run ends instead of looping.
+Restart=no
+RestartForceExitStatus=3
+RestartSec=1

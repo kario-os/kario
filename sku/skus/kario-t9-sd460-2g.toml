@@ -1,0 +1,7 @@
+id = "kario-t9-sd460-2g"
+board = "sm4250-oneplus-billie2"
+display = "dmt028"
+keypad = "t9-v1"
+memory = "2g"
+region = "cn"
+product = "kario-std"

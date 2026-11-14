@@ -1,0 +1,19 @@
+{
+  "%d characters": "%d 个字",
+  "%d notes": "%d 条便签",
+  "Added “%s”": "已添加「%s」",
+  "Clear all": "全部删除",
+  "Copied “%s”": "已复制「%s」",
+  "Copy": "复制",
+  "Copy failed: %s": "复制失败：%s",
+  "Delete": "删除",
+  "Delete all notes?": "删除全部便签？",
+  "Delete this note?": "删除这条便签？",
+  "No notes yet": "还没有便签",
+  "Not copied": "没有复制",
+  "Note": "便签",
+  "Notes": "便签",
+  "Open": "打开",
+  "This note was deleted": "这条便签已删除",
+  "Write a note": "写一条便签"
+}

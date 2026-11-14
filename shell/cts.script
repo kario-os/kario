@@ -1,0 +1,150 @@
+# Compatibility cases (phone-shell --cts): run after the selftest, with the
+# probe app installed from share/phone/cts.
+
+== 兼容测试：没有权限的能力一律拒绝；有电话权限的应用能自己接听和控制通话
+require-app com.phone.ctsprobe
+require-tel
+key f4
+type /
+type 兼容测试
+key enter
+wait 开始检查
+key enter
+wait 等待来电 8000
+tel ring 13800000002
+wait 兼容检查：全部通过 20000
+snap 99-cts
+key f4
+
+== 兼容测试：应用超出内存上限时系统只结束它自己，并告诉用户原因
+require-cgroup
+key f4
+type /
+type 兼容测试
+key enter
+wait 内存上限检查
+key down
+key enter
+wait 超出内存上限 30000
+appstate com.phone.ctsprobe stopped 5000
+key f4
+
+== 兼容测试：应用卡住时系统提示无响应，可以等它恢复，也可以关闭它
+require-app com.phone.ctsprobe
+key f4
+type /
+type 兼容测试
+key enter
+wait 无响应检查
+key down
+key down
+key enter
+wait 没有响应 30000
+key esc
+wait 无响应检查：已恢复 30000
+gone 没有响应
+key up
+key up
+key up
+key down
+key down
+key enter
+wait 没有响应 30000
+key enter
+appstate com.phone.ctsprobe stopped 5000
+key f4
+
+== 兼容测试：应用崩溃时系统留下记录，设置里能看到
+require-app com.phone.ctsprobe
+key f4
+type /
+type 兼容测试
+key enter
+wait 崩溃记录检查
+key down
+key down
+key down
+key enter
+appstate com.phone.ctsprobe stopped 5000
+appstop com.phone.settings
+key f4
+type /
+type 设置
+key enter
+wait 应用权限
+type /
+type 关于本机
+key enter
+key enter
+wait 应用崩溃记录
+type /
+type 应用崩溃记录
+key enter
+key enter
+wait exit status 2 5000
+wait 兼容测试
+key f4
+
+== 兼容测试：应用不能冒充系统界面，标题里有「系统」一词（任何一种界面语言）就在前面加上应用名
+require-app com.phone.ctsprobe
+key f4
+type /
+type 兼容测试
+key enter
+wait 伪造系统界面检查
+type /
+type 伪造系统界面检查
+key enter
+key enter
+wait 兼容测试：系统安全确认
+key f4
+
+== 兼容测试：应用交来的图片要用户确认才存进相册
+require-app com.phone.ctsprobe
+appstop com.phone.ctsprobe
+key f4
+type /
+type 兼容测试
+key enter
+wait 存图检查
+key down 5
+key enter
+wait 把这张图片存入相册
+wait 来自：兼容测试
+key enter
+wait 存图检查：通过
+key f4
+
+== 兼容测试：文件要用户确认才存进「文件」，选择器只交出用户选中的那一个
+require-app com.phone.ctsprobe
+appstop com.phone.ctsprobe
+key f4
+type /
+type 兼容测试
+key enter
+wait 文件检查
+key down 6
+key enter
+wait 把「兼容测试.txt」存到文件
+key enter
+wait 选择文件
+key enter
+wait 文件检查：通过
+key f4
+
+== 兼容测试：分享链接，系统只列出声明能接收链接的应用
+require-app com.phone.ctsprobe
+appstop com.phone.ctsprobe
+key f4
+type /
+type 兼容测试
+key enter
+wait 分享检查
+key down 7
+key enter
+wait 链接「兼容测试」
+key enter
+wait 分享给
+key enter
+wait 已分享给
+key f4

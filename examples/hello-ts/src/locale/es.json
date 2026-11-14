@@ -1,0 +1,18 @@
+{
+  "%d characters": "%d caracteres",
+  "%d notes": "%d notas",
+  "Added “%s”": "Se agregó «%s»",
+  "Clear all": "Borrar todo",
+  "Copied “%s” to the clipboard": "«%s» copiado al portapapeles",
+  "Copy": "Copiar",
+  "Copy failed: %s": "No se pudo copiar: %s",
+  "Delete": "Eliminar",
+  "Delete all notes?": "¿Eliminar todas las notas?",
+  "Delete this note?": "¿Eliminar esta nota?",
+  "No notes yet": "Todavía no hay notas",
+  "Not copied": "No se copió",
+  "Note": "Nota",
+  "Open": "Abrir",
+  "TypeScript notes": "Notas en TypeScript",
+  "Write a note": "Escribe una nota"
+}

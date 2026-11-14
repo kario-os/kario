@@ -1,0 +1,16 @@
+# The update test's staged rollout (ota-test held): the server's version is
+# held back from this phone, and 设置 › 系统更新 says why.
+
+== 系统更新：分批推送没轮到、暂停推送时不提供安装
+type /
+type 设置
+key enter
+wait 应用权限 30000
+type /
+type 系统更新
+key enter
+key enter
+wait 正在运行 30000
+type c
+wait 暂时没有可安装的更新 60000
+gone 可安装： 2000

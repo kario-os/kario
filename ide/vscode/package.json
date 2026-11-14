@@ -1,0 +1,69 @@
+{
+  "name": "kario-studio",
+  "displayName": "Kario Studio",
+  "description": "Build, run, debug, test, package and publish Kario TypeScript apps (KarioUI) from VS Code or Cursor",
+  "version": "0.1.0",
+  "publisher": "kario-os",
+  "license": "Apache-2.0",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kario-os/kario"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Debuggers",
+    "Testing"
+  ],
+  "main": "./out/src/extension.js",
+  "activationEvents": [
+    "workspaceContains:manifest.json",
+    "workspaceContains:*/manifest.json"
+  ],
+  "contributes": {
+    "commands": [
+      { "command": "kario.new", "title": "New App", "category": "Kario" },
+      { "command": "kario.build", "title": "Build", "category": "Kario" },
+      { "command": "kario.run", "title": "Run in the Terminal", "category": "Kario" },
+      { "command": "kario.preview", "title": "Run in the Preview Panel", "category": "Kario" },
+      { "command": "kario.debug", "title": "Debug (Node.js)", "category": "Kario" },
+      { "command": "kario.stop", "title": "Stop the Running App", "category": "Kario" },
+      { "command": "kario.test", "title": "Run Tests", "category": "Kario" },
+      { "command": "kario.package", "title": "Package (.phoneapp)", "category": "Kario" },
+      { "command": "kario.publish", "title": "Publish to the Store", "category": "Kario" },
+      { "command": "kario.launchConfig", "title": "Add a Debug Configuration (launch.json)", "category": "Kario" }
+    ],
+    "configuration": {
+      "title": "Kario",
+      "properties": {
+        "kario.cli": { "type": "string", "default": "kario", "description": "The kario command (kario build in the Kario tree: build/bin/kario)." },
+        "kario.shell": { "type": "string", "default": "", "description": "phone-shell (empty: kario finds it beside itself or on PATH)." },
+        "kario.renderer": { "type": "string", "default": "", "description": "The pixel renderer of the preview panel (empty: kario finds phone-paint)." },
+        "kario.node": { "type": "string", "default": "", "description": "Node.js 22.15 or newer (empty: node on PATH)." },
+        "kario.device": { "type": "string", "default": "bar-t9", "enum": ["bar-t9", "bar-qwerty", "communicator"], "description": "The form factor the app runs on." },
+        "kario.language": { "type": "string", "default": "", "enum": ["", "zh-Hans", "zh-Hant", "en", "es"], "description": "The system's language (empty: the Shell's)." },
+        "kario.previewAddress": { "type": "string", "default": "127.0.0.1:8790", "description": "Where the preview's page is served." },
+        "kario.inspectAddress": { "type": "string", "default": "127.0.0.1:9229", "description": "Node.js's inspector for the debugger." },
+        "kario.signing.devStore": { "type": "string", "default": "", "description": "Sign packages with a development store kept in this directory (developer mode)." },
+        "kario.signing.key": { "type": "string", "default": "dev.key", "description": "The developer's signing key (phone-pkg keygen), relative to the project." },
+        "kario.signing.cert": { "type": "string", "default": "dev.cert", "description": "The developer's certificate from the store (phone-pkg register), relative to the project." },
+        "kario.storeUrl": { "type": "string", "default": "", "description": "The store backend packages are submitted to (POST /v1/submissions)." },
+        "kario.rollout": { "type": "number", "default": 100, "minimum": 0, "maximum": 100, "description": "An update goes to this percentage of devices first." },
+        "kario.reloadOnSave": { "type": "boolean", "default": true, "description": "In the preview panel and when debugging, build the app again when a source is saved and restart it on its pages (kario run -watch)." }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "test": "tsc -p . && node --test \"out/test/*.test.js\" \"scripts/*.test.mjs\"",
+    "vsix": "tsc -p . && node scripts/vsix.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "20.19.43",
+    "@types/vscode": "1.85.0",
+    "typescript": "5.9.3"
+  }
+}

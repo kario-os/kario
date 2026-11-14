@@ -1,0 +1,66 @@
+#!/bin/sh
+# RAUC hook of an incremental system update bundle (phone-bundle-delta.bb).
+# slot-install takes the place of RAUC's own writing of the slot:
+# phone-ota-delta rebuilds the inactive slot from the running one, read
+# through its dm-verity device so that every block it takes is verified,
+# checks the hashes of every operation, and recomputes the slot's hash tree,
+# whose root hash must be the one in the slot's signed descriptor. Only then
+# does the descriptor go into the boot state (as verity-hook does for a full
+# bundle); RAUC makes the slot primary only after this hook succeeds.
+# The applier is the running system's own (/usr/bin, under dm-verity) when
+# it reads the payload's format: a streamed install then never downloads
+# the bundle's copy, which stays for systems without one (or with an older
+# format), and which a bundle for a system known to have one leaves out.
+case "$1" in
+slot-install)
+	if [ "$RAUC_SLOT_CLASS" != rootfs ]; then
+		echo "an incremental bundle updates the system slots only, not $RAUC_SLOT_CLASS" >&2
+		exit 1
+	fi
+	slots=${PHONE_SLOTS:-/var/lib/slots}
+	. "${PHONE_SLOT_CHOOSE:-/usr/lib/phone/slot-choose}"
+	state "$slots/boot"
+	src=${PHONE_SLOT_DEVICES:-/dev/mapper}/root_$booted
+	desc=
+	for f in "$RAUC_BUNDLE_MOUNT_POINT"/*.verity.desc; do desc=$f; done
+	to=$slots/rootfs_$RAUC_SLOT_BOOTNAME.verity
+	if [ "$RAUC_SLOT_BOOTNAME" = "$booted" ]; then
+		echo "slot $booted is the one running" >&2
+		exit 1
+	fi
+	if [ ! -e "$src" ]; then
+		echo "the running slot $booted is not open through dm-verity ($src)" >&2
+		exit 1
+	fi
+	if [ ! -f "$desc" ] || [ ! -f "$desc.sig" ]; then
+		echo "the bundle carries no verity descriptor for slot $RAUC_SLOT_BOOTNAME" >&2
+		exit 1
+	fi
+	# The system's applier says whether it reads the payload's format (the
+	# hook cannot: busybox's od has no -A, -t, -j, -N without CONFIG_DESKTOP).
+	own=${PHONE_OTA_DELTA:-/usr/bin/phone-ota-delta}
+	applier=$RAUC_BUNDLE_MOUNT_POINT/phone-ota-delta
+	if [ -x "$own" ] && format=$("$own" can-apply "$RAUC_IMAGE_NAME" 2>/dev/null); then
+		applier=$own
+	elif [ ! -x "$applier" ]; then
+		echo "this system's phone-ota-delta does not apply this payload's format, and the bundle carries none" >&2
+		exit 1
+	else
+		format=$("$applier" can-apply "$RAUC_IMAGE_NAME" 2>/dev/null) || format="?"
+	fi
+	# What the last install did stays in /run for 设置 and the update test.
+	log=${PHONE_OTA_DELTA_LOG:-/run/phone-ota-delta.log}
+	echo "applying payload format $format with $applier" | tee "$log"
+	set -- --payload "$RAUC_IMAGE_NAME" --source "$src" --target "$RAUC_SLOT_DEVICE" --target-desc "$desc"
+	if [ -f "$slots/rootfs_$booted.verity" ]; then
+		set -- "$@" --source-desc "$slots/rootfs_$booted.verity"
+	fi
+	# The slot's old descriptor goes first: a half-written slot has none.
+	rm -f "$to" "$to.sig" && sync
+	"$applier" apply "$@" >> "$log" 2>&1
+	rc=$?
+	tail -n +2 "$log"
+	[ $rc = 0 ] || exit 1
+	cp "$desc" "$to.new" && cp "$desc.sig" "$to.sig.new" && mv "$to.new" "$to" && mv "$to.sig.new" "$to.sig" && sync
+	;;
+esac

@@ -1,0 +1,22 @@
+{
+  "operator": "中国移动",
+  "sim_mcc": "460",
+  "nitz_offset": 480,
+  "sms_echo": "收到：",
+  "sms_replies": {
+    "10086": "【中国移动】您的话费余额为 88.88 元。"
+  },
+  "ussd_answers": {
+    "*100#": "话费余额 25.80 元，本月剩余流量 3.2 GB。"
+  },
+  "ussd_menu": "1 查话费\n2 查流量\n3 退出",
+  "ussd_menu_answers": {
+    "1": "话费余额 25.80 元。",
+    "2": "本月剩余流量 3.2 GB。",
+    "3": "已退出。"
+  },
+  "ussd_menu_code": "*101#",
+  "ussd_menu_retry": "输入有误，请重新选择：",
+  "ussd_received": "已收到。",
+  "ussd_unknown": "网络不支持这个代码。"
+}

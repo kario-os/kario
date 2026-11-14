@@ -1,0 +1,11 @@
+[Unit]
+# Socket-activated (phone-mediad.socket): started when the shell first connects.
+Requires=phone-mediad.socket
+After=phone-mediad.socket
+Description=Phone media service (camera, call media, scanner, video playback)
+
+[Service]
+# Small Go heaps: no transparent huge pages (see phone-shell DisableHugePages).
+Environment=GODEBUG=disablethp=1
+ExecStart=/usr/bin/phone-mediad --run-dir /run/phone
+Restart=on-failure

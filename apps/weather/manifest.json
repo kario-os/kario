@@ -1,0 +1,80 @@
+{
+  "id": "com.phone.weather",
+  "name": "天气",
+  "icon": "天",
+  "icon_image": "icon.png",
+  "description": "定位 · 后台定时刷新（数据为模拟）",
+  "exec": "phone-app-weather",
+  "order": 47,
+  "permissions": [
+    "location"
+  ],
+  "purposes": {
+    "location": "显示你所在城市的天气"
+  },
+  "settings": [
+    {"key": "units", "title": "温度单位", "type": "choice", "choices": ["摄氏", "华氏"], "default": "摄氏"},
+    {"key": "days", "title": "预报天数", "type": "number", "min": 3, "max": 7, "step": 1, "default": 3}
+  ],
+  "widget": true,
+  "folder": "tools",
+  "locales": {
+    "zh-Hant": {
+      "name": "天氣",
+      "description": "定位 · 背景定時重新整理（資料為模擬）",
+      "purposes": {
+        "location": "顯示你所在城市的天氣"
+      },
+      "settings": {
+        "units": {
+          "title": "溫度單位",
+          "choices": [
+            "攝氏",
+            "華氏"
+          ]
+        },
+        "days": {
+          "title": "預報天數"
+        }
+      }
+    },
+    "en": {
+      "name": "Weather",
+      "description": "Location · refreshes on a schedule in the background (simulated data)",
+      "purposes": {
+        "location": "Show the weather where you are"
+      },
+      "settings": {
+        "units": {
+          "title": "Temperature unit",
+          "choices": [
+            "Celsius",
+            "Fahrenheit"
+          ]
+        },
+        "days": {
+          "title": "Days of forecast"
+        }
+      }
+    },
+    "es": {
+      "name": "Clima",
+      "description": "Ubicación · se actualiza en segundo plano (datos simulados)",
+      "purposes": {
+        "location": "Mostrar el clima donde estás"
+      },
+      "settings": {
+        "units": {
+          "title": "Unidad de temperatura",
+          "choices": [
+            "Celsius",
+            "Fahrenheit"
+          ]
+        },
+        "days": {
+          "title": "Días de pronóstico"
+        }
+      }
+    }
+  }
+}

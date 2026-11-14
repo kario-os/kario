@@ -1,0 +1,11 @@
+[Unit]
+Description=Phone telephony (calls, SMS, network status)
+After=systemd-tmpfiles-setup.service ModemManager.service
+Wants=ModemManager.service
+
+[Service]
+ExecStart=/usr/bin/phone-telephonyd --run-dir /run/phone --state-dir /var/lib/phone --sku /usr/share/phone/sku.json
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

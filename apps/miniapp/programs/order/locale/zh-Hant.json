@@ -1,0 +1,22 @@
+{
+  "%s · Menu": "%s · 菜單",
+  "Add one": "加一份",
+  "Americano": "美式咖啡",
+  "Croissant": "可頌",
+  "Done": "完成",
+  "Host server signature check: passed": "宿主伺服器驗章：通過",
+  "Latte": "拿鐵",
+  "Morning Light Coffee": "晨光咖啡",
+  "Order": "點餐",
+  "Order number %s": "訂單編號 %s",
+  "Order something first": "請先點餐",
+  "Pay": "去付款",
+  "Payment not completed: %s": "付款未完成：%s",
+  "Payment successful": "付款成功",
+  "Remove one": "減一份",
+  "Scan failed: %s": "掃碼失敗：%s",
+  "Scan the QR code on the table to order": "掃描桌上的 QR 碼開始點餐",
+  "Scan to order": "掃碼點餐",
+  "Total %s": "合計 %s",
+  "Welcome": "歡迎光臨"
+}

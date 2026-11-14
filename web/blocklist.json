@@ -1,0 +1,19 @@
+[
+  {"trigger": {"url-filter": "^https?://([^/]+\\.)?doubleclick\\.net[:/]"}, "action": {"type": "block"}},
+  {"trigger": {"url-filter": "^https?://([^/]+\\.)?googlesyndication\\.com[:/]"}, "action": {"type": "block"}},
+  {"trigger": {"url-filter": "^https?://([^/]+\\.)?google-analytics\\.com[:/]"}, "action": {"type": "block"}},
+  {"trigger": {"url-filter": "^https?://([^/]+\\.)?googletagmanager\\.com[:/]"}, "action": {"type": "block"}},
+  {"trigger": {"url-filter": "^https?://adservice\\.google\\.[a-z.]+[:/]"}, "action": {"type": "block"}},
+  {"trigger": {"url-filter": "^https?://hm\\.baidu\\.com[:/]"}, "action": {"type": "block"}},
+  {"trigger": {"url-filter": "^https?://pos\\.baidu\\.com[:/]"}, "action": {"type": "block"}},
+  {"trigger": {"url-filter": "^https?://cpro\\.baidu\\.com[:/]"}, "action": {"type": "block"}},
+  {"trigger": {"url-filter": "^https?://([^/]+\\.)?cnzz\\.com[:/]"}, "action": {"type": "block"}},
+  {"trigger": {"url-filter": "^https?://([^/]+\\.)?mmstat\\.com[:/]"}, "action": {"type": "block"}},
+  {"trigger": {"url-filter": "^https?://([^/]+\\.)?tanx\\.com[:/]"}, "action": {"type": "block"}},
+  {"trigger": {"url-filter": "^https?://([^/]+\\.)?gdt\\.qq\\.com[:/]"}, "action": {"type": "block"}},
+  {"trigger": {"url-filter": "^https?://([^/]+\\.)?adsame\\.com[:/]"}, "action": {"type": "block"}},
+  {"trigger": {"url-filter": "^https?://([^/]+\\.)?scorecardresearch\\.com[:/]"}, "action": {"type": "block"}},
+  {"trigger": {"url-filter": "^https?://([^/]+\\.)?adnxs\\.com[:/]"}, "action": {"type": "block"}},
+  {"trigger": {"url-filter": "/phone-test-ad\\.js"}, "action": {"type": "block"}},
+  {"trigger": {"url-filter": ".*"}, "action": {"type": "css-display-none", "selector": ".adsbygoogle, ins.adsbygoogle, .phone-test-ad"}}
+]

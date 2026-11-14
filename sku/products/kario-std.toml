@@ -1,0 +1,5 @@
+id = "kario-std"
+# A composition layer over the image's own (14 §2.1): installed as
+# share/phone/profile.d/20-product.json.
+[profile]
+product = "标准版"

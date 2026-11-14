@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "lib": ["ES2023"],
+    "types": [],
+    "strict": true,
+    "noEmit": true,
+    "paths": {
+      "kario": ["../../sdk/ts/index.d.ts"],
+      "@kario/ui": ["../../sdk/ts/karioui/index.ts"],
+      "@kario/test": ["../../sdk/ts/kariotest/index.ts"]
+    }
+  },
+  "include": ["src", "test"]
+}

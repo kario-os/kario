@@ -1,0 +1,13 @@
+[Unit]
+# Socket-activated (phone-audiod.socket): started when the shell first connects.
+Requires=phone-audiod.socket
+After=phone-audiod.socket
+Description=Phone audio service (mixer, audio focus, system tones)
+# The boot selftest starts its own instance, which needs the sound card.
+ConditionKernelCommandLine=!phone.selftest=1
+
+[Service]
+# Small Go heaps: no transparent huge pages (see phone-shell DisableHugePages).
+Environment=GODEBUG=disablethp=1
+ExecStart=/usr/bin/phone-audiod --run-dir /run/phone --sink auto
+Restart=on-failure

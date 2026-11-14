@@ -1,0 +1,27 @@
+{
+  "id": "com.phone.clock",
+  "name": "闹钟",
+  "icon": "钟",
+  "icon_image": "icon.png",
+  "description": "时间 · 闹钟（系统负责按时响铃）",
+  "exec": "phone-app-clock",
+  "order": 41,
+  "permissions": [
+    "notifications"
+  ],
+  "folder": "tools",
+  "locales": {
+    "zh-Hant": {
+      "name": "鬧鐘",
+      "description": "時間 · 鬧鐘（由系統準時響鈴）"
+    },
+    "en": {
+      "name": "Clock",
+      "description": "Time · alarms (the system rings them on time)"
+    },
+    "es": {
+      "name": "Reloj",
+      "description": "Hora · alarmas (el sistema las hace sonar a tiempo)"
+    }
+  }
+}

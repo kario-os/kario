@@ -1,0 +1,10 @@
+{
+  "id": "APP_ID",
+  "name": "APP_NAME",
+  "lang": "en",
+  "description": "A TypeScript app",
+  "version": "0.1",
+  "runtime": "js",
+  "main": "main.js",
+  "permissions": []
+}

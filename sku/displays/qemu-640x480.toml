@@ -1,0 +1,5 @@
+id = "qemu-640x480"
+name = "QEMU 虚拟屏 640×480（横屏）"
+virtual = true
+width = 640
+height = 480

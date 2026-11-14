@@ -1,0 +1,29 @@
+{
+  "id": "com.phone.gallery",
+  "name": "图片",
+  "icon": "图",
+  "icon_image": "icon.png",
+  "description": "系统相册",
+  "exec": "phone-app-gallery",
+  "order": 25,
+  "permissions": [
+    "photos"
+  ],
+  "granted": [
+    "photos"
+  ],
+  "locales": {
+    "zh-Hant": {
+      "name": "圖片",
+      "description": "系統相簿"
+    },
+    "en": {
+      "name": "Pictures",
+      "description": "The system's album"
+    },
+    "es": {
+      "name": "Imágenes",
+      "description": "El álbum del sistema"
+    }
+  }
+}

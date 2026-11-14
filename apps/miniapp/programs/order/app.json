@@ -1,0 +1,7 @@
+{
+  "name": "晨光咖啡点餐",
+  "icon": "咖",
+  "description": "扫码点餐 · 小程序支付",
+  "permissions": ["scan", "payment"],
+  "purposes": {"camera": "Scan the QR code on the table to order"}
+}

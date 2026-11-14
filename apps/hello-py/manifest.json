@@ -1,0 +1,28 @@
+{
+  "id": "com.phone.hellopy",
+  "name": "Python 示例",
+  "icon": "Py",
+  "icon_image": "icon.png",
+  "description": "协议与语言无关",
+  "exec": "./hello.py",
+  "order": 90,
+  "requires": [
+    "python3"
+  ],
+  "permissions": [],
+  "folder": "apps",
+  "locales": {
+    "zh-Hant": {
+      "name": "Python 範例",
+      "description": "通訊協定與程式語言無關"
+    },
+    "en": {
+      "name": "Python sample",
+      "description": "The protocol does not care about the language"
+    },
+    "es": {
+      "name": "Ejemplo en Python",
+      "description": "El protocolo no depende del lenguaje"
+    }
+  }
+}

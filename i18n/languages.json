@@ -1,0 +1,10 @@
+{
+  "languages": [
+    {"id": "zh-Hans", "name": "简体中文", "fallbacks": ["en"], "regions": ["CN"]},
+    {"id": "zh-Hant", "name": "繁體中文", "fallbacks": ["zh-Hans", "en"], "regions": ["TW", "HK", "MO"]},
+    {"id": "en", "name": "English", "fallbacks": [], "regions": []},
+    {"id": "es", "name": "Español", "fallbacks": ["en"],
+     "regions": ["ES", "MX", "AR", "CO", "CL", "PE", "VE", "EC", "GT", "CU", "BO", "DO", "HN", "PY", "SV", "NI", "CR", "PA", "UY", "PR", "GQ"]}
+  ],
+  "other_regions": "en"
+}

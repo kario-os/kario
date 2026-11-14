@@ -1,0 +1,16 @@
+{
+  "Too many wrong passwords: share again from the phone": "密码错误次数太多：请在手机上重新共享",
+  "Enter the password shown on the phone": "请输入手机上显示的密码",
+  "Not supported": "不支持",
+  "Kario phone": "Kario 手机",
+  "This folder is read-only": "这个文件夹只能读",
+  "All folders": "全部文件夹",
+  "Nothing here yet": "这里还没有东西",
+  "Copy to the phone": "拷到手机",
+  "Download": "下载",
+  "You can also connect to this address as a network drive (WebDAV). Unplugging the cable ends sharing.": "也可以把这个地址当网络驱动器（WebDAV）连接。拔掉数据线就停止共享。",
+  "The file is too large for this folder": "文件太大，这个文件夹放不下",
+  "Up one folder": "上一级文件夹",
+  "Copy a folder to the phone": "把整个文件夹拷到手机",
+  "Not a name the phone takes for a file or folder": "手机上的文件或文件夹不能用这个名字"
+}

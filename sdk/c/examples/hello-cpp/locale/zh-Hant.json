@@ -1,0 +1,10 @@
+{
+  "C++ sample": "C++ 範例",
+  "Copied to the clipboard": "已複製到剪貼簿",
+  "Copy failed: %s": "複製失敗：%s",
+  "Copy the count": "複製計數",
+  "Count %s": "計數 %s",
+  "Speaks the phone.Ui protocol through the C interface": "透過 C 介面使用 phone.Ui 協定",
+  "Tap me": "點我",
+  "Tapped %s times": "已點擊 %s 次"
+}

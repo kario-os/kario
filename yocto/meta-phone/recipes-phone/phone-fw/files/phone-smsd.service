@@ -1,0 +1,23 @@
+[Unit]
+Description=Phone messages service (SMS store, conversations, block list, emergency alerts)
+After=systemd-tmpfiles-setup.service phone-telephonyd.service
+
+[Service]
+# Small Go heaps: no transparent huge pages (see phone-shell DisableHugePages).
+Environment=GODEBUG=disablethp=1
+# It takes each message from phone-telephonyd and acknowledges it once
+# stored; until then telephonyd keeps it (32-messaging.md).
+ExecStart=/usr/bin/phone-smsd --run-dir /run/phone --state-dir /var/lib/phone
+Restart=always
+RestartSec=1
+# Messages only pass between the two sockets and its own state: no network,
+# no devices, nothing writable but its state.
+PrivateNetwork=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/phone /run/phone
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target

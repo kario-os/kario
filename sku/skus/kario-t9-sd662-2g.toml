@@ -1,0 +1,7 @@
+id = "kario-t9-sd662-2g"
+board = "sm6115-fxtec-pro1x"
+display = "dmt028"
+keypad = "t9-v1"
+memory = "2g"
+region = "cn"
+product = "kario-std"

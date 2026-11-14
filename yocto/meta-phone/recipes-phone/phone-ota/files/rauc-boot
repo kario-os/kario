@@ -1,0 +1,34 @@
+#!/bin/sh
+# RAUC's boot loader backend (bootloader=custom in system.conf): the slot
+# choice lives in the state partition, which phone-initramfs reads at boot.
+#   slot   the slot to boot next     good    the last slot marked good
+#   tries  boots a new slot has left booted  the slot running now
+f=${PHONE_SLOTS:-/var/lib/slots}/boot
+. "${PHONE_SLOT_CHOOSE:-/usr/lib/phone/slot-choose}"
+state "$f"
+save() {
+	printf 'slot=%s\ngood=%s\ntries=%s\nbooted=%s\n' "$slot" "$good" "$tries" "$booted" > "$f.new" && mv "$f.new" "$f" && sync
+}
+case "$1" in
+get-primary) echo "$slot" ;;
+set-primary)
+	slot=$2
+	if [ "$slot" = "$good" ]; then tries=0; else tries=3; fi
+	save
+	;;
+get-state) if [ "$2" = "$good" ]; then echo good; else echo bad; fi ;;
+set-state)
+	if [ "$3" = good ]; then
+		good=$2
+		[ "$slot" = "$2" ] && tries=0
+	elif [ "$slot" = "$2" ]; then
+		slot=$good tries=0
+	fi
+	save
+	;;
+get-current) echo "$booted" ;;
+*)
+	echo "usage: $0 get-primary | set-primary <slot> | get-state <slot> | set-state <slot> good|bad | get-current" >&2
+	exit 1
+	;;
+esac

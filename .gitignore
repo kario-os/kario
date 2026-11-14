@@ -1,0 +1,22 @@
+/build/
+/vendor/
+/yocto/meta-phone/recipes-phone/phone-fw/files/phone-fw-src.tar.gz
+/yocto/meta-phone/recipes-phone/phone-gui/files/phone-gui-src.tar.gz
+/yocto/meta-phone/recipes-phone/phone-telephonyd/files/phone-telephonyd-src.tar.gz
+/yocto/meta-phone/recipes-phone/phone-paint/files/
+/yocto/meta-phone/recipes-phone/phone-capi/files/
+/yocto/meta-phone/recipes-phone/phone-sku/files/
+/yocto/kas/generated/
+/gui/target/
+/paint/target/
+__pycache__/
+# Binaries left by a `go build ./cmd/...` run here instead of make build.
+/phone-*
+/probe
+/settings
+/kario
+/store
+# The compile commands make links next to the sources (make lsp), and
+# clangd's index beside them.
+compile_commands.json
+.cache/

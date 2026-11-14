@@ -1,0 +1,22 @@
+{
+  "%s (not located)": "%s (sin ubicación)",
+  "%s today: %s, %s–%s": "%s hoy: %s, %s–%s",
+  "Beijing": "Pekín",
+  "Cannot schedule the background refresh: %s": "No se puede programar la actualización en segundo plano: %s",
+  "Cannot share: %s": "No se puede compartir: %s",
+  "Cloudy": "Nublado",
+  "Guangzhou": "Cantón",
+  "Jan 2": "2/1",
+  "Light rain": "Lluvia ligera",
+  "Next %d days": "Próximos %d días",
+  "Overcast": "Cubierto",
+  "Refresh": "Actualizar",
+  "Shanghai": "Shanghái",
+  "Share": "Compartir",
+  "Shenzhen": "Shenzhen",
+  "Showers": "Chubascos",
+  "Sunny": "Soleado",
+  "Today %s–%s": "Hoy %s–%s",
+  "Updated %s · %d background refreshes · simulated data": "Actualizado a las %s · %d actualizaciones en segundo plano · datos simulados",
+  "Weather": "Clima"
+}

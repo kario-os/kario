@@ -1,0 +1,20 @@
+id = "qemuarm64"
+name = "QEMU 虚拟机（开发）"
+machine = "qemuarm64"
+# Its display and keyboard are QEMU's (virtio-gpu, USB keyboard).
+virtual = true
+modem = "sim"
+gpu = false
+
+# The fingerprint sensor (hal/fingerprint): simulated, for the lock-screen
+# and payment cases. Real boards leave it out until their sensor has a
+# driver (keystored then has none).
+fingerprint = "sim"
+# The NFC controller (phone-nfcd): simulated readers and cards. Boards with
+# an NCI controller say nci:/dev/<node>; boards without NFC leave it out.
+nfc = "sim"
+
+# The notification light (hal/led): QEMU has none, so the image makes a
+# userspace LED of this name (uleds) for the shell to blink.
+[leds]
+notify = "white:status"

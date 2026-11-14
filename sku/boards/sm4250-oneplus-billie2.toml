@@ -1,0 +1,21 @@
+id = "sm4250-oneplus-billie2"
+name = "骁龙 460 开发板（一加 Nord N100，主线设备树）"
+soc = "骁龙 460（SM4250，与 SM6115 同族）"
+machine = "kario-qcom"
+dtb = "sm4250-oneplus-billie2.dtb"
+modem = "modemmanager"
+gpu = true
+
+# As sm6115-fxtec-pro1x: labels of the board and its SoC; development
+# wiring for the evaluation boards.
+# A side power key of its own: the end key is not the power key here.
+power_key = true
+
+[wiring]
+keypad_bus = "i2c1"
+keypad_irq = "tlmm 35 8"
+panel_dsi = "mdss_dsi0"
+panel_reset = "tlmm 82 1"
+panel_vcc = "vreg_l11a"
+panel_iovcc = "vreg_l9a"
+dsi_vdda = "vreg_l18a"

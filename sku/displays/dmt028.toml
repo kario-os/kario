@@ -1,0 +1,10 @@
+id = "dmt028"
+name = "2.8 寸 480×640 IPS（ST7701S）"
+# The mainline ST7701 driver's Densitron DMT028VGHMCMI-1A: 2.8", 480x640,
+# MIPI DSI. A panel of another vendor with the same driver chip needs its
+# own init sequence in the driver.
+compatible = ["densitron,dmt028vghmcmi-1a", "sitronix,st7701"]
+kconfig = "CONFIG_DRM_PANEL_SITRONIX_ST7701"
+width = 480
+height = 640
+lanes = 2

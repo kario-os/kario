@@ -1,0 +1,192 @@
+header:
+  version: 14
+
+machine: qemuarm64
+distro: poky
+target:
+  - phone-image
+
+repos:
+  # This repository (kario); the internal workspace names its path.
+  kario:
+    layers:
+      yocto/meta-phone:
+
+  bitbake:
+    url: https://git.openembedded.org/bitbake
+    branch: "2.18"
+    layers:
+      .: disabled
+
+  openembedded-core:
+    url: https://git.openembedded.org/openembedded-core
+    branch: wrynose
+    layers:
+      meta:
+
+  meta-rauc:
+    url: https://github.com/rauc/meta-rauc
+    branch: wrynose
+
+  # cryptsetup (veritysetup) for the system slots' dm-verity.
+  meta-openembedded:
+    url: https://git.openembedded.org/meta-openembedded
+    branch: wrynose
+    layers:
+      meta-oe:
+
+  meta-yocto:
+    url: https://git.yoctoproject.org/meta-yocto
+    branch: wrynose
+    layers:
+      meta-poky:
+
+local_conf_header:
+  ota: |
+    # System updates (25-system-update.md): RAUC writes the slot not running,
+    # phone-initramfs boots the slot the state partition chooses. The keys
+    # come from yocto/ota-keys.sh (make ota-keys), never from git.
+    SKIP_META_RAUC_FEATURE_CHECK = "1"
+    PHONE_OTA_KEYS = "${TOPDIR}/../ota-keys"
+    RAUC_KEYRING_FILE = "ca.cert.pem"
+    BAD_RECOMMENDATIONS += "rauc-mark-good"
+    PHONE_IMAGE_PACKAGES:append = " rauc phone-ota"
+    INITRAMFS_IMAGE = "phone-initramfs"
+    INITRAMFS_IMAGE_BUNDLE = "1"
+    # wic: the A/B disk; ext4.verity: the slot image (ext4 plus its dm-verity
+    # hash tree and signed descriptor, phone-verity.bbclass) the disk and the
+    # update bundles carry.
+    IMAGE_CLASSES += "phone-verity"
+    # dm-verity serves 4 KiB blocks; mke2fs would pick 1 KiB for a small image.
+    EXTRA_IMAGECMD:ext4:append:pn-phone-image = " -b 4096"
+    IMAGE_FSTYPES:append:pn-phone-image:qemuarm64 = " wic ext4.verity"
+    IMAGE_TYPEDEP:wic:append:pn-phone-image:qemuarm64 = " ext4.verity"
+    WKS_FILE:pn-phone-image:qemuarm64 = "phone-ab.wks.in"
+    # veritysetup only, on OpenSSL; the initramfs has no udev.
+    PACKAGECONFIG:pn-cryptsetup = "veritysetup openssl"
+    PACKAGECONFIG:remove:pn-cryptsetup = "udev"
+    PACKAGECONFIG:pn-cryptsetup-native = "veritysetup openssl"
+    # QEMU boots the kernel itself: the disk carries no boot loader (wic
+    # would build GRUB, GPLv3, for one), so runqemu passes the kernel.
+    WKS_FILE_DEPENDS_BOOTLOADERS:qemuarm64 = ""
+    QB_FSINFO:pn-phone-image:qemuarm64 = "wic:no-kernel-in-fs"
+  phone: |
+    INIT_MANAGER = "systemd"
+    EXTRA_IMAGE_FEATURES += "allow-empty-password empty-root-password allow-root-login"
+    # phone-renderer is a slot (23-renderer-protocol.md): phone-paint here,
+    # phone-gui (GPL-3.0-only) through phone-gui.yml to compare.
+    PHONE_IMAGE_PACKAGES = "phone-fw phone-renderer phone-telephonyd phone-capi phone-sku phone-services"
+    # The runtime of TypeScript apps (29-app-development.md).
+    PHONE_IMAGE_PACKAGES += "kario-jsrt"
+    # Wi-Fi and Bluetooth (Settings drives them through the shell); btvirt gives
+    # the emulator virtual Bluetooth controllers for the selftest.
+    PHONE_IMAGE_PACKAGES += "iwd bluez5 bluez5-noinst-tools"
+    # The emulator's 802.1X access point for the enterprise Wi-Fi case:
+    # hostapd (BSD-3-Clause; libnl LGPL-2.1, OpenSSL Apache-2.0) with its own
+    # EAP server, on the third simulated radio. Its certificates are made at
+    # test time; a phone's image does not have it. Its MSCHAPv2 needs MD4
+    # and single DES, which OpenSSL 3 has only in its legacy provider: built
+    # here as a module, which only a program asking for it (hostapd) loads.
+    PHONE_IMAGE_PACKAGES:append:qemuarm64 = " hostapd openssl-ossl-module-legacy"
+    PACKAGECONFIG:append:pn-openssl:qemuarm64 = " legacy"
+    # The file transfer (MTP) case's second computer: libmtp's tools
+    # (mtp-detect, mtp-files, mtp-getfile; libmtp and libusb LGPL-2.1),
+    # the library Linux file managers use, through dummy_hcd's host side.
+    # libmtp converts names with iconv to UTF-16, which is not built into
+    # glibc: its gconv module comes from glibc-locale, made here with one
+    # locale only (images install none). A phone's image has neither.
+    PHONE_IMAGE_PACKAGES:append:qemuarm64 = " libmtp-bin glibc-gconv-utf-16"
+    GLIBC_GENERATE_LOCALES:pn-glibc-locale = "en_US.UTF-8"
+    # Time zones for every program but the shell (it embeds Go's tzdata):
+    # apps, the renderer, WebKit read /usr/share/zoneinfo. Not tzdata-right
+    # (leap-second variants) or tzdata-posix (duplicates).
+    PHONE_IMAGE_PACKAGES += "tzdata-core tzdata-misc tzdata-africa tzdata-americas tzdata-antarctica tzdata-arctic tzdata-asia tzdata-atlantic tzdata-australia tzdata-europe tzdata-pacific"
+    # Video playback (mediad runs ffmpeg as its decoder) and the music
+    # codecs phone-audiod leaves to ffmpeg (audio/hifi): royalty-free
+    # formats only. Video: WebM and Ogg with VP8/VP9 and Opus/Vorbis, PNG
+    # for stills. Music: ALAC in MP4/M4A, Monkey's Audio, WavPack, and DST
+    # (SACD's lossless compression) in DSDIFF, decoded to 32-bit PCM; FLAC,
+    # WAV, AIFF, MP3, Ogg and plain DSD are decoded in Go. No devices, no
+    # network. The recipe carries the "commercial" flag for the
+    # patent-encumbered codecs left out here; H.264, HEVC and AAC are the
+    # device's hardware decoders' (not implemented).
+    LICENSE_FLAGS_ACCEPTED += "commercial_ffmpeg"
+    # zlib: the PNG codec of the poster stills needs it. swresample: DST's
+    # PCM brought to 176.4 kHz.
+    PACKAGECONFIG:pn-ffmpeg = "avcodec avformat avfilter swresample swscale zlib"
+    EXTRA_OECONF:append:pn-ffmpeg = " --disable-network --disable-devices --disable-decoders --enable-decoder=vp8,vp9,opus,vorbis,png,alac,ape,wavpack,dst \
+        --disable-encoders --enable-encoder=png,rawvideo,pcm_s16le,pcm_s32le --disable-demuxers --enable-demuxer=matroska,ogg,mov,ape,wv,iff \
+        --disable-muxers --enable-muxer=rawvideo,image2pipe,pcm_s16le,pcm_s32le"
+    # The renderer slot: phone-paint (phone-gui.yml puts phone-gui in it).
+    PREFERRED_RPROVIDER_phone-renderer = "phone-paint"
+  # No GPLv3 (or LGPLv3 / AGPL) code in the image: the device must be able to
+  # keep its trust chain (payments, end-to-end messaging) without GPLv3's
+  # installation-information duty. libgcc / libstdc++ stay: their GCC runtime
+  # exception allows any program. Each line below is one blocker of Poky +
+  # systemd (23-renderer-protocol.md §7).
+  no-gplv3: |
+    INCOMPATIBLE_LICENSE = "GPL-3.0* LGPL-3.0* AGPL-3.0*"
+    # oe-core's notes for GPLv3-free images (drops GNU tar from the
+    # essential packages, busybox provides it).
+    require conf/distro/include/no-gplv3.inc
+    # Only machinectl import-tar wants GNU tar; we do not ship it.
+    RRECOMMENDS:systemd-container:remove = "tar"
+    # Test packages (ptest) pull in bash, make, coreutils, grep, sed…; the
+    # image ships none of them.
+    PTEST_ENABLED:forcevariable = "0"
+    RDEPENDS:zlib-ptest:remove = "make"
+    RDEPENDS:openssh-ptest:remove = "make"
+    # Helper scripts and shell completions that want bash; not installed.
+    RDEPENDS:systemd-kernel-install:remove = "bash"
+    RDEPENDS:udev-bash-completion:remove = "bash-completion"
+    RDEPENDS:systemd-bash-completion:remove = "bash-completion"
+    RDEPENDS:util-linux-bash-completion:remove = "bash-completion"
+    # systemd and util-linux build against bash-completion (pkg-config only).
+    RDEPENDS:bash-completion:remove = "bash"
+    INSANE_SKIP:bash-completion += "file-rdeps"
+    RDEPENDS:e2fsprogs-e2scrub:remove = "bash"
+    RDEPENDS:opkg-utils:remove = "bash"
+    RDEPENDS:libpam-xtests:remove = "bash coreutils"
+    # alsa-utils wants bash only for helper scripts (alsa-info, alsaconf,
+    # alsabat-test); the image installs aplay alone.
+    DEPENDS:remove:pn-alsa-utils = "bash"
+    RDEPENDS:alsa-utils-alsa-info:remove = "bash"
+    RDEPENDS:alsa-utils-alsabat:remove = "bash"
+    RDEPENDS:alsa-utils-alsaconf:remove = "bash"
+    INSANE_SKIP:alsa-utils-alsa-info += "file-rdeps"
+    INSANE_SKIP:alsa-utils-alsabat += "file-rdeps"
+    INSANE_SKIP:alsa-utils-alsaconf += "file-rdeps"
+    # ukify (Unified Kernel Images) is the only systemd part that needs
+    # python3, which builds against gdbm (GPL-3.0); not installed.
+    RDEPENDS:systemd-ukify:forcevariable = ""
+    # opkg-utils: only update-alternatives is used, which needs no python3.
+    PACKAGECONFIG:remove:pn-opkg-utils = "python"
+    # openssl-misc (c_rehash, Perl helper scripts) is not installed; perl
+    # builds against gdbm (GPL-3.0).
+    RDEPENDS:openssl-misc:forcevariable = ""
+    # glib's code generators (gdbus-codegen, glib-mkenums) are build tools;
+    # on the device they would pull in python3.
+    CODEGEN_PYTHON_RDEPENDS:forcevariable = ""
+    INSANE_SKIP:glib-2.0-codegen += "file-rdeps"
+    INSANE_SKIP:glib-2.0-utils += "file-rdeps"
+    # python3 and perl are still built (gobject-introspection runs python3 at
+    # build time), but without their gdbm (GPL-3.0) modules.
+    PACKAGECONFIG:remove:pn-python3 = "gdbm"
+    PACKAGECONFIG:remove:pn-perl = "gdbm"
+    # Subpackages with GPLv3 parts (bzip2 locale, some kbd keymaps) are left
+    # out, which is the point; report it instead of failing.
+    ERROR_QA:remove = "incompatible-license"
+    WARN_QA:append = " incompatible-license"
+    INSANE_SKIP:opkg-utils += "file-rdeps"
+    INSANE_SKIP:e2fsprogs-e2scrub += "file-rdeps"
+    INSANE_SKIP:systemd-kernel-install += "file-rdeps"
+    INSANE_SKIP:libpam-xtests += "file-rdeps"
+  shared-host: |
+    BB_NUMBER_THREADS = "24"
+    PARALLEL_MAKE = "-j 24"
+    BB_HASHSERVE_DB_DIR = "${SSTATE_DIR}"
+  qemu: |
+    QB_MEM = "-m 1024"
+    # A portrait phone panel for phone-gui (bar-t9: 480x640); the machine
+    # configuration is parsed after local.conf, hence forcevariable.
+    QB_GRAPHICS:forcevariable = "-device virtio-gpu-pci,xres=480,yres=640"

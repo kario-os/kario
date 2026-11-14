@@ -1,0 +1,108 @@
+# CI for the platform repository (60-repositories.md §4): licence boundary,
+# unit and end-to-end tests (phone-paint's too), the built-in selftest, the
+# compatibility run, the selftest drawn by phone-paint, phone-gui's build.
+# Every pull request must also be signed off (DCO).
+name: platform
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    env:
+      CXX23: g++-14
+      GOFLAGS: -mod=vendor
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Toolchain for telephonyd (C++23, sd-bus for its ModemManager backend); ffmpeg for the video case
+        run: sudo apt-get update && sudo apt-get install -y g++-14 cmake ninja-build pkg-config libsystemd-dev ffmpeg
+      - name: Go modules (vendor/ is not in git)
+        run: go mod vendor
+      - name: Licence boundary, vet, unit and end-to-end tests
+        run: make test
+      - name: Built-in selftest (text renderer)
+        run: make selftest
+      - name: Compatibility run, signed report verified
+        run: make cts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cts-report
+          path: build/cts-report.json*
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: selftest-junit
+          path: build/selftest-junit.xml
+
+  dco:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Every commit signed off (git commit -s)
+        run: sh scripts/check-dco.sh origin/${{ github.base_ref }}..HEAD
+
+  pixel:
+    runs-on: ubuntu-24.04
+    env:
+      CXX23: g++-14
+      GOFLAGS: -mod=vendor
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Toolchain; the CJK font the renderers draw with
+        run: sudo apt-get update && sudo apt-get install -y g++-14 cmake ninja-build pkg-config libsystemd-dev ffmpeg fonts-noto-cjk
+      - name: Go modules (vendor/ is not in git)
+        run: go mod vendor
+      - name: The selftest drawn by phone-paint on the three form factors
+        run: make pixel-selftest
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pixel-snapshots
+          path: build/pixel/
+
+  gui:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: phone-gui builds and its tests pass
+        working-directory: gui
+        run: cargo build --release --locked && cargo test --release --locked
+
+  docs:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Relative links in docs/ and docs/en/ resolve
+        env:
+          DIR: docs
+        run: |
+          python3 - "$DIR" <<'EOF'
+          import os, re, sys
+          bad = 0
+          for d in (sys.argv[1], os.path.join(sys.argv[1], "en")):
+              for f in sorted(os.listdir(d)):
+                  if not f.endswith(".md"):
+                      continue
+                  for target in re.findall(r"\]\(([^)#\s]+)", open(os.path.join(d, f), encoding="utf-8").read()):
+                      if "://" in target or target.startswith("mailto:"):
+                          continue
+                      if not os.path.exists(os.path.join(d, target)):
+                          print(f"{d}/{f}: missing {target}")
+                          bad += 1
+          sys.exit(1 if bad else 0)
+          EOF
+      - name: The English documents follow the Chinese ones
+        run: python3 scripts/docs-en-check.py

@@ -1,0 +1,16 @@
+{
+  "All folders": "Todas las carpetas",
+  "Copy a folder to the phone": "Copiar una carpeta al teléfono",
+  "Copy to the phone": "Copiar al teléfono",
+  "Download": "Descargar",
+  "Enter the password shown on the phone": "Escribe la contraseña que aparece en el teléfono",
+  "Kario phone": "Teléfono Kario",
+  "Not a name the phone takes for a file or folder": "El teléfono no admite ese nombre para un archivo o una carpeta",
+  "Not supported": "No se admite",
+  "Nothing here yet": "Aquí todavía no hay nada",
+  "The file is too large for this folder": "El archivo es demasiado grande para esta carpeta",
+  "This folder is read-only": "Esta carpeta es de solo lectura",
+  "Too many wrong passwords: share again from the phone": "Demasiadas contraseñas incorrectas: vuelve a compartir desde el teléfono",
+  "Up one folder": "Subir una carpeta",
+  "You can also connect to this address as a network drive (WebDAV). Unplugging the cable ends sharing.": "También puedes conectarte a esta dirección como unidad de red (WebDAV). Al desconectar el cable se deja de compartir."
+}

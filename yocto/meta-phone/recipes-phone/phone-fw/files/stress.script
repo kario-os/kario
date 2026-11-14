@@ -1,0 +1,103 @@
+# The low-memory stress run (stress-boot.sh, make yocto-stress): what comes
+# before the #round line runs once, the round as many times as asked, {n}
+# its number. Every step has to finish in its time (scaled by
+# --timeout-scale) however little memory is left: that is the test; the
+# boot script reports memory, pressure and what was ended alongside.
+# Messages carry the round's number, so a wait never passes on what an
+# earlier round left on the screen, and photos and pages are chosen by name
+# (an earlier round leaves the focus elsewhere, and the gallery on the
+# video it was playing). The address bar comes up filled with
+# the page's address, so its placeholder is no sign of it: its screen is.
+== 压力：先放音乐（后台播放的应用不会被结束）
+require-audio
+key f4
+type /
+type 音乐
+key enter
+wait 晨光 30000
+key enter
+wait 播放中 30000
+key f4
+#round
+== 压力 {n}：短信发出并收到回复
+require-tel
+key f4
+type /
+type 短信
+key enter
+wait 新信息 30000
+key f2
+wait 收件人号码 30000
+type 13800000003
+key down
+fill 压力测试{n}
+key down
+key enter
+wait 收到：压力测试{n} 30000
+key esc
+wait 新信息 30000
+== 压力 {n}：鸿雁收发消息
+key f4
+type /
+type 鸿雁
+key enter
+wait 张三 30000
+type /
+type 张三
+key enter
+key enter
+wait 输入消息 30000
+fill 第{n}轮
+key enter
+wait 收到：第{n}轮 30000
+key esc
+wait 张三 30000
+== 压力 {n}：看图片
+key f4
+type /
+type 图片
+key enter
+key-if esc / 0:15 3000
+wait-re 图片（[0-9]+） 30000
+type /
+type 海边
+key enter
+key enter
+wait-re · [0-9]+/[0-9]+ 30000
+key right
+key right
+key right
+wait-re · [0-9]+/[0-9]+ 30000
+key esc
+wait-re 图片（[0-9]+） 30000
+== 压力 {n}：看视频时打开浏览器（视频离开画面就关闭）
+require-video
+require-webview
+type /
+type 湿地
+key enter
+key enter
+wait 正在播放 30000
+frames 10 60000
+type /
+type 浏览器
+key enter
+key-if g 网页 · 2000
+at com.phone.browser/home 30000
+fill {chat}/article
+key enter
+wait 网页 · 键盘手机的第二春 90000
+painted 90000
+type g
+at com.phone.browser/home 30000
+fill {chat}/arch
+key enter
+wait 网页 · 平台架构 90000
+painted 90000
+type g
+at com.phone.browser/home 30000
+fill {chat}/tools
+key enter
+wait 网页 · 工具页 90000
+painted 90000
+key f4

@@ -1,0 +1,13 @@
+{
+  "id": "com.phone.ctsprobe",
+  "name": "兼容测试",
+  "icon": "测",
+  "description": "兼容测试套件的探针（只在 --cts 时安装）",
+  "exec": "phone-app-ctsprobe",
+  "order": 99,
+  "permissions": [
+    "phone",
+    "keystore",
+    "attest"
+  ]
+}

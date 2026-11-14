@@ -1,0 +1,39 @@
+[package]
+name = "phone-gui"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.92"
+description = "Pixel renderer for the phone.Ui semantic tree (Slint, software renderer); speaks phone.frame/1"
+license = "GPL-3.0-only"
+publish = false
+
+[[bin]]
+name = "phone-gui"
+path = "src/main.rs"
+
+[features]
+default = []
+# On the device: draw straight to DRM/KMS and read keys from evdev.
+kms = ["slint/backend-linuxkms-noseat"]
+
+[dependencies]
+slint = { version = "=1.18.1", default-features = false, features = ["std", "compat-1-2", "renderer-software", "software-renderer-systemfonts"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["float_roundtrip"] }
+png = "0.18"
+base64 = "0.23"
+libc = "0.2"
+landlock = "0.4"
+# Only to switch fontconfig to dlopen (see .cargo/config.toml).
+fontique = { version = "0.11", default-features = false, features = ["fontconfig-dlopen"] }
+
+[build-dependencies]
+slint-build = "=1.18.1"
+fontique = { version = "0.11", default-features = false, features = ["fontconfig-dlopen"] }
+
+[profile.release]
+opt-level = "s"
+lto = "thin"
+codegen-units = 4
+strip = true
+panic = "abort"

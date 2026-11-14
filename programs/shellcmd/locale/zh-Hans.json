@@ -1,0 +1,11 @@
+{
+  "Back": "返回",
+  "Call": "通话",
+  "Enter=OK Esc=back Tab=options F2=right soft key F3=tasks F4=home F6=Zh/En F7=symbols Alt+key=long press /commands ^C=quit": "Enter确认 Esc返回 Tab选项 F2右软键 F3任务 F4主屏 F6中/英 F7符号 Alt+键=长按 /命令 ^C退出",
+  "Hang up": "挂断",
+  "Keyboard: arrow keys, <kbd>Enter</kbd> OK, <kbd>Esc</kbd> back, <kbd>Tab</kbd>/<kbd>F1</kbd> options, <kbd>F2</kbd> right soft key, <kbd>F5</kbd> call, <kbd>F4</kbd> hang up, <kbd>F3</kbd> switch apps, <kbd>/</kbd> command palette; letters and digits type directly, holding <kbd>Alt</kbd> is a long press.": "键盘：方向键、<kbd>Enter</kbd> OK、<kbd>Esc</kbd> 返回、<kbd>Tab</kbd>/<kbd>F1</kbd> 选项、<kbd>F2</kbd> 右软键、<kbd>F5</kbd> 通话、<kbd>F4</kbd> 挂断、<kbd>F3</kbd> 切换应用、<kbd>/</kbd> 命令面板；字母和数字直接输入，按住 <kbd>Alt</kbd> 是长按。",
+  "Options": "选项",
+  "Right soft key": "右软键",
+  "Volume +": "音量＋",
+  "Volume −": "音量−"
+}

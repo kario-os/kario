@@ -1,0 +1,32 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #000; }
+body { font: 20px/1.3 "Noto Sans CJK SC", "Noto Sans SC", sans-serif; color: #dedee4; }
+#phone { position: relative; width: 480px; height: 640px; background: #121218; overflow: hidden; display: flex; flex-direction: column; }
+#status { display: flex; justify-content: space-between; padding: 0 12px; height: 26px; background: #08080c; color: #aaacb6; font-size: 16px; }
+#title { height: 30px; padding: 2px 12px; background: #262a3a; font-weight: bold; }
+#body { flex: 1; overflow-y: auto; padding: 4px 0; }
+#softkeys { display: flex; justify-content: space-between; height: 28px; padding: 0 12px; background: #1c1d26; font-size: 18px; }
+#center { font-weight: bold; }
+.section { color: #82848f; padding: 2px 12px; font-size: 16px; }
+.item { display: flex; gap: 10px; padding: 6px 12px; align-items: center; }
+.item .icon { width: 34px; height: 34px; border-radius: 6px; background: #2f4a77; color: #5faaff; font-weight: bold; display: grid; place-items: center; }
+.item .main { flex: 1; min-width: 0; }
+.item .t { font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item .s { color: #82848f; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item .r { color: #82848f; font-size: 15px; text-align: right; }
+.badge { background: #f05f5f; color: #fff; border-radius: 9px; padding: 0 6px; font-size: 14px; }
+.msg { padding: 2px 12px; display: flex; flex-direction: column; align-items: flex-start; }
+.msg.out { align-items: flex-end; }
+.msg .meta { color: #82848f; font-size: 14px; }
+.msg .bubble { max-width: 75%; padding: 6px 10px; border-radius: 8px; background: #343640; }
+.msg.out .bubble { background: #265c3a; }
+.msg .bubble img { display: block; width: 100%; margin-top: 4px; border-radius: 4px; }
+.input { margin-top: 6px; border-top: 1px solid #262a3a; padding: 6px 12px; }
+.input input { width: 100%; font: inherit; color: inherit; background: transparent; border: 0; outline: 0; }
+.focus { background: #2c3e60; box-shadow: inset 4px 0 #5faaff; }
+.msg.focus .bubble { outline: 2px solid #5faaff; }
+#menu { position: absolute; left: 12px; right: 12px; bottom: 32px; background: #222532; border: 1px solid #82848f; padding: 6px 0; }
+#menu .group { color: #82848f; padding: 0 12px; font-size: 15px; }
+#menu .entry { display: flex; justify-content: space-between; padding: 2px 24px; }
+#menu .entry.sel { background: #4262a0; font-weight: bold; }
+#toast { position: absolute; bottom: 36px; left: 50%; transform: translateX(-50%); background: #dedee4; color: #121218; padding: 2px 10px; }

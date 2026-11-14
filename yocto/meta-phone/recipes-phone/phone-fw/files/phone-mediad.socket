@@ -1,0 +1,9 @@
+[Unit]
+Description=Socket of phone-mediad (the service starts on the first connection)
+
+[Socket]
+ListenStream=/run/phone/mediad.sock
+SocketMode=0600
+
+[Install]
+WantedBy=sockets.target

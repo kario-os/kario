@@ -1,0 +1,11 @@
+{
+  "* cycles + − × ÷   # decimal point   OK calculates": "* 切换 + − × ÷   # 小数点   OK 计算",
+  "Calculator": "计算器",
+  "Clear": "清除",
+  "Division by zero": "除数为零",
+  "Error: %s": "错误：%s",
+  "Incomplete expression": "表达式不完整",
+  "Missing closing parenthesis": "缺少右括号",
+  "Not a number: %s": "不是数字：%s",
+  "Number out of range: %s": "数字超出范围：%s"
+}

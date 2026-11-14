@@ -1,0 +1,22 @@
+# The update test's install through the user interface (ota-test): 设置 ›
+# 系统更新, check, install; the shell runs RAUC.
+
+== 系统更新：设置里检查更新、安装，装好后提示重启
+type /
+type 设置
+key enter
+wait 应用权限 30000
+type /
+type 系统更新
+key enter
+key enter
+wait 正在运行 30000
+type c
+wait 可安装 60000
+type /
+type 可安装
+key enter
+wait 安装这个系统更新 10000
+key enter
+wait 安装完成，重启后生效 900000
+wait 下次启动 10000

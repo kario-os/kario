@@ -1,0 +1,18 @@
+{
+  "%d characters": "%d 個字",
+  "%d notes": "%d 條便籤",
+  "Added “%s”": "已新增「%s」",
+  "Clear all": "全部刪除",
+  "Copied “%s” to the clipboard": "已把「%s」複製到剪貼簿",
+  "Copy": "複製",
+  "Copy failed: %s": "複製失敗：%s",
+  "Delete": "刪除",
+  "Delete all notes?": "刪除全部便籤？",
+  "Delete this note?": "刪除這條便籤？",
+  "No notes yet": "還沒有便籤",
+  "Not copied": "沒有複製",
+  "Note": "便籤",
+  "Open": "開啟",
+  "TypeScript notes": "TypeScript 便籤",
+  "Write a note": "寫一條便籤"
+}

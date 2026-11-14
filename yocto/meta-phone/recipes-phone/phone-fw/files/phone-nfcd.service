@@ -1,0 +1,20 @@
+[Unit]
+Description=Phone NFC service (the NFC controller, the cards, which card a reader sees)
+
+[Service]
+# Small Go heaps: no transparent huge pages (see phone-shell DisableHugePages).
+Environment=GODEBUG=disablethp=1
+# The controller is the board's (sku.json "nfc"): simulated on the emulator,
+# none (the service exits) on boards without NFC (30-nfc.md).
+ExecStart=/usr/bin/phone-nfcd --run-dir /run/phone --state-dir /var/lib/phone
+Restart=on-failure
+# Card UIDs and the user's choices only: no network, nothing writable but its
+# own state (a real controller adds its device node here).
+PrivateNetwork=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/phone /run/phone
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,6 @@
+{
+  "name": "公告板",
+  "icon": "告",
+  "description": "系统渲染的 Markdown 文档",
+  "permissions": []
+}

@@ -1,0 +1,26 @@
+{
+  "id": "com.phone.settings",
+  "name": "设置",
+  "icon": "设",
+  "icon_image": "icon.png",
+  "description": "应用权限",
+  "exec": "phone-app-settings",
+  "order": 80,
+  "permissions": [
+    "system"
+  ],
+  "locales": {
+    "zh-Hant": {
+      "name": "設定",
+      "description": "應用程式權限"
+    },
+    "en": {
+      "name": "Settings",
+      "description": "App permissions"
+    },
+    "es": {
+      "name": "Configuración",
+      "description": "Permisos de apps"
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "id": "com.phone.dialer",
+  "name": "电话",
+  "icon": "话",
+  "icon_image": "icon.png",
+  "description": "拨号 · 通话记录 · 联系人",
+  "exec": "phone-app-dialer",
+  "order": 1,
+  "permissions": [
+    "phone",
+    "contacts",
+    "notifications"
+  ],
+  "granted": [
+    "contacts"
+  ],
+  "commands": [
+    {
+      "id": "log",
+      "label": "最近通话",
+      "arg": "log"
+    }
+  ],
+  "locales": {
+    "zh-Hant": {
+      "name": "電話",
+      "description": "撥號 · 通話記錄 · 聯絡人",
+      "commands": {
+        "log": "最近通話"
+      }
+    },
+    "en": {
+      "name": "Phone",
+      "description": "Dialling · call log · contacts",
+      "commands": {
+        "log": "Recent calls"
+      }
+    },
+    "es": {
+      "name": "Teléfono",
+      "description": "Marcar · registro de llamadas · contactos",
+      "commands": {
+        "log": "Recientes"
+      }
+    }
+  }
+}

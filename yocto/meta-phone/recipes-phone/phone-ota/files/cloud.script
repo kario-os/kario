@@ -1,0 +1,45 @@
+# The cloud services test's steps (cloud-test): the store app installs what
+# a developer published to the cloud's store, 鸿雁's reply arrives through
+# the cloud's push gateway, 设置 › 系统更新 reads the cloud's update server.
+
+== 云端商店：开发者经云端商店发布，手机从云端的目录下载安装
+store-publish notes 1.0
+type /
+type 应用商店
+key enter
+wait 便签 30000
+key down 20
+key enter
+wait 应用商店（已审核） 10000
+wait 安装「便签」
+key enter
+wait 已安装「便签」 60000
+key f4
+
+== 云端推送：鸿雁的回复经云端的推送网关送到手机
+type /
+type 鸿雁
+key enter
+wait 张三 30000
+type /
+type 张三
+key enter
+key enter
+wait 输入消息
+type 你好
+key enter
+wait 收到：你好 60000
+key f4
+
+== 云端更新服务器：设置 › 系统更新读云端的 latest.json
+type /
+type 设置
+key enter
+wait 应用权限 30000
+type /
+type 系统更新
+key enter
+key enter
+wait 正在运行 30000
+type c
+wait 可安装：cloud-1 60000

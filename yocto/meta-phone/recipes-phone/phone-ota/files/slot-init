@@ -1,0 +1,99 @@
+#!/bin/sh
+# phone-initramfs' /init. On an A/B disk: the slot the state partition chooses
+# (slot-choose), opened read-only through dm-verity after its verity
+# descriptor's signature checks out against the update CA; a slot that fails
+# boots the last good one instead. The data partition goes on /var/lib, the
+# state partition on /var/lib/slots. Without a state partition (a single root
+# file system): root= from the command line, read-write.
+PATH=/bin:/sbin:/usr/bin:/usr/sbin
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+
+log() { echo "phone-initramfs: $*" > /dev/kmsg; }
+
+# The block device of the GPT partition named $1.
+part() {
+	for u in /sys/class/block/*/uevent; do
+		if grep -qx "PARTNAME=$1" "$u"; then
+			echo "/dev/$(sed -n 's/^DEVNAME=//p' "$u")"
+			return
+		fi
+	done
+}
+
+# open_slot <slot>: verify slot <slot> and mount it read-only on /root.
+open_slot() {
+	dev=$(part "rootfs_$1")
+	desc=/state/rootfs_$1.verity
+	if [ ! -b "$dev" ] || [ ! -f "$desc" ] || [ ! -f "$desc.sig" ]; then
+		log "slot $1: no partition or no verity descriptor"
+		return 1
+	fi
+	# -no_check_time: a phone may boot before its clock is set.
+	if ! openssl cms -verify -binary -inform DER -in "$desc.sig" -content "$desc" -CAfile /etc/phone/update-ca.pem \
+		-purpose any -no_check_time -out /dev/null 2> /dev/null; then
+		log "slot $1: the verity descriptor's signature does not check out"
+		return 1
+	fi
+	blocks=$(sed -n 's/^data_blocks=\([0-9]\{1,12\}\)$/\1/p' "$desc")
+	offset=$(sed -n 's/^hash_offset=\([0-9]\{1,15\}\)$/\1/p' "$desc")
+	salt=$(sed -n 's/^salt=\([0-9a-f]\{1,128\}\)$/\1/p' "$desc")
+	hash=$(sed -n 's/^root_hash=\([0-9a-f]\{64\}\)$/\1/p' "$desc")
+	if [ -z "$blocks" ] || [ -z "$offset" ] || [ -z "$salt" ] || [ -z "$hash" ]; then
+		log "slot $1: malformed verity descriptor"
+		return 1
+	fi
+	if ! veritysetup open --no-superblock --format=1 --hash=sha256 --data-block-size=4096 --hash-block-size=4096 \
+		--data-blocks="$blocks" --hash-offset="$offset" --salt="$salt" "$dev" "root_$1" "$dev" "$hash" 2> /dev/kmsg; then
+		log "slot $1: dm-verity refused it"
+		return 1
+	fi
+	if ! mount -t ext4 -o ro,noload "/dev/mapper/root_$1" /root 2> /dev/kmsg; then
+		if veritysetup status "root_$1" 2> /dev/null | grep -q 'status:.*corrupted'; then
+			log "slot $1: its data does not match the root hash"
+		else
+			log "slot $1: its file system does not mount"
+		fi
+		veritysetup close "root_$1"
+		return 1
+	fi
+	log "slot $1 ($dev, verified)"
+}
+
+root=$(tr ' ' '\n' < /proc/cmdline | sed -n 's/^root=//p')
+i=0
+while [ $i -lt 10 ] && [ -z "$(part state)" ] && [ ! -b "$root" ]; do
+	sleep 1
+	i=$((i + 1))
+done
+
+state=$(part state)
+if [ -z "$state" ]; then
+	if ! mount -t ext4 "$root" /root; then
+		log "cannot mount $root"
+		exec sh
+	fi
+else
+	. /usr/lib/phone/slot-choose
+	mount -t ext4 "$state" /state
+	slot=$(choose /state 2> /dev/kmsg)
+	if ! open_slot "$slot"; then
+		state /state/boot
+		if [ "$slot" = "$good" ] || ! open_slot "$(refuse /state 2> /dev/kmsg)"; then
+			log "no system slot passes verification"
+			exec sh
+		fi
+	fi
+	umount /state
+	data=$(part data)
+	if [ -n "$data" ] && mount -t ext4 "$data" /root/var/lib; then
+		mkdir -p /root/var/lib/slots /root/var/lib/phone
+	else
+		log "cannot mount the data partition: /var/lib stays read-only"
+	fi
+	mount -t ext4 "$state" /root/var/lib/slots || log "cannot mount the state partition"
+fi
+mount --move /dev /root/dev
+umount /sys /proc
+exec switch_root /root /sbin/init

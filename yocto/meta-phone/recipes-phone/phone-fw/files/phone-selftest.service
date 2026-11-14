@@ -1,0 +1,20 @@
+[Unit]
+Description=Phone end-to-end selftest (only with phone.selftest=1 on the kernel command line)
+ConditionKernelCommandLine=phone.selftest=1
+After=basic.target iwd.service bluetooth.service
+
+[Service]
+Type=oneshot
+# The shell gives every app its own cgroup (memory, pids, cpu, freezer).
+Delegate=yes
+# The device image's push transport is TLCP (the Chinese national-cipher
+# TLS); the developer machine's selftest keeps TLS 1.3, so both paths run
+# end to end.
+Environment=PHONE_PUSH_TLCP=1
+ExecStart=/usr/libexec/phone/selftest-boot.sh
+StandardOutput=journal+console
+StandardError=journal+console
+TimeoutStartSec=900
+
+[Install]
+WantedBy=multi-user.target

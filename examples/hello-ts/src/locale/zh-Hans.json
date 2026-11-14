@@ -1,0 +1,18 @@
+{
+  "Write a note": "写一条便签",
+  "Open": "打开",
+  "Copy": "复制",
+  "Delete": "删除",
+  "Delete this note?": "删除这条便签？",
+  "%d notes": "%d 条便签",
+  "No notes yet": "还没有便签",
+  "TypeScript notes": "TypeScript 便签",
+  "Clear all": "全部删除",
+  "Delete all notes?": "删除全部便签？",
+  "Note": "便签",
+  "%d characters": "%d 个字",
+  "Copied “%s” to the clipboard": "已把「%s」复制到剪贴板",
+  "Not copied": "没有复制",
+  "Copy failed: %s": "复制失败：%s",
+  "Added “%s”": "已添加「%s」"
+}

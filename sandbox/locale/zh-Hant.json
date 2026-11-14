@@ -1,0 +1,15 @@
+{
+  "Connect to the key service directly": "直接連線金鑰服務",
+  "Listen on a TCP port": "監聽 TCP 連接埠",
+  "Make dangerous system calls (such as keyctl)": "危險的系統呼叫（如 keyctl）",
+  "Open the display device /dev/dri": "開啟顯示裝置 /dev/dri",
+  "Reach the network": "存取網路",
+  "Read another app's data": "讀取其他應用程式的資料",
+  "Read the device private key": "讀取裝置私密金鑰",
+  "Read the keyboard device /dev/input": "讀取鍵盤裝置 /dev/input",
+  "Read the vendor root public key": "讀取廠商根公開金鑰",
+  "Run code it wrote itself": "執行自己寫入的程式碼",
+  "See other processes": "看到其他處理程序",
+  "Write to its own data directory": "寫入自己的資料目錄",
+  "Write to the shared temporary directories /tmp and /var/tmp": "寫入共用暫存目錄 /tmp、/var/tmp"
+}

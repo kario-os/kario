@@ -1,0 +1,41 @@
+{
+  "id": "com.phone.miniapp",
+  "name": "小程序",
+  "icon": "小",
+  "icon_image": "icon.png",
+  "description": "JS 小程序宿主 · 视图为 phone.Ui",
+  "exec": "phone-app-miniapp",
+  "order": 60,
+  "permissions": [
+    "camera",
+    "keystore",
+    "notifications"
+  ],
+  "purposes": {
+    "camera": "小程序扫码（点餐、付款）"
+  },
+  "folder": "apps",
+  "locales": {
+    "zh-Hant": {
+      "name": "小程式",
+      "description": "JS 小程式容器 · 畫面使用 phone.Ui",
+      "purposes": {
+        "camera": "小程式掃碼（點餐、付款）"
+      }
+    },
+    "en": {
+      "name": "Mini programs",
+      "description": "JS mini-program host · views are phone.Ui",
+      "purposes": {
+        "camera": "Mini programs scan codes (ordering, paying)"
+      }
+    },
+    "es": {
+      "name": "Miniprogramas",
+      "description": "Anfitrión de miniprogramas JS · las vistas son phone.Ui",
+      "purposes": {
+        "camera": "Los miniprogramas escanean códigos (pedir, pagar)"
+      }
+    }
+  }
+}

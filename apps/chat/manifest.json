@@ -1,0 +1,70 @@
+{
+  "id": "com.phone.chat",
+  "name": "鸿雁",
+  "icon": "雁",
+  "icon_image": "icon.png",
+  "description": "即时通讯 · 视频通话（微信类，示例；消息和来电经推送）",
+  "exec": "phone-app-chat",
+  "order": 10,
+  "permissions": [
+    "camera",
+    "microphone",
+    "notifications",
+    "voip",
+    "net"
+  ],
+  "purposes": {
+    "camera": "视频通话、拍照发给好友",
+    "microphone": "视频通话和语音消息"
+  },
+  "background": [],
+  "share": [
+    "text",
+    "image",
+    "link",
+    "file"
+  ],
+  "notify_actions": [
+    {
+      "id": "reply",
+      "label": "回复",
+      "key": "r",
+      "input": "回复"
+    }
+  ],
+  "locales": {
+    "zh-Hant": {
+      "name": "鴻雁",
+      "description": "即時通訊 · 視訊通話（類似微信的範例；訊息和來電經由推播）",
+      "purposes": {
+        "camera": "視訊通話、拍照傳給好友",
+        "microphone": "視訊通話和語音訊息"
+      },
+      "notify_actions": {
+        "reply": "回覆"
+      }
+    },
+    "en": {
+      "name": "Hongyan",
+      "description": "Messaging · video calls (a WeChat-like sample; messages and calls come by push)",
+      "purposes": {
+        "camera": "Video calls and photos for your friends",
+        "microphone": "Video calls and voice messages"
+      },
+      "notify_actions": {
+        "reply": "Reply"
+      }
+    },
+    "es": {
+      "name": "Hongyan",
+      "description": "Mensajería · videollamadas (un ejemplo al estilo de WeChat; mensajes y llamadas llegan por push)",
+      "purposes": {
+        "camera": "Videollamadas y fotos para tus amigos",
+        "microphone": "Videollamadas y mensajes de voz"
+      },
+      "notify_actions": {
+        "reply": "Responder"
+      }
+    }
+  }
+}

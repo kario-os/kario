@@ -1,0 +1,26 @@
+{
+  "keywords": [
+    "验证码",
+    "校验码",
+    "动态码",
+    "动态密码",
+    "确认码",
+    "认证码",
+    "安全码",
+    "登录码",
+    "激活码",
+    "短信码",
+    "驗證碼",
+    "認證碼",
+    "verification code",
+    "security code",
+    "passcode",
+    "one-time",
+    "otp",
+    "code",
+    "pin",
+    "código"
+  ],
+  "before": ["¥", "￥", "$", "€", "£", "rmb", "usd", "no.", "#", "尾号", "卡号", "订单号", "ending in"],
+  "after": ["元", "块", "%", "年", "月", "日", "号", "分钟", "小时", "秒", "minutes", "minute", "mins", "min", "hours", "seconds", "usd", "rmb", "kb", "mb", "gb"]
+}

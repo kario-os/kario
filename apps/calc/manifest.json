@@ -1,0 +1,26 @@
+{
+  "id": "com.phone.calc",
+  "name": "计算器",
+  "icon": "算",
+  "icon_image": "icon.png",
+  "description": "四则运算",
+  "runtime": "js",
+  "main": "main.js",
+  "order": 40,
+  "permissions": [],
+  "folder": "tools",
+  "locales": {
+    "zh-Hant": {
+      "name": "計算機",
+      "description": "四則運算"
+    },
+    "en": {
+      "name": "Calculator",
+      "description": "Arithmetic"
+    },
+    "es": {
+      "name": "Calculadora",
+      "description": "Operaciones básicas"
+    }
+  }
+}

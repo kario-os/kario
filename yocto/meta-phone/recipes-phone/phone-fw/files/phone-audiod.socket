@@ -1,0 +1,9 @@
+[Unit]
+Description=Socket of phone-audiod (the service starts on the first connection)
+
+[Socket]
+ListenStream=/run/phone/audiod.sock
+SocketMode=0600
+
+[Install]
+WantedBy=sockets.target

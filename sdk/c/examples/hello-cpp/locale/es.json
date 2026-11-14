@@ -1,0 +1,10 @@
+{
+  "C++ sample": "Ejemplo en C++",
+  "Copied to the clipboard": "Se copió al portapapeles",
+  "Copy failed: %s": "No se pudo copiar: %s",
+  "Copy the count": "Copiar el contador",
+  "Count %s": "Contador: %s",
+  "Speaks the phone.Ui protocol through the C interface": "Usa el protocolo phone.Ui a través de la interfaz C",
+  "Tap me": "Tócame",
+  "Tapped %s times": "Tocaste %s veces"
+}

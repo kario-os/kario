@@ -1,0 +1,6 @@
+{
+  "name": "便签",
+  "icon": "签",
+  "description": "数据绑定与本地存储",
+  "permissions": ["storage"]
+}

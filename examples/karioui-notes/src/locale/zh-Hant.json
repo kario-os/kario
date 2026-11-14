@@ -1,0 +1,19 @@
+{
+  "%d characters": "%d 個字",
+  "%d notes": "%d 則便簽",
+  "Added “%s”": "已新增「%s」",
+  "Clear all": "全部刪除",
+  "Copied “%s”": "已複製「%s」",
+  "Copy": "複製",
+  "Copy failed: %s": "複製失敗：%s",
+  "Delete": "刪除",
+  "Delete all notes?": "刪除全部便簽？",
+  "Delete this note?": "刪除這則便簽？",
+  "No notes yet": "還沒有便簽",
+  "Not copied": "沒有複製",
+  "Note": "便簽",
+  "Notes": "便簽",
+  "Open": "開啟",
+  "This note was deleted": "這則便簽已刪除",
+  "Write a note": "寫一則便簽"
+}

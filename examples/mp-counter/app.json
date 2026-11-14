@@ -1,0 +1,6 @@
+{
+  "name": "计数器",
+  "icon": "数",
+  "description": "示例小程序：签名打包，由宿主验签后加载",
+  "permissions": ["storage"]
+}

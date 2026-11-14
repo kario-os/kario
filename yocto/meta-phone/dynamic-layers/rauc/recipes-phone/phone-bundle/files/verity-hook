@@ -1,0 +1,17 @@
+#!/bin/sh
+# RAUC hook of the system update bundle (phone-bundle.bb): once a system slot
+# is written, its signed verity descriptor goes into the boot state, where
+# phone-initramfs looks for it. RAUC makes the slot primary only after this.
+case "$1" in
+slot-post-install)
+	[ "$RAUC_SLOT_CLASS" = rootfs ] || exit 0
+	desc=
+	for f in "$RAUC_BUNDLE_MOUNT_POINT"/*.verity.desc; do desc=$f; done
+	if [ ! -f "$desc" ] || [ ! -f "$desc.sig" ]; then
+		echo "the bundle carries no verity descriptor for slot $RAUC_SLOT_BOOTNAME" >&2
+		exit 1
+	fi
+	to=${PHONE_SLOTS:-/var/lib/slots}/rootfs_$RAUC_SLOT_BOOTNAME.verity
+	cp "$desc" "$to.new" && cp "$desc.sig" "$to.sig.new" && mv "$to.new" "$to" && mv "$to.sig.new" "$to.sig" && sync
+	;;
+esac

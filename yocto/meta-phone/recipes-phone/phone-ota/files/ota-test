@@ -1,0 +1,97 @@
+#!/bin/sh
+# One step of the system update tests (yocto/qemu-ota.sh, qemu-ota-delta.sh), chosen by
+# phone.ota-test=<step> on the kernel command line; then the machine powers
+# off. The bundles come from the host, which QEMU's user network shows as
+# 10.0.2.2.
+step=$(tr ' ' '\n' < /proc/cmdline | sed -n 's/^phone.ota-test=//p')
+srv=http://10.0.2.2:8789
+say() { echo "PHONE-OTA: $*" > /dev/console; }
+. /usr/lib/phone/slot-choose
+report() {
+	state /var/lib/slots/boot
+	root=$(awk '$2 == "/" { split($4, o, ","); r = $1 ":" o[1] } END { print r }' /proc/mounts)
+	health=$(cat /run/phone/healthy 2>/dev/null | tr ' ' ',')
+	say "booted=$booted primary=$slot good=$good tries=$tries root=$root health=${health:-none}"
+}
+# held <dir>: 设置 › 系统更新 against a server whose latest.json holds the
+# version back from this phone (a staged rollout at 0 %, a paused one).
+held() {
+	if PHONE_UPDATE_URL=$srv/$1 phone-shell --services system --script /usr/share/phone/ota-held.script --timeout-scale 4 \
+		> /tmp/held.log 2>&1; then
+		say "held ($1): $(grep -a -o 'held: .*' /run/phone/shell.log | tail -n 1)"
+	else
+		say "FAIL: $1: $(grep -a -m3 -e FAIL -e 'line ' /tmp/held.log | tr '\n' ' ')"
+	fi
+}
+# delta_log <what>: what an incremental bundle's hook did (delta-hook), if
+# one ran: the applier and its time and memory, or why it stopped.
+delta_log() {
+	[ -f /run/phone-ota-delta.log ] || return 0
+	say "delta $1: $(grep -a -m1 'applying payload' /run/phone-ota-delta.log) $(tail -n 2 /run/phone-ota-delta.log | tr '\n' ' ')"
+	rm -f /run/phone-ota-delta.log
+}
+# The good-marking runs once the system is up (the health check waits up
+# to 120 s for the shell); wait for its verdict.
+for i in $(seq 1 180); do
+	systemctl is-active -q phone-ota-good.service || systemctl is-failed -q phone-ota-good.service && break
+	sleep 1
+done
+report
+# The root the update server checks this phone's signed reports against
+# (the phone's own until the factory provisions one).
+systemctl start phone-keystored.service
+[ -r /var/lib/phone/factory/root.pub ] && say "device root: $(tr '\n' ' ' < /var/lib/phone/factory/root.pub)"
+case "$step" in
+install)
+	if rauc install "$srv/untrusted.raucb" > /tmp/untrusted.log 2>&1; then
+		say "FAIL: a bundle signed by an untrusted key was installed"
+	elif why=$(grep -a -i -e fail -e error /tmp/untrusted.log | grep -a -i -m1 -e signature -e certificate -e verif); then
+		say "untrusted bundle refused: $why"
+	else
+		say "FAIL: the untrusted bundle failed for another reason: $(tail -n 3 /tmp/untrusted.log | tr '\n' ' ')"
+	fi
+	delta_log refused
+	if grep -qw phone.ota-held /proc/cmdline; then
+		held staged
+		held paused
+	fi
+	# The real one through 设置 › 系统更新 (the shell runs rauc install).
+	if PHONE_UPDATE_URL=$srv phone-shell --services system --script /usr/share/phone/ota.script --timeout-scale 4 \
+		> /tmp/install.log 2>&1; then
+		say "installed"
+	else
+		say "FAIL: install: $(grep -a -m3 -e FAIL -e 'line ' /tmp/install.log | tr '\n' ' ')"
+	fi
+	delta_log installed
+	report
+	;;
+install-cut)
+	# The install through Settings, and the power gone once 64 MB of the
+	# other slot are written: no sync, as when the battery comes out.
+	other=a
+	[ "$booted" = a ] && other=b
+	dev=$(readlink -f /dev/disk/by-partlabel/rootfs_$other)
+	stat=/sys/class/block/${dev##*/}/stat
+	before=$(awk '{ print $7 }' "$stat")
+	PHONE_UPDATE_URL=$srv phone-shell --services system --script /usr/share/phone/ota.script --timeout-scale 4 \
+		> /tmp/install.log 2>&1 &
+	shell=$!
+	while kill -0 $shell 2>/dev/null; do
+		written=$(( ($(awk '{ print $7 }' "$stat") - before) / 2048 ))
+		if [ "$written" -ge 64 ]; then
+			say "power cut after $written MB written to slot $other"
+			echo o > /proc/sysrq-trigger
+			sleep 10
+		fi
+		sleep 1
+	done
+	say "FAIL: the install ended before the power cut: $(grep -a -m3 -e FAIL -e 'line ' -e PASS /tmp/install.log | tr '\n' ' ')"
+	;;
+esac
+# The shell that installed an update reports how it went once the slot is
+# marked good (updatereport.go); with the display service it runs here.
+if grep -qw phone.gui=1 /proc/cmdline && [ -e /var/lib/phone/shell/update-report.json ]; then
+	for i in $(seq 1 60); do [ -e /var/lib/phone/shell/update-report.json ] || break; sleep 1; done
+	say "update report: $([ -e /var/lib/phone/shell/update-report.json ] && echo pending || echo sent)"
+fi
+systemctl poweroff

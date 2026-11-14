@@ -1,0 +1,38 @@
+#!/bin/sh
+# The cloud services test (yocto/qemu-cloud.sh), with phone.cloud-test on
+# the kernel command line: this image names its cloud services
+# (phone-services); the store, the push gateway and the update server run
+# on the host, which QEMU's user network shows as 10.0.2.2. The store
+# staff's token comes on the command line (phone.cloud-staff=) so the
+# script can publish an app as a developer would. Then the machine powers
+# off.
+say() { echo "PHONE-CLOUD: $*" > /dev/console; }
+if [ ! -r /usr/share/phone/services.env ]; then
+	say "FAIL: the image names no cloud services"
+	systemctl poweroff
+	exit 0
+fi
+set -a
+. /usr/share/phone/services.env
+set +a
+say "store=$PHONE_STORE_SERVER push=$PHONE_PUSH_GATEWAY update=$PHONE_UPDATE_URL"
+for u in phone-pushgw phone-storesrv; do
+	if systemctl is-active -q $u.service; then
+		say "FAIL: the simulated $u runs although the cloud's is named"
+	else
+		say "$u: not started"
+	fi
+done
+mkdir -p /run/phone
+tr ' ' '\n' < /proc/cmdline | sed -n 's/^phone.cloud-staff=//p' > /run/phone/storesrv-admin.token
+# The 鸿雁 stand-in runs on the device; its replies go out through the
+# cloud's gateway (phone-chatsrv.service reads services.env too).
+export PHONE_CHAT_SERVER=http://127.0.0.1:8791
+if phone-shell --services system --script /usr/share/phone/cloud.script --timeout-scale 4 > /tmp/cloud.log 2>&1; then
+	say "script: PASS"
+else
+	say "FAIL: script: $(grep -a -m3 -e FAIL -e 'line ' /tmp/cloud.log | tr '\n' ' ')"
+	sed -n '/screen:/,/PHONE-SELFTEST-RESULT/p' /tmp/cloud.log | head -30 | sed 's/^/PHONE-CLOUD-SCREEN: /' > /dev/console
+fi
+say "pushd: $(journalctl -u phone-pushd -o cat --no-pager | grep -a -m1 -i -e connected -e gateway | cut -c1-160)"
+systemctl poweroff

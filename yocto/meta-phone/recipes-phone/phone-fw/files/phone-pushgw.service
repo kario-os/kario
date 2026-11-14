@@ -1,0 +1,13 @@
+[Unit]
+Description=Simulated cloud push gateway (runs on the device in the prototype; production is a cloud service)
+# Only while the product layer names no cloud push gateway (phone-services).
+ConditionPathExists=!/usr/share/phone/services/push
+
+[Service]
+# Small Go heaps: no transparent huge pages (see phone-shell DisableHugePages).
+Environment=GODEBUG=disablethp=1
+ExecStart=/usr/bin/phone-pushgw --listen 127.0.0.1:8790 --state /var/lib/phone/pushgw-state.json --trust-root /var/lib/phone/factory/root.pub --tls-dir /var/lib/phone/pushgw-tls --tlcp
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

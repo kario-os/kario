@@ -1,0 +1,16 @@
+[Unit]
+Description=Phone low-memory stress run (only with phone.stress=<rounds> on the kernel command line)
+ConditionKernelCommandLine=phone.stress
+After=basic.target phone-chatsrv.service phone-telephonyd.service
+
+[Service]
+Type=oneshot
+# The shell gives every app its own cgroup (memory, pids, cpu, freezer).
+Delegate=yes
+ExecStart=/usr/libexec/phone/stress-boot.sh
+StandardOutput=journal+console
+StandardError=journal+console
+TimeoutStartSec=3600
+
+[Install]
+WantedBy=multi-user.target

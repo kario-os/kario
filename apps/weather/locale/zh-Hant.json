@@ -1,0 +1,22 @@
+{
+  "%s (not located)": "%s（未定位）",
+  "%s today: %s, %s–%s": "%s今天%s，%s–%s",
+  "Beijing": "北京",
+  "Cannot schedule the background refresh: %s": "無法排定背景重新整理：%s",
+  "Cannot share: %s": "無法分享：%s",
+  "Cloudy": "多雲",
+  "Guangzhou": "廣州",
+  "Jan 2": "1月2日",
+  "Light rain": "小雨",
+  "Next %d days": "未來 %d 天",
+  "Overcast": "陰",
+  "Refresh": "重新整理",
+  "Shanghai": "上海",
+  "Share": "分享",
+  "Shenzhen": "深圳",
+  "Showers": "陣雨",
+  "Sunny": "晴",
+  "Today %s–%s": "今天 %s–%s",
+  "Updated %s · %d background refreshes · simulated data": "更新於 %s · 背景重新整理 %d 次 · 模擬資料",
+  "Weather": "天氣"
+}

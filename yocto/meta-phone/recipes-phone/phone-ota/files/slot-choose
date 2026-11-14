@@ -1,0 +1,44 @@
+# choose <dir>: the slot to boot, from <dir>/boot (sourced by slot-init and
+# phone-ota's rauc-boot).
+# A newly installed slot has tries; each boot of it spends one, and once
+# they are spent without the slot being marked good, the last good slot
+# boots again. The decision is written back before the slot starts.
+# The state is parsed, never run: a slot is a or b, tries a number.
+state() {
+	slot=$(sed -n 's/^slot=\([ab]\)$/\1/p' "$1" 2>/dev/null)
+	good=$(sed -n 's/^good=\([ab]\)$/\1/p' "$1" 2>/dev/null)
+	tries=$(sed -n 's/^tries=\([0-9]\{1,2\}\)$/\1/p' "$1" 2>/dev/null)
+	booted=$(sed -n 's/^booted=\([ab]\)$/\1/p' "$1" 2>/dev/null)
+	: "${slot:=a}" "${good:=a}" "${tries:=0}" "${booted:=$slot}"
+}
+
+choose() {
+	state "$1/boot"
+	if [ "$slot" != "$good" ]; then
+		if [ "$tries" -gt 0 ]; then
+			tries=$((tries - 1))
+		else
+			echo "slot $slot never came up healthy, back to slot $good" >&2
+			slot=$good
+		fi
+	fi
+	save_state "$1"
+	echo "$slot"
+}
+
+# refuse <dir>: the slot choose picked failed verification; the last good one
+# boots instead and stays primary, the refused slot gets no more tries.
+refuse() {
+	state "$1/boot"
+	echo "slot $slot failed verification, back to slot $good" >&2
+	slot=$good
+	tries=0
+	save_state "$1"
+	echo "$slot"
+}
+
+save_state() {
+	printf 'slot=%s\ngood=%s\ntries=%s\nbooted=%s\n' "$slot" "$good" "$tries" "$slot" > "$1/boot.new"
+	mv "$1/boot.new" "$1/boot"
+	sync
+}

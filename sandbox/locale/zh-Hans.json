@@ -1,0 +1,15 @@
+{
+  "Connect to the key service directly": "直连密钥服务",
+  "Listen on a TCP port": "监听 TCP 端口",
+  "Make dangerous system calls (such as keyctl)": "危险系统调用（如 keyctl）",
+  "Open the display device /dev/dri": "打开显示设备 /dev/dri",
+  "Reach the network": "访问网络",
+  "Read another app's data": "读其他应用数据",
+  "Read the device private key": "读设备私钥",
+  "Read the keyboard device /dev/input": "读键盘设备 /dev/input",
+  "Read the vendor root public key": "读厂商根公钥",
+  "Run code it wrote itself": "执行自己写入的代码",
+  "See other processes": "看到其他进程",
+  "Write to its own data directory": "写自己的数据目录",
+  "Write to the shared temporary directories /tmp and /var/tmp": "写公共临时目录 /tmp、/var/tmp"
+}

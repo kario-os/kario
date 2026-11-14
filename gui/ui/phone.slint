@@ -1,0 +1,1221 @@
+// Pixel renderer for the phone.Ui semantic tree. The shell decides what is on
+// screen (see fw/shell/frame.go); this file decides how it looks: the TUI
+// design language of docs/06 drawn with real fonts and pixels.
+
+// One box-drawing cell: arm styles 0 none, 1 light, 2 heavy, 3 double;
+// arrow 1 down, 2 up, 3 right, 4 left.
+export struct BoxCell { up: int, right: int, down: int, left: int, dashed: bool, arrow: int }
+export struct Run {
+    text: string, col: int, width: int, fg: color, bg: color, has-bg: bool,
+    bold: bool, italic: bool, under: bool, cells: [BoxCell],
+}
+export struct DocLine { runs: [Run] }
+
+export struct Tile { icon: string, title: string, badge: string, focused: bool, img: image, has-img: bool, photo: bool }
+
+export struct Node {
+    kind: string, style: string, text: string, title: string, subtitle: string, trailing: string,
+    badge: string, icon: string, label: string, placeholder: string, value: string, preedit: string,
+    secret: bool, out: bool, focused: bool,
+    img: image, has-img: bool, img-ratio: float, pixelated: bool, secure: bool,
+    pip: image, has-pip: bool, waiting: string,
+    doc: [DocLine],
+    tiles: [Tile], columns: int, sel: int, fraction: float,
+    icon-img: image, has-icon-img: bool,
+}
+
+export struct ImeRow { items: [string], sel: int, active: bool, numbered: bool, more: bool }
+export struct MenuItem { header: bool, text: string, key: string, sel: bool }
+
+export struct Overlay {
+    kind: string, title: string, lines: [string], warn: string, items: [MenuItem],
+    query: string, has-query: bool, choices: [string], choice: int,
+    pin-filled: int, pin-total: int, note: string, note-bad: bool, footer: [string],
+    img: image, has-img: bool, phase: float, sel-top: length,
+    tiles: [Tile], columns: int,
+}
+
+// The words the renderer draws on its own, in English until main.rs sets
+// them in the device's language.
+export global Words {
+    in property <string> secure-mask: "Secure content · screenshot hidden";
+    in property <string> payment-password: "Payment password";
+    in property <string> opening-camera: "Opening the camera…";
+    in property <string> tagline: "The keyboard-first phone system";
+    in property <string> alarm: "Alarm ringing";
+    in property <string> options: "Options";
+}
+
+export global Theme {
+    in-out property <color> bg: #121218;
+    in-out property <color> fg: #dedee4;
+    in-out property <color> dim: #828491;
+    in-out property <color> accent: #5faaff;
+    in-out property <color> ok: #64cd7d;
+    in-out property <color> warn: #f0af46;
+    in-out property <color> danger: #f05f5f;
+    in-out property <color> focus: #2c3e60;
+    in-out property <color> status: #08080c;
+    in-out property <color> title: #262a3a;
+    in-out property <color> soft: #1c1d26;
+    in-out property <color> bub-in: #343640;
+    in-out property <color> bub-out: #265c3a;
+    // Unfocused rows, tiles and fields; borders, tracks and placeholders.
+    in-out property <color> card: #1b1d27;
+    in-out property <color> rule: #30364a;
+    // Text on the surfaces that keep their own dark colour whatever the
+    // theme: the incoming call, the alarm, the boot screen, secure masks.
+    out property <color> on-dark: #eceef4;
+    out property <color> on-dark-dim: #a0a6b8;
+    in-out property <color> menu: #222532;
+    in-out property <color> menu-sel: #4262a0;
+    // The standby screen without a wallpaper: a gradient, top to bottom.
+    in-out property <color> idle-a: #1e2d52;
+    in-out property <color> idle-mid: #0f1526;
+    in-out property <color> idle-b: #26173d;
+    out property <color> trusted: #e8c050;
+    out property <color> trust-bg: #1a160c;
+    out property <string> sans: "Noto Sans CJK SC";
+    out property <string> mono: "Noto Sans Mono CJK SC";
+    out property <length> text: 14px;
+    out property <length> small: 12px;
+    out property <length> cell: 7px;   // half-width advance of the 14px monospace face
+    out property <length> line: 18px;  // document line pitch
+}
+
+component FocusBar inherits Rectangle {
+    in property <bool> on;
+    width: 3px;
+    background: on ? Theme.accent : transparent;
+    animate background { duration: 120ms; }
+}
+
+component SecureMask inherits Rectangle {
+    background: #2a2a33;
+    border-radius: 2px;
+    Text { text: Words.secure-mask; color: Theme.on-dark-dim; font-size: Theme.small; }
+}
+
+component Picture inherits Rectangle {
+    in property <image> source;
+    in property <float> ratio: 1;
+    in property <bool> pixelated;
+    in property <bool> secure;
+    in property <bool> mask;
+    preferred-width: 160px;
+    height: self.width / max(0.1, ratio);
+    if !(secure && mask): Image {
+        width: parent.width;
+        height: parent.height;
+        source: root.source;
+        image-fit: fill;
+        image-rendering: root.pixelated ? ImageRendering.pixelated : ImageRendering.smooth;
+    }
+    if secure && mask: SecureMask { width: parent.width; height: parent.height; }
+}
+
+component SectionView inherits HorizontalLayout {
+    in property <Node> node;
+    padding-left: 8px; padding-right: 8px; padding-top: 6px; padding-bottom: 2px; spacing: 6px;
+    Text { text: node.text; color: Theme.dim; font-size: Theme.small; vertical-alignment: center; }
+    VerticalLayout {
+        alignment: center;
+        horizontal-stretch: 1;
+        Rectangle { height: 1px; background: Theme.title; }
+    }
+}
+
+component ProgressView inherits HorizontalLayout {
+    in property <Node> node;
+    padding-left: 8px; padding-right: 8px; padding-top: 6px; padding-bottom: 6px;
+    spacing: 8px;
+    if node.text != "": Text { text: node.text; color: Theme.dim; font-size: Theme.small; vertical-alignment: center; }
+    VerticalLayout {
+        alignment: center;
+        horizontal-stretch: 1;
+        Rectangle {
+            height: 6px;
+            border-radius: 3px;
+            background: Theme.rule;
+            Rectangle {
+                x: 0; y: 0; height: parent.height;
+                width: parent.width * clamp(node.fraction, 0, 1);
+                border-radius: 3px;
+                background: Theme.accent;
+                animate width { duration: 200ms; }
+            }
+        }
+    }
+    if node.trailing != "": Text { text: node.trailing; color: Theme.dim; font-size: Theme.small; vertical-alignment: center; }
+}
+
+component TextView inherits HorizontalLayout {
+    in property <Node> node;
+    padding-left: 8px; padding-right: 8px; padding-top: 2px; padding-bottom: 2px;
+    Text {
+        text: node.text;
+        wrap: word-wrap;
+        font-size: node.style == "display" ? 34px : node.style == "big" ? 22px : Theme.text;
+        font-weight: node.style == "title" || node.style == "big" || node.style == "display" ? 700 : 400;
+        horizontal-alignment: node.style == "big" ? center : node.style == "display" ? right : left;
+        color: node.style == "dim" ? Theme.dim : node.style == "accent" ? Theme.accent
+            : node.style == "ok" ? Theme.ok : node.style == "warn" ? Theme.warn : Theme.fg;
+    }
+}
+
+component ItemView inherits Rectangle {
+    in property <Node> node;
+    in property <bool> mask;
+    background: node.focused ? Theme.focus : transparent;
+    animate background { duration: 120ms; }
+    HorizontalLayout {
+        padding-right: 8px; spacing: 6px;
+        FocusBar { on: node.focused; }
+        if node.has-icon-img: VerticalLayout {
+            padding-top: 4px;
+            alignment: start;
+            Image { width: 24px; height: 24px; source: node.icon-img; }
+        }
+        if node.icon != "" && !node.has-icon-img: VerticalLayout {
+            padding-top: 4px;
+            alignment: start;
+            Rectangle {
+                width: 24px; height: 24px; border-radius: 5px;
+                background: Theme.rule;
+                Text { text: node.icon; color: Theme.accent; font-weight: 700; font-size: 13px; }
+            }
+        }
+        VerticalLayout {
+            padding-top: 4px; padding-bottom: 4px; spacing: 1px;
+            HorizontalLayout {
+                spacing: 6px;
+                Text { text: node.title; font-weight: 700; overflow: elide; horizontal-stretch: 1; color: Theme.fg; }
+                if node.trailing != "": Text { text: node.trailing; color: Theme.dim; font-size: Theme.small; vertical-alignment: center; }
+            }
+            if node.subtitle != "" || node.badge != "": HorizontalLayout {
+                spacing: 6px;
+                Text { text: node.subtitle; color: Theme.dim; font-size: Theme.small; overflow: elide; horizontal-stretch: 1; }
+                if node.badge != "": Rectangle {
+                    background: Theme.danger; border-radius: 7px; height: 15px;
+                    width: max(15px, badge-text.preferred-width + 8px);
+                    badge-text := Text { text: node.badge; color: white; font-size: 10px; font-weight: 700; }
+                }
+            }
+            if node.has-img: HorizontalLayout {
+                padding-top: 3px;
+                alignment: start;
+                Picture { width: 128px; source: node.img; ratio: node.img-ratio; pixelated: node.pixelated; secure: node.secure; mask: root.mask; }
+            }
+        }
+    }
+}
+
+component BubbleView inherits VerticalLayout {
+    in property <Node> node;
+    in property <bool> mask;
+    padding-left: 8px; padding-right: 8px; padding-top: 3px; padding-bottom: 3px; spacing: 2px;
+    Text { text: node.subtitle; color: Theme.dim; font-size: 11px; horizontal-alignment: node.out ? right : left; }
+    HorizontalLayout {
+        alignment: node.out ? end : start;
+        Rectangle {
+            max-width: root.width * 0.78;
+            background: node.out ? Theme.bub-out : Theme.bub-in;
+            border-radius: 8px;
+            border-width: node.focused ? 1.5px : 0;
+            border-color: Theme.accent;
+            VerticalLayout {
+                padding: 7px; spacing: 4px;
+                if node.title != "": Text { text: node.title; wrap: word-wrap; color: Theme.fg; }
+                if node.has-img: Picture { width: 140px; source: node.img; ratio: node.img-ratio; pixelated: node.pixelated; secure: node.secure; mask: root.mask; }
+            }
+        }
+    }
+}
+
+component InputView inherits VerticalLayout {
+    in property <Node> node;
+    padding-left: 6px; padding-right: 6px; padding-top: 4px; padding-bottom: 4px;
+    Rectangle {
+        height: 30px;
+        border-radius: 5px;
+        background: node.focused ? Theme.focus : Theme.card;
+        border-width: 1px;
+        border-color: node.focused ? Theme.accent : Theme.title;
+        HorizontalLayout {
+            padding-left: 8px; padding-right: 8px; spacing: 1px;
+            Text { text: "›"; color: Theme.accent; vertical-alignment: center; width: 12px; }
+            if node.value == "" && node.preedit == "": Text {
+                text: node.placeholder; color: Theme.dim; vertical-alignment: center; overflow: elide; horizontal-stretch: 1;
+            }
+            if node.value != "": Text { text: node.value; color: Theme.fg; vertical-alignment: center; overflow: elide; }
+            if node.preedit != "": VerticalLayout {
+                alignment: center;
+                Text { text: node.preedit; color: Theme.accent; }
+                Rectangle { height: 1px; background: Theme.accent; }
+            }
+            if node.focused: VerticalLayout {
+                alignment: center;
+                Rectangle { width: 1.5px; height: 16px; background: Theme.accent; }
+            }
+            Rectangle { horizontal-stretch: 1; }
+        }
+    }
+}
+
+component ButtonView inherits HorizontalLayout {
+    in property <Node> node;
+    padding: 6px;
+    alignment: center;
+    Rectangle {
+        height: 30px;
+        width: max(120px, label.preferred-width + 32px);
+        border-radius: 15px;
+        background: node.focused ? Theme.accent : transparent;
+        border-width: 1.5px;
+        border-color: Theme.accent;
+        label := Text { text: node.text; color: node.focused ? Theme.bg : Theme.accent; font-weight: 700; }
+    }
+}
+
+component ImageView inherits Rectangle {
+    in property <Node> node;
+    in property <bool> mask;
+    VerticalLayout {
+        padding: 6px; spacing: 4px;
+        HorizontalLayout {
+            alignment: center;
+            Rectangle {
+                border-width: node.focused ? 2px : 0;
+                border-color: Theme.accent;
+                width: min(root.width - 24px, 200px);
+                height: self.width / max(0.1, node.img-ratio);
+                Picture { width: parent.width - 8px; source: node.img; ratio: node.img-ratio; pixelated: node.pixelated; secure: node.secure; mask: root.mask; }
+            }
+        }
+        if node.label != "": Text { text: node.label; color: Theme.dim; font-size: Theme.small; horizontal-alignment: center; }
+    }
+}
+
+component MediaView inherits Rectangle {
+    in property <Node> node;
+    in property <bool> mask;
+    height: (self.width - 12px) * 0.75 + 8px;
+    Rectangle {
+        x: 6px; y: 4px;
+        width: parent.width - 12px;
+        height: parent.height - 8px;
+        background: #0a0a0e;
+        border-radius: 4px;
+        clip: true;
+        border-width: node.focused ? 2px : 0;
+        border-color: Theme.accent;
+        if node.has-img: Picture { width: parent.width; source: node.img; ratio: 4 / 3; secure: node.secure; mask: root.mask; }
+        if !node.has-img: Text { text: node.waiting; color: Theme.dim; }
+        if node.has-pip: Rectangle {
+            x: parent.width - self.width - 6px;
+            y: parent.height - self.height - 6px;
+            width: parent.width / 3;
+            height: self.width * 0.75;
+            border-width: 1px;
+            border-color: Theme.fg;
+            Picture { width: parent.width; source: node.pip; ratio: 4 / 3; secure: node.secure; mask: root.mask; }
+        }
+        if node.label != "": Rectangle {
+            x: 6px; y: 6px;
+            width: lbl.preferred-width + 12px; height: 20px;
+            border-radius: 3px;
+            background: #000000a0;
+            lbl := Text { text: node.label; color: Theme.fg; font-weight: 700; font-size: Theme.small; }
+        }
+    }
+}
+
+// Box-drawing characters are drawn as lines on the cell grid, the way
+// terminal emulators do, so diagrams join up whatever the font's glyphs are.
+// Arms start at the centre minus half their width, so corners close exactly.
+// A double line is a 3px band with a 1px gap cut through it afterwards; the
+// gaps of joining arms meet at the centre and form the inner corner.
+component Band inherits Rectangle {
+    in property <int> kind;
+    in property <bool> vertical;
+    in property <bool> toward-end;   // right or down
+    in property <bool> dashed;
+    in property <color> c;
+    in property <length> cx;
+    in property <length> cy;
+    property <length> t: kind == 3 ? 3px : kind == 2 ? 2px : 1px;
+    if kind > 0: Rectangle {
+        x: vertical ? root.cx - root.t / 2 : (toward-end ? root.cx - root.t / 2 : 0);
+        y: vertical ? (toward-end ? root.cy - root.t / 2 : 0) : root.cy - root.t / 2;
+        width: vertical ? root.t : (toward-end ? root.width - root.cx + root.t / 2 : root.cx + root.t / 2);
+        height: vertical ? (toward-end ? root.height - root.cy + root.t / 2 : root.cy + root.t / 2) : root.t;
+        background: root.c;
+        opacity: root.dashed ? 0.55 : 1;
+    }
+}
+
+component Gap inherits Rectangle {
+    in property <int> kind;
+    in property <bool> vertical;
+    in property <bool> toward-end;
+    in property <color> bg;
+    in property <length> cx;
+    in property <length> cy;
+    if kind == 3: Rectangle {
+        x: vertical ? root.cx - 0.5px : (toward-end ? root.cx - 0.5px : 0);
+        y: vertical ? (toward-end ? root.cy - 0.5px : 0) : root.cy - 0.5px;
+        width: vertical ? 1px : (toward-end ? root.width - root.cx + 0.5px : root.cx + 0.5px);
+        height: vertical ? (toward-end ? root.height - root.cy + 0.5px : root.cy + 0.5px) : 1px;
+        background: root.bg;
+    }
+}
+
+component BoxGlyph inherits Rectangle {
+    in property <BoxCell> b;
+    in property <color> c;
+    in property <color> bg;
+    width: Theme.cell;
+    height: Theme.line;
+    property <length> cx: self.width / 2;
+    property <length> cy: self.height / 2;
+    Band { width: root.width; height: root.height; cx: root.cx; cy: root.cy; c: root.c; dashed: b.dashed; kind: b.up; vertical: true; toward-end: false; }
+    Band { width: root.width; height: root.height; cx: root.cx; cy: root.cy; c: root.c; dashed: b.dashed; kind: b.down; vertical: true; toward-end: true; }
+    Band { width: root.width; height: root.height; cx: root.cx; cy: root.cy; c: root.c; dashed: b.dashed; kind: b.left; vertical: false; toward-end: false; }
+    Band { width: root.width; height: root.height; cx: root.cx; cy: root.cy; c: root.c; dashed: b.dashed; kind: b.right; vertical: false; toward-end: true; }
+    Gap { width: root.width; height: root.height; cx: root.cx; cy: root.cy; bg: root.bg; kind: b.up; vertical: true; toward-end: false; }
+    Gap { width: root.width; height: root.height; cx: root.cx; cy: root.cy; bg: root.bg; kind: b.down; vertical: true; toward-end: true; }
+    Gap { width: root.width; height: root.height; cx: root.cx; cy: root.cy; bg: root.bg; kind: b.left; vertical: false; toward-end: false; }
+    Gap { width: root.width; height: root.height; cx: root.cx; cy: root.cy; bg: root.bg; kind: b.right; vertical: false; toward-end: true; }
+    // Arrow heads as stepped pixel triangles.
+    for i in (b.arrow == 1 || b.arrow == 2) ? 4 : 0: Rectangle {
+        width: 7px - i * 2px;
+        height: 1.5px;
+        x: (root.width - self.width) / 2;
+        y: b.arrow == 1 ? root.cy - 3px + i * 1.5px : root.cy + 3px - i * 1.5px;
+        background: root.c;
+    }
+    for i in (b.arrow == 3 || b.arrow == 4) ? 4 : 0: Rectangle {
+        height: 7px - i * 2px;
+        width: 1.5px;
+        y: (root.height - self.height) / 2;
+        x: b.arrow == 3 ? root.cx - 3px + i * 1.5px : root.cx + 3px - i * 1.5px;
+        background: root.c;
+    }
+}
+
+component DocView inherits Rectangle {
+    in property <Node> node;
+    clip: true;
+    HorizontalLayout {
+        FocusBar { on: node.focused; }
+        VerticalLayout {
+            padding-left: 6px; padding-top: 2px; padding-bottom: 2px;
+            for line in node.doc: Rectangle {
+                height: Theme.line;
+                for run in line.runs: Rectangle {
+                    x: run.col * Theme.cell;
+                    width: run.width * Theme.cell;
+                    background: run.has-bg ? run.bg : transparent;
+                    if run.cells.length == 0: Text {
+                        x: 0;
+                        text: run.text;
+                        font-family: Theme.mono;
+                        font-size: Theme.text;
+                        font-weight: run.bold ? 700 : 400;
+                        font-italic: run.italic;
+                        color: run.fg;
+                        vertical-alignment: center;
+                        height: parent.height;
+                    }
+                    for b[k] in run.cells: BoxGlyph { x: k * Theme.cell; b: b; c: run.fg; bg: run.has-bg ? run.bg : Theme.bg; }
+                    if run.under: Rectangle { y: parent.height - 3px; height: 1px; background: run.fg; }
+                }
+            }
+        }
+    }
+}
+
+// Grid of tiles: the home screen (icon + name) and calculator keys (label).
+component GridView inherits Rectangle {
+    in property <Node> node;
+    property <int> cols: max(1, node.columns);
+    property <bool> icons: node.tiles.length > 0 && node.tiles[0].icon != "";
+    property <bool> imgs: node.tiles.length > 0 && node.tiles[0].has-img;
+    // A grid of photos (the gallery): square cells, the picture fills each.
+    property <bool> photos: node.tiles.length > 0 && node.tiles[0].photo;
+    property <length> cw: (self.width - 12px) / cols;
+    property <length> ch: photos ? cw : imgs ? 78px : icons ? 64px : 36px;
+    height: ceil(node.tiles.length / cols) * ch + 8px;
+    for t[i] in node.tiles: Rectangle {
+        x: 6px + mod(i, root.cols) * root.cw;
+        y: 4px + floor(i / root.cols) * root.ch;
+        width: root.cw - 4px;
+        height: root.ch - 4px;
+        border-radius: 8px;
+        background: t.photo ? Theme.soft : t.focused ? Theme.focus : Theme.card;
+        border-width: t.focused ? (t.photo ? 2.5px : 1.5px) : 0;
+        border-color: Theme.accent;
+        animate background { duration: 120ms; }
+        if t.photo && t.has-img: Image {
+            x: 3px; y: 3px;
+            width: parent.width - 6px; height: parent.height - 6px;
+            source: t.img;
+            image-fit: cover;
+        }
+        if t.photo && t.badge != "": Rectangle {
+            x: parent.width - self.width - 6px;
+            y: parent.height - 21px;
+            height: 15px;
+            width: pbadge.preferred-width + 10px;
+            border-radius: 7.5px;
+            background: #000000a0;
+            pbadge := Text { text: t.badge; color: white; font-size: 10px; font-weight: 700; }
+        }
+        if t.has-img && !t.photo: Image {
+            x: (parent.width - 44px) / 2;
+            y: 6px;
+            width: 44px; height: 44px;
+            source: t.img;
+        }
+        if root.icons && !t.has-img: Rectangle {
+            x: (parent.width - 30px) / 2;
+            y: 6px;
+            width: 30px; height: 30px;
+            border-radius: 9px;
+            background: t.focused ? Theme.accent : Theme.rule;
+            Text { text: t.icon; color: t.focused ? Theme.bg : Theme.accent; font-weight: 700; font-size: 15px; }
+        }
+        if !t.photo: Text {
+            y: root.imgs ? 53px : root.icons ? 40px : 0;
+            width: parent.width;
+            height: root.icons ? 18px : parent.height;
+            text: t.title;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            font-size: root.icons ? 12px : 19px;
+            font-weight: root.icons ? 400 : 700;
+            color: Theme.fg;
+            overflow: elide;
+        }
+        if t.badge != "" && !t.photo: Rectangle {
+            x: parent.width - self.width - 3px;
+            y: 3px;
+            height: 15px;
+            width: max(15px, badge.preferred-width + 8px);
+            border-radius: 7.5px;
+            background: Theme.danger;
+            badge := Text { text: t.badge; color: white; font-size: 10px; font-weight: 700; }
+        }
+    }
+}
+
+component NodeView inherits VerticalLayout {
+    in property <Node> node;
+    in property <bool> mask;
+    if node.kind == "section": SectionView { node: root.node; }
+    if node.kind == "text": TextView { node: root.node; }
+    if node.kind == "item": ItemView { node: root.node; mask: root.mask; }
+    if node.kind == "bubble": BubbleView { node: root.node; mask: root.mask; }
+    if node.kind == "input": InputView { node: root.node; }
+    if node.kind == "button": ButtonView { node: root.node; }
+    if node.kind == "image": ImageView { node: root.node; mask: root.mask; }
+    if node.kind == "media": MediaView { node: root.node; mask: root.mask; }
+    if node.kind == "doc": DocView { node: root.node; }
+    if node.kind == "grid": GridView { node: root.node; }
+    if node.kind == "progress": ProgressView { node: root.node; }
+}
+
+component StatusBar inherits Rectangle {
+    in property <string> time;
+    in property <string> mid;
+    in property <string> mid-kind;
+    in property <string> ime;
+    in property <string> net;
+    in property <int> signal;
+    in property <int> battery;
+    in property <bool> locked;
+    height: 18px;
+    background: Theme.status;
+    Text { x: 8px; height: parent.height; text: time; color: Theme.dim; font-family: Theme.mono; font-size: Theme.small; vertical-alignment: center; }
+    Text {
+        width: parent.width; height: parent.height;
+        text: mid; horizontal-alignment: center; vertical-alignment: center;
+        font-size: Theme.small; font-weight: 700;
+        color: mid-kind == "secure" ? Theme.trusted : mid-kind == "mic" ? Theme.warn : mid-kind == "location" ? Theme.accent : Theme.ok;
+    }
+    right := HorizontalLayout {
+        x: parent.width - self.width - 8px;
+        width: self.preferred-width;
+        height: parent.height;
+        spacing: 5px;
+        if ime != "": Text { text: ime; color: Theme.accent; font-size: Theme.small; vertical-alignment: center; }
+        if locked: VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 9px; height: 11px;
+                Rectangle { x: 2px; y: 0; width: 5px; height: 6px; border-width: 1.5px; border-color: Theme.dim; border-radius: 2.5px; }
+                Rectangle { x: 0; y: 4.5px; width: 9px; height: 6.5px; background: Theme.dim; border-radius: 1px; }
+            }
+        }
+        Text { text: net; color: Theme.dim; font-size: 10px; font-weight: 700; vertical-alignment: center; }
+        HorizontalLayout {
+            spacing: 1.5px;
+            padding-top: 4px; padding-bottom: 4px;
+            for i in 4: VerticalLayout {
+                alignment: end;
+                Rectangle { width: 3px; height: 3px + i * 2.5px; background: i < signal ? Theme.dim : Theme.focus; }
+            }
+        }
+        HorizontalLayout {
+            spacing: 1px;
+            VerticalLayout {
+                alignment: center;
+                Rectangle {
+                    width: 20px; height: 10px; border-width: 1px; border-color: Theme.dim; border-radius: 2px;
+                    Rectangle { x: 2px; width: (parent.width - 4px) * battery / 100; height: parent.height - 4px; background: Theme.dim; }
+                }
+            }
+            VerticalLayout { alignment: center; Rectangle { width: 2px; height: 4px; background: Theme.dim; } }
+        }
+    }
+}
+
+component SoftkeyBar inherits Rectangle {
+    in property <string> soft-left;
+    in property <string> soft-center;
+    in property <string> soft-right;
+    height: 24px;
+    background: Theme.soft;
+    Rectangle { y: 0; height: 1px; background: Theme.title; }
+    Text { x: 8px; text: soft-left; color: Theme.fg.with-alpha(0.85); vertical-alignment: center; height: parent.height; }
+    Text { text: soft-center; color: Theme.fg; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; width: parent.width / 2; }
+    Text {
+        x: parent.width - self.width - 8px; width: parent.width / 3;
+        text: soft-right; color: Theme.fg.with-alpha(0.85); horizontal-alignment: right; vertical-alignment: center; height: parent.height;
+        overflow: elide;
+    }
+}
+
+component ImeRowView inherits Rectangle {
+    in property <ImeRow> data;
+    height: 24px;
+    background: Theme.menu;
+    HorizontalLayout {
+        padding-left: 6px; padding-right: 6px; spacing: 2px;
+        for item[i] in data.items: Rectangle {
+            width: cand.preferred-width + 10px;
+            border-radius: 3px;
+            background: i == data.sel && data.active ? Theme.menu-sel : transparent;
+            cand := Text {
+                text: (data.numbered ? (i + 1) + " " : "") + item;
+                color: i == data.sel ? (data.active ? white : Theme.accent) : Theme.fg;
+                font-weight: i == data.sel && data.active ? 700 : 400;
+            }
+        }
+        Rectangle { horizontal-stretch: 1; }
+        if data.more: Text { text: "›"; color: Theme.dim; vertical-alignment: center; }
+    }
+}
+
+component Sheet inherits Rectangle {
+    background: Theme.menu;
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: Theme.rule;
+    drop-shadow-blur: 12px;
+    drop-shadow-color: #00000090;
+}
+
+component MenuOverlay inherits Rectangle {
+    in property <Overlay> o;
+    in property <length> bottom;
+    sheet := Sheet {
+        x: 6px;
+        width: root.width - 12px;
+        height: min(root.height - root.bottom - 26px, col.preferred-height);
+        y: root.height - root.bottom - self.height - 4px;
+        clip: true;
+        col := VerticalLayout {
+            y: -max(0px, o.sel-top + 6px + 26px + 6px - sheet.height);
+            height: self.preferred-height;
+            padding: 6px; spacing: 0;
+            Text { text: o.title; font-weight: 700; color: Theme.fg; height: 24px; vertical-alignment: center; }
+            if o.has-query: Rectangle {
+                height: 26px; border-radius: 4px; background: Theme.bg;
+                Text { x: 8px; text: "/ " + o.query; color: Theme.accent; vertical-alignment: center; height: parent.height; }
+            }
+            for item in o.items: Rectangle {
+                height: item.header ? 20px : 26px;
+                border-radius: 4px;
+                background: item.sel ? Theme.menu-sel : transparent;
+                Text {
+                    x: item.header ? 4px : 12px;
+                    text: item.text;
+                    color: item.header ? Theme.dim : Theme.fg;
+                    font-size: item.header ? Theme.small : Theme.text;
+                    font-weight: item.sel ? 700 : 400;
+                    vertical-alignment: center;
+                    height: parent.height;
+                }
+                if item.key != "": Text {
+                    x: parent.width - self.width - 10px;
+                    text: item.key; color: Theme.dim; font-family: Theme.mono; font-size: Theme.small;
+                    vertical-alignment: center; height: parent.height;
+                }
+            }
+            for l in o.lines: Text { text: l; color: Theme.dim; height: 24px; vertical-alignment: center; }
+        }
+    }
+}
+
+component SymbolsOverlay inherits Rectangle {
+    in property <Overlay> o;
+    in property <length> bottom;
+    property <int> cols: max(1, o.choice);
+    property <length> cell: (root.width - 24px) / cols;
+    Sheet {
+        x: 6px;
+        width: root.width - 12px;
+        height: 32px + ceil(o.items.length / cols) * 30px + 6px;
+        y: root.height - root.bottom - self.height - 4px;
+        Text { x: 10px; y: 6px; height: 20px; text: o.title; font-weight: 700; color: Theme.fg; vertical-alignment: center; }
+        for it[i] in o.items: Rectangle {
+            x: 6px + mod(i, root.cols) * root.cell;
+            y: 32px + floor(i / root.cols) * 30px;
+            width: root.cell - 4px;
+            height: 26px;
+            border-radius: 4px;
+            background: it.sel ? Theme.menu-sel : Theme.card;
+            Text { text: it.text; color: Theme.fg; font-weight: it.sel ? 700 : 400; }
+        }
+    }
+}
+
+component Choice inherits Rectangle {
+    in property <string> label;
+    in property <bool> on;
+    in property <color> tone;
+    height: 30px;
+    width: 96px;
+    border-radius: 15px;
+    background: on ? tone : Theme.menu;
+    border-width: 1px;
+    border-color: on ? tone : Theme.rule;
+    Text { text: label; color: on ? Theme.bg : Theme.fg; font-weight: 700; }
+}
+
+component DialogOverlay inherits Rectangle {
+    in property <Overlay> o;
+    background: #00000080;
+    Rectangle {
+        x: 10px;
+        width: root.width - 20px;
+        height: col.preferred-height;
+        y: (root.height - self.height) / 2;
+        background: o.kind == "perm" ? Theme.trust-bg : Theme.menu;
+        border-radius: 8px;
+        border-width: o.kind == "perm" ? 2px : 1px;
+        border-color: o.kind == "perm" ? Theme.trusted : Theme.warn;
+        col := VerticalLayout {
+            padding: 12px; spacing: 6px;
+            if o.title != "": Text { text: "■ " + o.title; color: Theme.trusted; font-weight: 700; }
+            for l in o.lines: Text { text: l; wrap: word-wrap; color: Theme.fg; font-weight: o.kind == "confirm" ? 700 : 400; }
+            for it in o.items: Text { text: "  · " + it.text; color: Theme.fg; font-weight: 700; }
+            HorizontalLayout {
+                padding-top: 6px;
+                alignment: space-around;
+                for c[i] in o.choices: Choice {
+                    label: c;
+                    on: o.kind == "confirm" ? i == 0 : i == o.choice;
+                    tone: i == 0 ? Theme.ok : Theme.danger;
+                }
+            }
+        }
+    }
+}
+
+component AuthOverlay inherits Rectangle {
+    in property <Overlay> o;
+    background: Theme.trust-bg;
+    Rectangle {
+        x: 3px; y: 3px; width: parent.width - 6px; height: parent.height - 6px;
+        border-width: 2px; border-color: Theme.trusted; border-radius: 6px;
+    }
+    VerticalLayout {
+        padding: 14px; spacing: 8px;
+        Text { text: "■ " + o.title; color: Theme.trusted; font-weight: 700; font-size: 16px; }
+        if o.lines.length > 0: Text { text: o.lines[0]; color: Theme.dim; font-size: Theme.small; wrap: word-wrap; }
+        if o.warn != "": Text { text: o.warn; color: Theme.warn; font-size: Theme.small; wrap: word-wrap; }
+        if o.lines.length > 1: Text { text: o.lines[1]; color: Theme.fg; font-weight: 700; font-size: 16px; wrap: word-wrap; }
+        HorizontalLayout {
+            padding-top: 10px; spacing: 10px;
+            Text { text: Words.payment-password; color: Theme.fg; vertical-alignment: center; }
+            for i in o.pin-total: Rectangle {
+                width: 14px; height: 14px; border-radius: 7px;
+                border-width: 1.5px; border-color: Theme.trusted;
+                background: i < o.pin-filled ? Theme.trusted : transparent;
+            }
+            Rectangle { horizontal-stretch: 1; }
+        }
+        Text { text: o.note; color: o.note-bad ? Theme.danger : Theme.accent; font-weight: o.note-bad ? 700 : 400; }
+        Rectangle { vertical-stretch: 1; }
+        for f in o.footer: Text { text: f; color: Theme.dim; font-size: Theme.small; wrap: word-wrap; }
+    }
+}
+
+// The system photo picker: thumbnails of the library; only the chosen one
+// goes to the app.
+component PickerOverlay inherits Rectangle {
+    in property <Overlay> o;
+    background: Theme.bg;
+    property <int> cols: o.columns > 0 ? o.columns : 3;
+    property <length> cw: (self.width - 12px) / cols;
+    VerticalLayout {
+        Rectangle {
+            height: 24px; background: Theme.title;
+            Text { x: 8px; text: o.title; color: Theme.trusted; font-weight: 700; vertical-alignment: center; height: parent.height; }
+        }
+        Rectangle {
+            vertical-stretch: 1;
+            clip: true;
+            for t[i] in o.tiles: Rectangle {
+                x: 6px + mod(i, root.cols) * root.cw;
+                y: 6px + floor(i / root.cols) * (root.cw + 16px);
+                width: root.cw - 4px;
+                height: root.cw + 12px;
+                border-radius: 6px;
+                background: t.focused ? Theme.focus : Theme.card;
+                border-width: t.focused ? 2px : 0;
+                border-color: Theme.accent;
+                if t.has-img: Image { x: 4px; y: 4px; width: parent.width - 8px; height: parent.width - 8px; source: t.img; image-fit: cover; }
+                Text {
+                    y: parent.width - 2px; width: parent.width; height: 14px;
+                    text: (i + 1) + " " + t.title; font-size: 10px; color: Theme.fg;
+                    horizontal-alignment: center; overflow: elide;
+                }
+            }
+        }
+        VerticalLayout {
+            padding: 8px; spacing: 2px;
+            for l in o.lines: Text { text: l; color: Theme.dim; font-size: Theme.small; wrap: word-wrap; }
+        }
+    }
+}
+
+component ScanOverlay inherits Rectangle {
+    in property <Overlay> o;
+    background: Theme.bg;
+    VerticalLayout {
+        Rectangle {
+            height: 24px; background: Theme.title;
+            Text { x: 8px; text: o.title; color: Theme.trusted; font-weight: 700; vertical-alignment: center; height: parent.height; }
+        }
+        Rectangle {
+            vertical-stretch: 1;
+            viewfinder := Rectangle {
+                width: min(parent.width, parent.height) - 24px;
+                height: self.width;
+                background: #0a0a0e;
+                clip: true;
+                if o.has-img: Image { width: parent.width; height: parent.height; source: o.img; image-fit: cover; }
+                if !o.has-img: Text { text: Words.opening-camera; color: Theme.dim; }
+                if o.phase >= 0: Rectangle { y: parent.height * o.phase; height: 2px; background: Theme.ok; opacity: 0.85; }
+                for c in 4: Rectangle {
+                    x: mod(c, 2) == 0 ? 4px : parent.width - 22px;
+                    y: c < 2 ? 4px : parent.height - 22px;
+                    width: 18px; height: 18px;
+                    border-width: 2px; border-color: Theme.ok;
+                    background: transparent;
+                }
+            }
+        }
+        VerticalLayout {
+            padding: 8px; spacing: 2px;
+            for l[i] in o.lines: Text { text: l; color: i == 0 ? Theme.fg : Theme.dim; font-size: Theme.small; wrap: word-wrap; }
+        }
+        Rectangle {
+            height: 24px; background: Theme.soft;
+            Text { x: 8px; text: o.footer.length > 0 ? o.footer[0] : ""; color: Theme.fg; vertical-alignment: center; height: parent.height; }
+        }
+    }
+}
+
+component IncomingOverlay inherits Rectangle {
+    in property <Overlay> o;
+    background: #10281e;
+    VerticalLayout {
+        padding: 16px; spacing: 10px;
+        alignment: center;
+        if o.lines.length > 0: Text { text: o.lines[0]; color: Theme.on-dark-dim; horizontal-alignment: center; }
+        Text { text: o.title; color: Theme.on-dark; font-size: 24px; font-weight: 700; horizontal-alignment: center; }
+        if o.lines.length > 1: Text { text: o.lines[1]; color: Theme.on-dark-dim; horizontal-alignment: center; }
+        HorizontalLayout {
+            alignment: center; spacing: 12px; padding-top: 10px;
+            for i in 3: Rectangle {
+                width: 10px; height: 10px; border-radius: 5px;
+                background: floor(o.phase * 3) == i ? Theme.ok : #2c5a44;
+            }
+        }
+        HorizontalLayout {
+            alignment: space-around; padding-top: 24px;
+            for c[i] in o.choices: Choice { label: c; on: true; tone: i == 0 ? #3fae5f : #e05252; }
+        }
+    }
+}
+
+// Boot animation (original design): the twelve keys light up in turn, then
+// the name and a progress bar. The shell sends the progress.
+// The standby screen: operator, clock and date over a wallpaper, then the
+// "active standby" lines (notifications, next alarm, music).
+component IdleLines inherits VerticalLayout {
+    in property <[string]> lines;
+    in property <int> max;
+    in property <bool> on-photo;
+    spacing: 4px;
+    for l[i] in root.lines: Rectangle {
+        visible: i < root.max;
+        height: i < root.max ? 24px : 0px;
+        border-radius: 6px;
+        background: root.on-photo ? #00000059 : #ffffff16;
+        Text { x: 10px; width: parent.width - 20px; text: l; color: root.on-photo ? white : Theme.fg; font-size: 12px; overflow: elide; vertical-alignment: center; }
+    }
+}
+
+// The standby screen: operator, clock and date over the theme's gradient or
+// the wallpaper (drawn behind the whole window, the scrim here keeps the
+// text readable on any photo, which is always white), then the "active
+// standby" lines (notifications, next alarm, music) as far as they fit.
+// Wide screens put the lines beside the clock.
+component IdleView inherits Rectangle {
+    in property <string> time;
+    in property <string> date;
+    in property <string> operator;
+    in property <[string]> lines;
+    in property <string> hint;
+    in property <bool> on-photo;
+    property <bool> wide: root.width > root.height * 1.6;
+    property <length> clock: min(root.width * (wide ? 0.13 : 0.2), root.height * (wide ? 0.34 : 0.22), 76px);
+    property <color> ink: root.on-photo ? white : Theme.fg;
+    property <color> ink-soft: root.on-photo ? #ffffffd8 : Theme.fg.with-alpha(0.8);
+    clip: true;
+    background: root.on-photo ? @linear-gradient(180deg, #00000091 0%, #0000001f 100%)
+        : @linear-gradient(165deg, Theme.idle-a 0%, Theme.idle-mid 58%, Theme.idle-b 100%);
+    if !root.on-photo: Rectangle {
+        x: parent.width * 0.52; y: -parent.width * 0.3;
+        width: parent.width * 0.8; height: self.width;
+        border-radius: self.width / 2;
+        background: #ffffff0a;
+    }
+    if !root.on-photo: Rectangle {
+        x: -parent.width * 0.35; y: parent.height * 0.58;
+        width: parent.width * 0.75; height: self.width;
+        border-radius: self.width / 2;
+        background: #6a8cff12;
+    }
+    if !root.wide: VerticalLayout {
+        height: root.height - 22px;
+        padding: 14px; padding-top: 10px; spacing: 4px;
+        alignment: start;
+        Text { text: root.operator; color: root.ink; font-size: 15px; font-weight: 700; horizontal-alignment: center; }
+        clock-text := Text { text: root.time; color: root.ink; font-size: root.clock; horizontal-alignment: center; }
+        Text { text: root.date; color: root.ink-soft; font-size: 14px; horizontal-alignment: center; }
+        Rectangle { height: 8px; }
+        IdleLines {
+            lines: root.lines; on-photo: root.on-photo;
+            max: max(0, floor((root.height - 22px - 14px - 10px - 15px * 1.4 - root.clock * 1.4 - 14px * 1.4 - 8px - 4px * 4) / 28px));
+        }
+    }
+    if root.wide: HorizontalLayout {
+        height: root.height - 22px;
+        padding: 14px; spacing: 18px;
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center; spacing: 2px;
+            Text { text: root.operator; color: root.ink; font-size: 15px; font-weight: 700; horizontal-alignment: center; }
+            Text { text: root.time; color: root.ink; font-size: root.clock; horizontal-alignment: center; }
+            Text { text: root.date; color: root.ink-soft; font-size: 14px; horizontal-alignment: center; }
+        }
+        VerticalLayout {
+            width: (root.width - 46px) * 0.55;
+            alignment: center;
+            IdleLines { lines: root.lines; on-photo: root.on-photo; max: max(0, floor((root.height - 22px - 28px) / 28px)); }
+        }
+    }
+    Text {
+        y: parent.height - 20px;
+        width: parent.width;
+        text: root.hint;
+        color: root.on-photo ? root.ink-soft : Theme.dim;
+        font-size: 11px;
+        horizontal-alignment: center;
+        overflow: elide;
+    }
+}
+
+component BootScreen inherits Rectangle {
+    in property <float> progress;
+    in property <string> brand;
+    background: #06080e;
+    property <int> lit: floor(progress * 1.6 * 12);
+    property <length> key: 34px;
+    property <length> gap: 10px;
+    property <[string]> labels: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"];
+    for i in 12: Rectangle {
+        x: (root.width - 3 * root.key - 2 * root.gap) / 2 + mod(i, 3) * (root.key + root.gap);
+        y: root.height * 0.18 + floor(i / 3) * (root.key * 0.75 + root.gap);
+        width: root.key;
+        height: root.key * 0.75;
+        border-radius: 6px;
+        background: i < root.lit ? #5faaff : #1a1e2c;
+        Text { text: root.labels[i]; color: i < root.lit ? #06080e : #4a5068; font-weight: 700; }
+    }
+    Text {
+        y: root.height * 0.62;
+        width: root.width;
+        text: root.brand;
+        horizontal-alignment: center;
+        font-size: 30px;
+        font-weight: 700;
+        letter-spacing: 8px;
+        color: Theme.on-dark;
+        opacity: clamp((root.progress - 0.55) * 4, 0, 1);
+    }
+    Text {
+        y: root.height * 0.62 + 42px;
+        width: root.width;
+        text: Words.tagline;
+        horizontal-alignment: center;
+        font-size: Theme.small;
+        color: Theme.on-dark-dim;
+        opacity: clamp((root.progress - 0.65) * 4, 0, 1);
+    }
+    Rectangle {
+        x: root.width * 0.25;
+        y: root.height - 36px;
+        width: root.width * 0.5;
+        height: 3px;
+        border-radius: 1.5px;
+        background: #1a1e2c;
+        Rectangle { x: 0; width: parent.width * root.progress; height: parent.height; border-radius: 1.5px; background: #5faaff; }
+    }
+}
+
+component AlarmOverlay inherits Rectangle {
+    in property <Overlay> o;
+    background: #281e0c;
+    VerticalLayout {
+        padding: 16px; spacing: 10px;
+        alignment: center;
+        Text { text: Words.alarm; color: #f0af46; horizontal-alignment: center; }
+        Text { text: o.title; color: Theme.on-dark; font-size: 44px; font-weight: 700; horizontal-alignment: center; font-family: Theme.mono; }
+        if o.lines.length > 0: Text { text: o.lines[0]; color: Theme.on-dark; horizontal-alignment: center; }
+        HorizontalLayout {
+            alignment: space-around; padding-top: 24px;
+            for c[i] in o.choices: Choice { label: c; on: true; tone: i == 0 ? #f0af46 : #5a6078; }
+        }
+        for f in o.footer: Text { text: f; color: Theme.on-dark-dim; font-size: Theme.small; horizontal-alignment: center; }
+    }
+}
+
+export component Phone inherits Window {
+    in property <length> screen-w: 240px;
+    in property <length> screen-h: 320px;
+    width: screen-w;
+    height: screen-h;
+    background: Theme.bg;
+    default-font-family: Theme.sans;
+    default-font-size: Theme.text;
+
+    in property <string> time;
+    in property <string> mid;
+    in property <string> mid-kind;
+    in property <string> ime-mode;
+    in property <string> net: "4G";
+    in property <int> signal: 3;
+    in property <int> battery: 82;
+    in property <bool> locked;
+    in property <string> screen-title;
+    in property <string> loading;
+    in property <[Node]> nodes;
+    in property <string> body-layout;
+    in property <length> scroll-y;
+    in property <[string]> soft: [Words.options, "", ""];
+    in property <[ImeRow]> ime;
+    in property <string> toast;
+    in property <string> banner-title;
+    in property <string> banner-body;
+    in property <Overlay> overlay;
+    in property <bool> has-overlay;
+    in property <bool> mask-secure;
+    in property <bool> boot-on;
+    in property <float> boot-progress;
+    in property <bool> idle-on;
+    in property <string> idle-time;
+    in property <string> idle-date;
+    in property <string> idle-operator;
+    in property <[string]> idle-lines;
+    in property <string> idle-hint;
+    in property <bool> idle-has-wallpaper;
+    in property <image> idle-wallpaper;
+    in property <string> brand: "";
+    out property <length> body-h: body.height;
+    out property <length> content-h: content.height;
+
+    callback geom(int, length, length);
+    callback key(string, string);
+    // Printable keys go through text-key so that 9-key long presses can be
+    // told apart from taps (pressed, text).
+    callback text-key(bool, string);
+
+    fs := FocusScope {
+        key-pressed(e) => {
+            if (e.text == Key.UpArrow) { root.key("up", ""); }
+            else if (e.text == Key.DownArrow) { root.key("down", ""); }
+            else if (e.text == Key.LeftArrow) { root.key("left", ""); }
+            else if (e.text == Key.RightArrow) { root.key("right", ""); }
+            else if (e.text == Key.Return) { root.key("enter", ""); }
+            else if (e.text == Key.Escape) { root.key("esc", ""); }
+            else if (e.text == Key.Tab || e.text == Key.F1) { root.key("tab", ""); }
+            else if (e.text == Key.Backspace) { root.key("backspace", ""); }
+            else if (e.text == Key.F2) { root.key("f2", ""); }
+            else if (e.text == Key.F3) { root.key("f3", ""); }
+            else if (e.text == Key.F4) { root.key("f4", ""); }
+            else if (e.text == Key.F5) { root.key("call", ""); }
+            else if (e.text == Key.F6 || (e.modifiers.control && e.text == " ")) { root.key("ime", ""); }
+            else if (e.text == Key.F7) { root.key("sym", ""); }
+            else if (e.text == Key.F8) { root.key("voldown", ""); }
+            else if (e.text == Key.F9) { root.key("volup", ""); }
+            else if (e.text == Key.F10) { root.key("playpause", ""); }
+            else if (e.text == Key.F11) { root.key("previous", ""); }
+            else if (e.text == Key.F12) { root.key("next", ""); }
+            else if (!e.repeat) { root.text-key(true, e.text); }
+            accept
+        }
+        key-released(e) => {
+            root.text-key(false, e.text);
+            accept
+        }
+    }
+
+    // The wallpaper is the screen's size; the bars cover their part of it.
+    if root.idle-on && root.idle-has-wallpaper: Image {
+        width: root.width; height: root.height;
+        source: root.idle-wallpaper;
+        image-fit: fill;
+    }
+
+    VerticalLayout {
+        StatusBar {
+            time: root.time; mid: root.mid; mid-kind: root.mid-kind; ime: root.ime-mode;
+            net: root.net; signal: root.signal; battery: root.battery; locked: root.locked;
+        }
+        Rectangle {
+            height: root.idle-on ? 0px : 24px;
+            visible: !root.idle-on;
+            background: Theme.title;
+            Text {
+                x: 8px; width: parent.width - 16px; height: parent.height;
+                text: root.screen-title; font-weight: 700; color: Theme.fg; vertical-alignment: center; overflow: elide;
+            }
+        }
+        body := Rectangle {
+            vertical-stretch: 1;
+            clip: true;
+            // Content shorter than the screen sits where the page asks
+            // (frame.layout): centred a little low, or at the bottom.
+            property <length> spare: max(0px, self.height - content.preferred-height);
+            property <length> lead: root.body-layout == "center" ? spare * 0.55 : root.body-layout == "bottom" ? spare : 0px;
+            content := VerticalLayout {
+                y: -root.scroll-y + parent.lead;
+                animate y { duration: 140ms; easing: ease-out; }
+                width: parent.width;
+                height: self.preferred-height;
+                padding-top: 2px;
+                padding-bottom: 4px;
+                for n[i] in root.nodes: NodeView {
+                    node: n;
+                    mask: root.mask-secure;
+                    init => { root.geom(i, self.y, self.height); }
+                    changed y => { root.geom(i, self.y, self.height); }
+                    changed height => { root.geom(i, self.y, self.height); }
+                }
+            }
+            if root.loading != "": Text { text: root.loading; color: Theme.dim; }
+            if root.idle-on: IdleView {
+                width: parent.width; height: parent.height;
+                time: root.idle-time; date: root.idle-date; operator: root.idle-operator;
+                lines: root.idle-lines; hint: root.idle-hint;
+                on-photo: root.idle-has-wallpaper;
+            }
+            if content.height > body.height: Rectangle {
+                x: parent.width - 3px;
+                width: 2px;
+                y: (parent.height - self.height) * root.scroll-y / max(1px, content.height - body.height);
+                height: max(12px, parent.height * parent.height / content.height);
+                background: Theme.dim;
+                border-radius: 1px;
+            }
+        }
+        for r in root.ime: ImeRowView { data: r; }
+        SoftkeyBar { soft-left: root.soft[0]; soft-center: root.soft[1]; soft-right: root.soft[2]; }
+    }
+
+    if root.toast != "": Rectangle {
+        width: min(root.width - 24px, toast-text.preferred-width + 24px);
+        height: 28px;
+        x: (root.width - self.width) / 2;
+        y: root.height - 24px * (root.ime.length + 1) - self.height - 8px;
+        border-radius: 14px;
+        background: Theme.fg;
+        toast-text := Text { text: root.toast; color: Theme.bg; overflow: elide; width: parent.width - 20px; horizontal-alignment: center; }
+    }
+
+    if root.banner-title != "": Rectangle {
+        x: 4px; y: 20px;
+        width: root.width - 8px;
+        height: 46px;
+        border-radius: 6px;
+        background: Theme.focus;
+        VerticalLayout {
+            padding: 6px; spacing: 2px;
+            Text { text: root.banner-title; font-weight: 700; color: Theme.fg; overflow: elide; }
+            Text { text: root.banner-body; color: Theme.fg; font-size: Theme.small; overflow: elide; }
+        }
+    }
+
+    if root.has-overlay && root.overlay.kind == "menu": MenuOverlay {
+        o: root.overlay;
+        bottom: 24px;
+        width: root.width; height: root.height;
+    }
+    if root.has-overlay && root.overlay.kind == "symbols": SymbolsOverlay {
+        o: root.overlay;
+        bottom: 24px;
+        width: root.width; height: root.height;
+    }
+    if root.has-overlay && (root.overlay.kind == "confirm" || root.overlay.kind == "perm"): DialogOverlay {
+        o: root.overlay; width: root.width; height: root.height;
+    }
+    if root.has-overlay && root.overlay.kind == "auth": AuthOverlay {
+        o: root.overlay; y: 18px; width: root.width; height: root.height - 18px;
+    }
+    if root.has-overlay && (root.overlay.kind == "scan" || root.overlay.kind == "capture"): ScanOverlay {
+        o: root.overlay; y: 18px; width: root.width; height: root.height - 18px;
+    }
+    if root.has-overlay && root.overlay.kind == "picker": PickerOverlay {
+        o: root.overlay; y: 18px; width: root.width; height: root.height - 18px;
+    }
+    if root.has-overlay && root.overlay.kind == "incoming": IncomingOverlay {
+        o: root.overlay; y: 18px; width: root.width; height: root.height - 18px;
+    }
+    if root.has-overlay && root.overlay.kind == "alarm": AlarmOverlay {
+        o: root.overlay; y: 18px; width: root.width; height: root.height - 18px;
+    }
+    if root.boot-on: BootScreen {
+        width: root.width; height: root.height;
+        progress: root.boot-progress;
+        brand: root.brand;
+    }
+
+    init => { fs.focus(); }
+}

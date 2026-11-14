@@ -1,0 +1,25 @@
+{
+  "id": "com.phone.snake",
+  "name": "贪吃蛇",
+  "icon": "蛇",
+  "icon_image": "icon.png",
+  "description": "诺基亚式贪吃蛇：9 个级别、限时奖励小虫、最高分；画布应用的示例，单色液晶屏由系统画",
+  "exec": "phone-app-snake",
+  "order": 49,
+  "permissions": [],
+  "folder": "apps",
+  "locales": {
+    "zh-Hant": {
+      "name": "貪食蛇",
+      "description": "諾基亞式貪食蛇：9 個等級、限時獎勵小蟲、最高分；畫布應用程式的範例，單色液晶螢幕由系統繪製"
+    },
+    "en": {
+      "name": "Snake",
+      "description": "Nokia-style Snake: 9 levels, timed bonus bugs, a top score; a sample canvas app whose monochrome LCD the system draws"
+    },
+    "es": {
+      "name": "Serpiente",
+      "description": "Serpiente al estilo Nokia: 9 niveles, bichos de bonificación por tiempo limitado y récord; ejemplo de app de lienzo cuya pantalla LCD monocroma dibuja el sistema"
+    }
+  }
+}

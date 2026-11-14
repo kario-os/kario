@@ -1,0 +1,30 @@
+id = "sm6115-fxtec-pro1x"
+name = "骁龙 662 开发板（F(x)tec Pro1 X，主线设备树）"
+soc = "骁龙 662（SM6115）"
+machine = "kario-qcom"
+dtb = "sm6115-fxtec-pro1x.dtb"
+modem = "modemmanager"
+gpu = true
+
+# The notification light (hal/led): the PMIC's RGB LED (pmi632_lpg, a
+# multicolor LED class device named by its colour and function), green;
+# the LPG blinks it by itself, so the slow blink wakes no CPU.
+# A side power key of its own: the end key is not the power key here.
+power_key = true
+
+[leds]
+notify = "rgb:status"
+notify_color = [0, 255, 0]  # red, green, blue (its multi_index)
+
+# Where modules connect: device tree labels of the board and its SoC. On a
+# development board this is where the evaluation boards get wired (the
+# keypad's interrupt pin is a free GPIO); a product board's come from its
+# schematic.
+[wiring]
+keypad_bus = "i2c1"
+keypad_irq = "tlmm 33 8"    # GPIO 33, IRQ_TYPE_LEVEL_LOW
+panel_dsi = "mdss_dsi0"
+panel_reset = "tlmm 82 1"   # GPIO 82, GPIO_ACTIVE_LOW
+panel_vcc = "pm6125_l11a"
+panel_iovcc = "pm6125_l9a"
+dsi_vdda = "pm6125_l18a"

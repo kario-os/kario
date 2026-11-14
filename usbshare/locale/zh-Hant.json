@@ -1,0 +1,16 @@
+{
+  "All folders": "所有資料夾",
+  "Copy a folder to the phone": "把整個資料夾拷貝到手機",
+  "Copy to the phone": "拷貝到手機",
+  "Download": "下載",
+  "Enter the password shown on the phone": "請輸入手機上顯示的密碼",
+  "Kario phone": "Kario 手機",
+  "Not a name the phone takes for a file or folder": "手機上的檔案或資料夾不能用這個名稱",
+  "Not supported": "不支援",
+  "Nothing here yet": "這裡還沒有東西",
+  "The file is too large for this folder": "檔案太大，這個資料夾放不下",
+  "This folder is read-only": "這個資料夾是唯讀的",
+  "Too many wrong passwords: share again from the phone": "密碼錯誤次數太多：請在手機上重新共享",
+  "Up one folder": "上一層資料夾",
+  "You can also connect to this address as a network drive (WebDAV). Unplugging the cable ends sharing.": "也可以把這個位址當作網路磁碟機（WebDAV）連線。拔掉傳輸線就會停止共享。"
+}

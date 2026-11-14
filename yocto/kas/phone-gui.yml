@@ -1,0 +1,13 @@
+# phone-gui in the renderer slot instead of phone-paint, to compare the two
+# on a device (23-renderer-protocol.md §10). phone-gui is GPL-3.0-only: the
+# one GPLv3 package such an image has, on purpose; bitbake reports it.
+#   make yocto-build KASEXTRA=yocto/kas/phone-gui.yml
+header:
+  version: 14
+
+local_conf_header:
+  zz-phone-gui: |
+    PREFERRED_RPROVIDER_phone-renderer:forcevariable = "phone-gui"
+    INCOMPATIBLE_LICENSE_EXCEPTIONS = "phone-gui:GPL-3.0-only"
+    ERROR_QA:remove = "license-exception"
+    WARN_QA:append = " license-exception"

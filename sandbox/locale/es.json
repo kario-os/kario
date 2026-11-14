@@ -1,0 +1,15 @@
+{
+  "Connect to the key service directly": "Conectarse directamente al servicio de claves",
+  "Listen on a TCP port": "Escuchar en un puerto TCP",
+  "Make dangerous system calls (such as keyctl)": "Hacer llamadas al sistema peligrosas (como keyctl)",
+  "Open the display device /dev/dri": "Abrir el dispositivo de pantalla /dev/dri",
+  "Reach the network": "Acceder a la red",
+  "Read another app's data": "Leer los datos de otra app",
+  "Read the device private key": "Leer la clave privada del dispositivo",
+  "Read the keyboard device /dev/input": "Leer el dispositivo de teclado /dev/input",
+  "Read the vendor root public key": "Leer la clave pública raíz del fabricante",
+  "Run code it wrote itself": "Ejecutar código escrito por la propia app",
+  "See other processes": "Ver otros procesos",
+  "Write to its own data directory": "Escribir en su propio directorio de datos",
+  "Write to the shared temporary directories /tmp and /var/tmp": "Escribir en los directorios temporales compartidos /tmp y /var/tmp"
+}

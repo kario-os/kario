@@ -1,0 +1,10 @@
+# The full keyboard on the same 2.8" portrait panel, mounted sideways: the
+# renderer turns its frames (rotate).
+id = "kario-qwerty-sd662-4g"
+board = "sm6115-fxtec-pro1x"
+display = "dmt028"
+rotate = 90
+keypad = "qwerty-v1"
+memory = "4g"
+region = "cn"
+product = "kario-pro"

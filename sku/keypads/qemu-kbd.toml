@@ -1,0 +1,5 @@
+id = "qemu-kbd"
+name = "QEMU 的 USB 键盘"
+# No matrix: QEMU's USB keyboard reports PC keys, which phone-paint maps
+# (13 §4.1). form says which keypad the SKU behaves as.
+chip = "usb"

@@ -1,0 +1,24 @@
+{
+  "id": "com.phone.hellocpp",
+  "name": "C++ 示例",
+  "icon": "C+",
+  "description": "C/C++ 应用通过 C 接口（sdk/c）讲协议",
+  "exec": "phone-app-hellocpp",
+  "order": 91,
+  "permissions": [],
+  "folder": "apps",
+  "locales": {
+    "zh-Hant": {
+      "name": "C++ 範例",
+      "description": "C/C++ 應用程式透過 C 介面（sdk/c）使用通訊協定"
+    },
+    "en": {
+      "name": "C++ sample",
+      "description": "A C/C++ app speaks the protocol through the C interface (sdk/c)"
+    },
+    "es": {
+      "name": "Ejemplo en C++",
+      "description": "Una app en C/C++ usa el protocolo mediante la interfaz C (sdk/c)"
+    }
+  }
+}

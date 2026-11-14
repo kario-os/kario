@@ -1,0 +1,25 @@
+{
+  "id": "com.example.kariouinotes",
+  "name": "KarioUI 便签",
+  "icon": "记",
+  "icon_image": "icon.png",
+  "description": "教程里的应用：用 KarioUI 写的便签",
+  "version": "1.0",
+  "runtime": "js",
+  "main": "main.js",
+  "permissions": [],
+  "locales": {
+    "zh-Hant": {
+      "name": "KarioUI 便簽",
+      "description": "教學裡的應用程式：用 KarioUI 寫的便簽"
+    },
+    "en": {
+      "name": "KarioUI notes",
+      "description": "The tutorial's app: notes written with KarioUI"
+    },
+    "es": {
+      "name": "Notas KarioUI",
+      "description": "La app del tutorial: notas escritas con KarioUI"
+    }
+  }
+}

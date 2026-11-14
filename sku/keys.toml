@@ -1,0 +1,69 @@
+# The keys a keypad module may have: the shell's name for the key, and the
+# Linux input code its device tree reports (include/uapi/linux/input-event-codes.h).
+# phone-paint's evdev table maps every one of them (tools/sku_test.py checks),
+# except those marked "unmapped".
+
+[keys]
+soft-left = ["KEY_F1", 59]     # 选项 (the menu)
+soft-right = ["KEY_F2", 60]
+ok = ["KEY_ENTER", 28]
+back = ["KEY_ESC", 1]
+clear = ["KEY_BACKSPACE", 14]
+call = ["KEY_F5", 63]           # the green key
+end = ["KEY_F4", 62]            # the red key
+up = ["KEY_UP", 103]
+down = ["KEY_DOWN", 108]
+left = ["KEY_LEFT", 105]
+right = ["KEY_RIGHT", 106]
+ime = ["KEY_F6", 64]            # 中 / 英
+sym = ["KEY_F7", 65]            # Chr / Sym
+vol-up = ["KEY_VOLUMEUP", 115]
+vol-down = ["KEY_VOLUMEDOWN", 114]
+
+# A 9-key pad: the phone keypad codes.
+"0" = ["KEY_NUMERIC_0", 512]
+"1" = ["KEY_NUMERIC_1", 513]
+"2" = ["KEY_NUMERIC_2", 514]
+"3" = ["KEY_NUMERIC_3", 515]
+"4" = ["KEY_NUMERIC_4", 516]
+"5" = ["KEY_NUMERIC_5", 517]
+"6" = ["KEY_NUMERIC_6", 518]
+"7" = ["KEY_NUMERIC_7", 519]
+"8" = ["KEY_NUMERIC_8", 520]
+"9" = ["KEY_NUMERIC_9", 521]
+star = ["KEY_NUMERIC_STAR", 522]
+pound = ["KEY_NUMERIC_POUND", 523]
+
+# A full keyboard.
+a = ["KEY_A", 30]
+b = ["KEY_B", 48]
+c = ["KEY_C", 46]
+d = ["KEY_D", 32]
+e = ["KEY_E", 18]
+f = ["KEY_F", 33]
+g = ["KEY_G", 34]
+h = ["KEY_H", 35]
+i = ["KEY_I", 23]
+j = ["KEY_J", 36]
+k = ["KEY_K", 37]
+l = ["KEY_L", 38]
+m = ["KEY_M", 50]
+n = ["KEY_N", 49]
+o = ["KEY_O", 24]
+p = ["KEY_P", 25]
+q = ["KEY_Q", 16]
+r = ["KEY_R", 19]
+s = ["KEY_S", 31]
+t = ["KEY_T", 20]
+u = ["KEY_U", 22]
+v = ["KEY_V", 47]
+w = ["KEY_W", 17]
+x = ["KEY_X", 45]
+y = ["KEY_Y", 21]
+z = ["KEY_Z", 44]
+space = ["KEY_SPACE", 57]
+comma = ["KEY_COMMA", 51]
+dot = ["KEY_DOT", 52]
+shift = ["KEY_LEFTSHIFT", 42]
+# Held with a letter key: its second legend (the keypad's [fn] table).
+fn = ["KEY_FN", 464]

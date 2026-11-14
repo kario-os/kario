@@ -1,0 +1,38 @@
+# A release by hand: Actions › release › Run workflow, with the version:
+# the platform for x86-64 Linux, phone-paint, and the documents.
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version, e.g. 0.6.0"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    env:
+      CXX23: g++-14
+      V: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build
+        run: |
+          sudo apt-get update && sudo apt-get install -y g++-14 cmake ninja-build pkg-config libsystemd-dev
+          go mod vendor
+          make build
+          tar -C build -czf "kario-$V-linux-amd64.tar.gz" usr
+          (cd paint && cargo build --release --locked)
+          tar -C paint/target/release -czf "phone-paint-$V-linux-amd64.tar.gz" phone-paint
+          (cd docs && zip -qr "../kario-docs-$V.zip" .)
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "v$V" --target "$GITHUB_SHA" --title "v$V" --generate-notes kario-*.tar.gz phone-paint-*.tar.gz kario-docs-*.zip
