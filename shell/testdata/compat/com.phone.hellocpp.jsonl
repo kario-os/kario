@@ -1,0 +1,5 @@
+{"t":"hello","app":"com.phone.hellocpp","proto":"phone.ui/0"}
+{"t":"reset","screen":{"id":"main","title":"C++ 示例","body":[{"kind":"text","text":"通过 C 接口讲 phone.Ui 协议"},{"kind":"text","text":"已点击 0 次"},{"kind":"button","id":"inc","text":"点我","actions":[{"id":"inc","label":"点我","primary":true}]},{"kind":"button","id":"copy","text":"复制计数","actions":[{"id":"copy","label":"复制计数","primary":true}]}]}}
+{"t":"update","screen":{"id":"main","title":"C++ 示例","body":[{"kind":"text","text":"通过 C 接口讲 phone.Ui 协议"},{"kind":"text","text":"已点击 1 次"},{"kind":"button","id":"inc","text":"点我","actions":[{"id":"inc","label":"点我","primary":true}]},{"kind":"button","id":"copy","text":"复制计数","actions":[{"id":"copy","label":"复制计数","primary":true}]}]}}
+{"t":"pong","value":"1"}
+{"t":"req","req":1,"cap":"clipboard.set","args":{"text":"计数 1"}}

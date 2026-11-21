@@ -1,0 +1,19 @@
+[Unit]
+Description=Mark the running system slot good once the system came up healthy
+# Runs after the system is up: without default dependencies multi-user.target
+# does not order itself after this unit, which would be a cycle.
+DefaultDependencies=no
+After=multi-user.target
+Conflicts=shutdown.target
+Before=shutdown.target
+# Only on an A/B disk (phone-initramfs mounted its state partition there).
+ConditionPathExists=/var/lib/slots/boot
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/lib/phone/ota-healthy
+ExecStart=/usr/bin/rauc status mark-good
+
+[Install]
+WantedBy=multi-user.target

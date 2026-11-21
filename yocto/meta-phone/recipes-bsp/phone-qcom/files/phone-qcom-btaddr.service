@@ -1,0 +1,12 @@
+[Unit]
+Description=Give the Bluetooth controller its address
+BindsTo=sys-subsystem-bluetooth-devices-hci0.device
+After=sys-subsystem-bluetooth-devices-hci0.device
+Before=bluetooth.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/phone-btaddr hci0
+
+[Install]
+WantedBy=sys-subsystem-bluetooth-devices-hci0.device

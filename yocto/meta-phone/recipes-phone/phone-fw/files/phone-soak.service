@@ -1,0 +1,16 @@
+[Unit]
+Description=Phone soak run (only with phone.soak=<rounds> on the kernel command line)
+ConditionKernelCommandLine=phone.soak
+After=basic.target phone-chatsrv.service phone-telephonyd.service
+
+[Service]
+Type=oneshot
+# The shell gives every app its own cgroup (memory, pids, cpu, freezer).
+Delegate=yes
+ExecStart=/usr/libexec/phone/soak-boot.sh
+StandardOutput=journal+console
+StandardError=journal+console
+TimeoutStartSec=infinity
+
+[Install]
+WantedBy=multi-user.target

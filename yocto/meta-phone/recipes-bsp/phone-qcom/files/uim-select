@@ -1,0 +1,36 @@
+#!/bin/sh
+# Opens the SIM's primary provisioning session when the modem has not: on
+# Qualcomm phones Android's radio stack does it, and without it ModemManager
+# finds no SIM. The session goes to the first USIM application of the card
+# in slot 1, as qmicli reports them.
+#
+#   uim-select [qrtr://<node>]
+set -u
+dev=${1:-qrtr://0}
+
+tries=0
+until status=$(qmicli -d "$dev" --uim-get-card-status 2>/dev/null); do
+	tries=$((tries + 1))
+	if [ "$tries" -ge 30 ]; then
+		echo "uim-select: the modem's UIM service does not answer on $dev" >&2
+		exit 1
+	fi
+	sleep 2
+done
+
+if ! printf '%s\n' "$status" | grep -q "Primary GW:[[:space:]]*session doesn't exist"; then
+	echo "uim-select: the primary provisioning session is open already"
+	exit 0
+fi
+
+aid=$(printf '%s\n' "$status" | awk '
+	/^Slot \[/ { slot = ($0 ~ /^Slot \[1\]:/); usim = 0; next }
+	slot && /Application type:/ { usim = ($0 ~ /'"'"'usim /) }
+	slot && usim && /Application ID:/ { if ((getline id) > 0) { gsub(/[[:space:]]/, "", id); print id; exit } }')
+if [ -z "$aid" ]; then
+	echo "uim-select: no USIM application on the card in slot 1" >&2
+	exit 1
+fi
+
+echo "uim-select: opening the primary provisioning session on $aid"
+exec qmicli -d "$dev" --uim-change-provisioning-session="slot=1,activate=yes,session-type=primary-gw-provisioning,aid=$aid"

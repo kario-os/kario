@@ -1,0 +1,38 @@
+id = "oneplus-enchilada"
+name = "一加 6（整机测试机，骁龙 845）"
+soc = "骁龙 845（SDM845）"
+# A whole phone, as oneplus-fajita: the same SoC, port and Nura kernel.
+class = "phone"
+compatible = "oneplus,enchilada"
+nura = "oneplus-enchilada"
+modem = "modemmanager"
+gnss = "modemmanager"
+gpu = true
+power_key = true
+# As oneplus-fajita, found by themselves: the backlight (ae94000.dsi.0 in
+# mainline), the battery (bq27411), the vibrator, Wi-Fi and Bluetooth; the
+# sensors behind the SLPI are not IIO; no nfc. The 6 has a loudspeaker
+# amplifier mainline drives (MAX98927), the 6T's (TFA9894) it does not.
+unverified = ["gnss", "leds.notify", "display.inset", "input.buttons"]
+
+# The PMI8998 LPG's RGB LED, one multicolor LED class device; green. Its
+# channels come in the device tree's order: blue, green, red.
+[leds]
+notify = "rgb:status"
+notify_color = [0, 255, 0]
+
+# 6.28" 1080x2280 AMOLED: mainline's sofef00 driver, whose mode says 68 x 145 mm.
+[display]
+id = "sofef00"
+name = "6.28 寸 1080×2280 AMOLED（三星 SOFEF00）"
+panel = "samsung,sofef00"
+width = 1080
+height = 2280
+width_mm = 68
+height_mm = 145
+scale = 4.5
+inset = 80
+touchscreen = "syna,rmi4-i2c"
+
+[input]
+buttons = ["pm8941_pwrkey", "Volume keys"]

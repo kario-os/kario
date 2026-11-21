@@ -1,0 +1,9 @@
+# phone-audiod sets the sound card up itself through the card's UCM
+# profile (alsaucm): at its first start since boot the profile's boot
+# sequence and media, during calls the call set-ups (20-audio.md §10).
+[Service]
+ExecStart=
+ExecStart=/usr/bin/phone-audiod --run-dir /run/phone --sink alsa:@PCM@ \
+    --ucm-card @CARD@ --ucm-verb "@VERB@" --ucm-device "@DEVICE@" \
+    --ucm-call-verb "@CALL_VERB@" --ucm-earpiece "@EARPIECE@" --ucm-earpiece-pcm "@EARPIECE_PCM@" \
+    --ucm-speaker "@CALL_SPEAKER@" --ucm-speaker-pcm "@CALL_SPEAKER_PCM@" --ucm-mic "@CALL_MIC@"

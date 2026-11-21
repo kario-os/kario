@@ -1,0 +1,10001 @@
+# Built-in end-to-end scenario (phone-shell --selftest). Every step runs the
+# real stack: shell <-> app processes (phone.Ui) <-> broker <-> mediad/keystored.
+# "#part <name>" lines split it for go test ./shell (TestSelftestScenario):
+# each part runs on a stack of its own, from a new boot's idle screen, in
+# parallel with the others. A case belongs to the part named above it: one
+# that needs what an earlier case left (a paired headset, a call in the log,
+# a photo) goes in that case's part.
+
+# The boot animation plays first.
+sleep 800
+snap 00-boot
+
+#part chat
+== 待机：开机动画后进入待机界面，OK 键打开主菜单
+at sys.idle 5000
+wait 菜单
+snap 01-idle
+key enter
+at sys.menu
+wait 鸿雁
+wait 飞钱
+wait 工具
+snap 01-home
+key f4
+at sys.idle
+
+== 鸿雁：命令面板跳转并收发消息（回复经服务器推送，数据端到端加密）
+type /
+type 鸿雁
+key enter
+wait 张三
+type /
+type 张三
+key enter
+key enter
+wait 输入消息
+type 你好
+key enter
+wait 收到：你好
+push-sealed com.phone.chat
+snap 02-chat
+
+== 鸿雁：消息菜单（等价长按）
+key up
+key tab
+wait 复制
+wait 转发
+wait 引用
+snap 03-message-menu
+key esc
+type q
+wait 「收到：你好」
+
+== 鸿雁：转发到其他会话
+type f
+wait 转发给
+key down
+key enter
+wait 已转发给 李四
+
+== 网页阅读模式：鸿雁里的文章链接由应用在自己的沙箱里取回、抽出正文，用系统的文档节点显示；导航、广告、页脚、脚本都去掉，链接进菜单
+key down 30
+type 文章
+key enter
+wait 推荐一篇
+key up
+key enter
+wait 键盘手机的第二春
+wait 专注
+wait 支付确认由系统弹出
+wait 样机照片
+gone 限时优惠 100
+gone 登录 100
+gone 版权归 100
+snap 34-reader-mode
+key enter
+wait 链接 1：平台架构
+key esc
+key esc
+wait 推荐一篇
+
+== 网页视图：文章在像素界面里按原样显示（WebKit 在自己的沙箱里渲染，画面经共享内存交给渲染器）；方向键在链接和按钮间移动，OK 打开，返回先后退；页面的 phone.call 走 broker，系统界面标注网页来源
+require-webview
+type w
+wait 网页 · 键盘手机的第二春 30000
+gone 加载中 30000
+painted 30000
+key down
+wait 焦点：首页 10000
+painted 30000
+snap 44-web-view
+key down
+wait 焦点：平台架构 10000
+painted 30000
+snap 45-web-focus
+key f4
+at sys.idle
+type /
+type 鸿雁
+key enter
+wait 焦点：平台架构 10000
+painted 30000
+web-procs 1
+key enter
+wait 网页 · 平台架构 30000
+key esc
+wait 网页 · 键盘手机的第二春 30000
+key down 3
+wait 焦点：分享这篇文章 10000
+key enter
+wait 分享到 10000
+wait 里的网页 127.0.0.1 10000
+key esc
+wait 没有分享 10000
+key esc
+gone 网页 · 10000
+wait 推荐一篇
+
+== 网页表单：同一应用的网页共用一个网页进程；页面的确认框是标明网页来源的系统对话框，文本框用系统输入法输入，下拉框弹系统菜单，OK 提交表单
+require-webview
+type 搜索
+key enter
+wait 站内搜索：
+key up
+type w
+wait 网页 · 站内搜索｜鸿雁公众号 30000
+gone 加载中 30000
+painted 30000
+web-procs 1
+key down
+wait 焦点：清空记录 10000
+key enter
+wait 要清空搜索记录吗 10000
+wait 里的网页 127.0.0.1 10000
+key enter
+wait 网页 · 已清空 10000
+key down
+wait 焦点：搜索文章 10000
+wait 输入： 10000
+type 键盘
+wait 输入：键盘 10000
+key right
+wait 焦点：排序：最新 10000
+key enter
+wait ● 最新 10000
+key down
+key enter
+wait 焦点：排序：最热 10000
+key left
+wait 输入：键盘 10000
+painted 30000
+snap 46-web-form
+key enter
+wait 网页 · 搜索：键盘（最热） 30000
+painted 30000
+key esc
+wait 网页 · 已清空 30000
+wait 输入：键盘 10000
+key esc
+gone 网页 · 10000
+wait 站内搜索：
+
+== 浏览器：地址栏打开网页；拦截规则挡掉页面里的广告；页内查找、加书签；下载进「文件」，文件框从「文件」里选；页面的 prompt 在系统界面里输入；下载的视频经确认加入「图片」；按网站删除 Cookie 和网站数据
+require-webview
+key f4
+type /
+type 浏览器
+key enter
+wait 输入网址或搜索
+fill {chat}/tools
+key enter
+wait 网页 · 工具页：没有广告 30000
+painted 30000
+snap 49-browser
+type s
+wait 要找的文字
+type 键盘
+key enter
+wait 找到 1 处 10000
+type b
+wait 已加入书签
+key down
+wait 焦点：下载说明书 10000
+key enter
+wait 已下载到文件：manual.txt 30000
+key down
+wait 焦点：选择文件 10000
+key enter
+wait manual.txt · 34 字节 10000
+key enter
+wait 网页 · 已选：manual.txt 10000
+key down
+wait 焦点：起个名字 10000
+key enter
+wait 网页提问 10000
+wait 给这个页面起个名字
+fill 键盘机
+key enter
+wait 网页 · 名字：键盘机 10000
+key down
+wait 焦点：下载视频 10000
+key enter
+wait 已下载到文件：clip.webm 30000
+wait 是视频
+key enter
+wait 已加入图片 10000
+type d
+wait 存着数据的网站 10000
+wait 127.0.0.1 · Cookie
+key enter
+wait 删除「127.0.0.1」
+key enter
+wait 已删除「127.0.0.1」的网站数据 10000
+type d
+wait 没有网站存着数据 10000
+key esc
+gone 网页 · 10000
+wait 书签
+wait 最近访问
+key f4
+type /
+type 鸿雁
+key enter
+wait 站内搜索：
+
+== 内存紧张：先结束后台应用的网页（应用本身留着），回到那一页时重新载入
+require-webview
+key down 30
+key up
+type w
+wait 网页 · 站内搜索｜鸿雁公众号 30000
+painted 30000
+key f4
+type /
+type 浏览器
+key enter
+wait 书签
+fill {chat}/tools
+key enter
+wait 网页 · 工具页 30000
+painted 30000
+key f4
+type /
+type 计算器
+key enter
+wait 计算器
+mem-low 2
+pages-ended 2
+appstate com.phone.browser running
+appstate com.phone.chat running
+key f4
+type /
+type 浏览器
+key enter
+wait 网页 · 工具页 30000
+painted 30000
+key esc
+gone 网页 · 10000
+key f4
+type /
+type 鸿雁
+key enter
+wait 网页 · 站内搜索｜鸿雁公众号 30000
+painted 30000
+key esc
+gone 网页 · 10000
+wait 站内搜索：
+
+== 视频通话：运行时授权 + 媒体流
+key f2
+wait 请求使用
+wait 摄像头
+snap 04-permission
+key enter
+wait 端到端加密
+frames 20
+audio call
+snap 05-video-call
+type m
+wait 已静音
+type m
+gone 已静音
+
+== 视频通话：最小化后从系统通话指示返回
+key esc
+wait ● 通话
+key tab
+wait 返回通话
+type R
+wait 端到端加密
+key f2
+wait [视频通话
+
+== 来电：应用在后台，系统全屏接听
+key down 12
+type 视频
+key enter
+wait 好，我打给你
+key f4
+wait 邀请你视频通话 8000
+snap 06-incoming-call
+key enter
+wait 端到端加密
+frames 10
+key f2
+wait [视频通话
+
+== 后台消息：横幅与通知中心
+key down 12
+type 在吗
+key enter
+key f4
+wait 收到：在吗
+key up
+wait 通知中心 8000
+wait 收到：在吗
+key enter
+wait 输入消息
+
+== 飞钱：设备认证（证书链验证）
+key f4
+at sys.idle
+type /
+type 飞钱
+key enter
+wait 设备可信
+snap 07-wallet
+
+== 飞钱：付款码是安全画面（快照中被遮挡）
+key enter
+wait 自动刷新
+masked
+snap 08-paycode-masked
+key esc
+
+== 飞钱：系统扫码 + 可信支付确认
+scan-code none
+key f2
+wait 请求使用
+key enter
+wait 系统相机
+frames 5
+scan-tries 2
+snap 09-scanner
+wait 系统相机
+scan-code WIFI:S:Kario;T:WPA;P:kario-wifi-1;;
+wait 无法识别的二维码
+scan-code none
+key f2
+wait 系统相机
+scan-code PAY|M10086|晨光咖啡|1800
+wait 晨光咖啡
+key enter
+wait 系统安全确认
+wait 付款 ¥18.00
+snap 10-trusted-confirm
+type 000000
+wait 密码错误
+type 123456
+wait 支付成功
+wait 服务端验签：通过
+snap 11-paid
+key enter
+wait ¥1,006.00
+
+== 飞钱：转账表单
+key down 2
+key enter
+wait 对方账户
+type 13800000000
+key enter
+type 6.5
+key enter
+type 午饭
+key enter
+key enter
+wait 转账 ¥6.50
+type 123456
+wait 支付成功
+key enter
+wait ¥999.50
+
+== 飞钱：账单与危险操作二次确认
+key down 3
+key enter
+wait 晨光咖啡
+key tab
+wait 申请退款
+key down 2
+key enter
+wait 确认申请退款
+key enter
+wait 退款申请已提交
+
+== 应用间调起：鸿雁「转账」请飞钱付款（intent.invoke），飞钱经系统的可信确认付款，结果交回鸿雁
+appstop com.phone.chat
+key f4
+type /
+type 鸿雁
+key enter
+wait 张三
+type /
+type 张三
+key enter
+key enter
+wait 输入消息
+key tab
+type t
+wait 转账给张三
+type 10
+key enter
+wait 付款请求
+wait 「鸿雁」请求付款
+wait 设备可信
+key enter
+wait 系统安全确认
+wait 向「张三」转账 ¥10.00
+type 123456
+wait 已转账 ¥10.00
+key f4
+
+#part apps
+== 系统更新：设置里能看到；没有 A/B 两套系统分区的机器上说明不能在线更新（有分区的设备由 yocto/qemu-ota.sh 测安装、拒装和回滚）
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 系统更新
+key enter
+key enter
+wait 当前版本
+wait 不能在线更新
+key esc
+type /
+type 设置 · 应用权限
+key enter
+key esc
+key f4
+
+#part chat
+== Wi-Fi 和蓝牙：设置里连上带密码的网络（密码只交给系统）；蓝牙关了再开，在「配对新设备」里搜索到耳机并配对（耳机没有屏幕，不用核对配对码），配对好页面自己关上
+require-radios
+wifi-ap Kario-Test kario-5678
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+wait Wi-Fi
+type /
+type Wi-Fi
+key enter
+key enter
+wait Kario-Test
+key down
+key enter
+wait 输入这个网络的密码
+type kario-5678
+key enter
+wait 已连接
+key esc
+wait 已连接「Kario-Test」
+bt-peer Kario 耳机
+type /
+type 蓝牙
+key enter
+key enter
+wait 配对新设备
+key enter
+gone 配对新设备
+key enter
+wait 配对新设备
+key down
+key enter
+at com.phone.settings/btpair
+wait Kario 耳机
+key down
+key enter
+key-if enter 配对码 5000
+at com.phone.settings/bt 8000
+wait 已配对的设备
+key esc
+at root
+type /
+type 设置 · 应用权限
+key enter
+key esc
+key f4
+
+== 蓝牙传文件和电话本：配对的耳机发来的文件用户确认后收进「文件」，拒收的不进；设置里把文件发给它；车机读电话本前先问用户，允许后读到联系人
+require-radios
+key f4
+bt-push notes.txt hello-over-obex
+wait 通过蓝牙给你发来 8000
+wait notes.txt
+key enter
+bt-peer-result ok
+wait 已把「notes.txt」收进 5000
+bt-push spam.txt unwanted
+wait spam.txt 8000
+key esc
+bt-peer-result refused
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 蓝牙
+key enter
+key enter
+wait 已配对的设备
+type /
+type Kario 耳机
+key enter
+key enter
+wait 通过蓝牙发送 8000
+wait notes.txt
+key enter
+wait 已把「notes.txt」发给 8000
+bt-peer-got notes.txt hello-over-obex
+bt-pull
+wait 要通过蓝牙读取 8000
+key enter
+bt-peer-result ok 张三
+wait 可读取通讯录 5000
+key esc
+at root
+key f4
+
+== 飞行模式：关掉移动网络、Wi-Fi 和蓝牙，状态栏显示 ✈；飞行模式下可以再打开 Wi-Fi，下次飞行模式就留着它；关掉后蓝牙回到原来的样子；锁着键盘拨 112 照样打出去，飞行模式随之关闭
+require-radios
+require-tel
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 飞行模式
+key enter
+key enter
+wait ✈ 8000
+radio cell off
+radio wifi off
+radio bt off
+type /
+type Wi-Fi
+key enter
+wait ▌ Wi-Fi 8000
+key enter
+at com.phone.settings/wifi
+key enter
+radio wifi on
+key esc
+at root
+type /
+type 设置 · 飞行模式
+key enter
+key enter
+gone ✈ 8000
+radio cell on
+radio bt on
+radio wifi on
+key f4
+at sys.idle
+long power
+wait 打开飞行模式
+type 3
+wait ✈ 8000
+radio bt off
+radio wifi on
+key tab
+type *
+wait 键盘已锁
+type 112
+wait 紧急号码 112
+key call
+wait-re 正在呼叫|通话中 8000
+radio cell on
+gone ✈ 8000
+radio bt on
+key end
+wait 通话结束 8000
+key f4
+at sys.idle
+key tab
+type *
+wait 键盘已解锁
+key f4
+
+== 移动数据：关掉后状态栏不再显示网络类型，防火墙挡住移动网卡（设备上）；打开后恢复
+require-tel
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+wait 4G
+type /
+type 设置 · 移动数据
+key enter
+key enter
+gone 4G 5000
+key enter
+wait 4G 5000
+key f4
+
+== 移动数据的防火墙：关掉移动数据时防火墙挡住 telephonyd 报的移动网卡，打开后放开
+require-tel
+require-netfw
+data-cut none
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 移动数据
+key enter
+key enter
+data-cut simwwan0
+key enter
+data-cut none
+key f4
+
+== 流量套餐的硬上限和防火墙（设备）：套餐用满、移动数据被挡住时防火墙也挡住 telephonyd 报的移动网卡；在设置里确认打开后放开，开关一直是开着的；最后套餐改回原样、流量的记录还原（计数是记上去的）
+require-tel
+require-netfw
+data-usage save
+data-cut none
+setting data_limit 1048576
+setting data_limit_off 1
+data-charge com.phone.store mobile 2097152 0
+data-cut simwwan0
+key f4
+appstop com.phone.settings
+type /
+type 设置 · 移动数据
+key enter
+at g.mobile
+wait 已关闭：本周期的套餐用完了
+key enter
+wait 仍要打开移动数据吗
+key enter
+data-cut none
+setting data_limit_off 0
+setting data_limit 0
+data-usage restore
+key f4
+
+== 接入点：模拟的中国移动 SIM 卡（460 00）按数据库用 cmnet；设置 › 移动网络 › 接入点名称列出中国移动的上网、彩信和 IMS 接入点，cmnet 使用中；移动数据一行显示已连接、cmnet 和承载给的地址
+require-tel
+key f4
+appstop com.phone.settings
+type /
+type 设置 · 接入点名称
+key enter
+at g.mobile
+wait 已连接 · cmnet · 100.80.12.34
+key enter
+at com.phone.settings/apn
+wait 中国移动 · SIM 卡网络 460 00 5000
+wait 中国移动 (China Mobile) NET
+wait 使用中
+wait cmnet · 上网 · IPv4/IPv6
+wait cmwap · MMS · IPv4/IPv6
+wait ims · IMS · IPv4/IPv6
+key esc
+at g.mobile
+key f4
+
+== 编辑接入点：把 cmnet 的 APN 改成 cmnet.kario、IP 类型改成 IPv4 后保存，数据连接随之用它（移动数据一行显示 cmnet.kario）；确认「恢复默认」后回到数据库的 cmnet
+require-tel
+key f4
+appstop com.phone.settings
+type /
+type 设置 · 接入点名称
+key enter
+at g.mobile
+key enter
+at com.phone.settings/apn
+wait 使用中
+key enter
+at com.phone.settings/apnedit:cmnet
+key down
+fill cmnet.kario
+key down 2
+key enter
+type /
+type 保存
+key enter
+wait 已保存接入点
+at com.phone.settings/apn
+wait-re cmnet\.kario · 上网 · IPv4($|[^/])
+key esc
+at g.mobile
+wait 已连接 · cmnet.kario 5000
+key enter
+at com.phone.settings/apn
+type /
+type 恢复默认
+key enter
+key enter
+wait 恢复运营商的接入点？
+key enter
+wait 已恢复运营商的接入点
+wait cmnet · 上网 · IPv4/IPv6
+key esc
+at g.mobile
+wait 已连接 · cmnet · 5000
+key f4
+
+== 数据漫游关着：模拟的手机漫游到德国的网络（262 02）时没有移动数据，状态栏显示 R、不再显示 4G，设置里移动数据一行说在国外漫游时关闭；在国内别家的网络（460 01）上不显示 R，照常上网
+require-tel
+key f4
+appstop com.phone.settings
+tel roaming 26202 Vodafone.de
+wait R ▂▄▆ 5000
+gone 4G 5000
+type /
+type 设置 · 数据漫游
+key enter
+at g.mobile
+wait 正在国外漫游 · 移动数据关着
+wait 在国外漫游时关闭：数据漫游没开
+tel roaming 46001
+wait 4G ▂▄▆ 5000
+gone R ▂▄▆ 5000
+wait 正在国内漫游：移动数据照常可用 5000
+tel roaming off
+key f4
+
+== 数据漫游打开：先提醒漫游费用，确认后在国外也有移动数据，状态栏显示 4G R；关掉后数据又断开，回国后 R 消失
+require-tel
+key f4
+appstop com.phone.settings
+tel roaming 26202 Vodafone.de
+wait R ▂▄▆ 5000
+type /
+type 设置 · 数据漫游
+key enter
+at g.mobile
+key enter
+wait 打开数据漫游？
+key enter
+wait 4G R ▂▄▆ 5000
+wait 正在国外漫游 · 移动数据开着 5000
+key enter
+gone 4G R 5000
+wait R ▂▄▆
+tel roaming off
+gone R ▂▄▆ 5000
+wait 4G ▂▄▆
+key f4
+
+== 流量与流量套餐：设置 › 移动网络 › 流量写着本周期的移动数据、各应用按用量排（多的在前），Wi-Fi 另列；套餐设成每月 1 GB 后默认用到 80% 提醒：以「设置」的名义提醒一次；打开「用完套餐时关闭移动数据」后用满 1 GB，移动数据关掉、状态栏的 4G 消失，通知点开就是流量页，写着原因；移动数据一行说明为什么关着，打开先确认，确认后回来、这个周期超出也不再关；国外漫游的流量另记、不算进套餐；最后套餐改回原样、流量的记录还原（计数是记上去的）
+require-tel
+data-usage save
+key f4
+at sys.idle
+wait 4G
+appstop com.phone.settings
+data-charge com.phone.store mobile 314572800 10485760
+data-charge com.phone.browser mobile 104857600 0
+data-charge com.phone.browser wifi 2147483648 0
+type /
+type 设置 · 流量
+key enter
+at g.mobile
+key enter
+at com.phone.settings/traffic
+wait-re 本周期移动数据 41[0-9]\.[0-9] MB
+wait-re 应用商店 +31[0-9]\.[0-9] MB
+wait-re 浏览器 +10[0-9]\.[0-9] MB
+wait 流量套餐
+key enter
+at com.phone.settings/dataplan
+wait 每月流量
+key enter
+at com.phone.settings/dplimit
+fill 1
+key enter
+at com.phone.settings/dataplan
+wait 80% · 819.2 MB
+key esc
+at com.phone.settings/traffic
+wait-re 本周期移动数据 41[0-9]\.[0-9] MB / 1\.00 GB
+key last
+wait-re 本周期的 Wi-Fi：2\.00 GB
+key f4
+at sys.idle
+data-charge com.phone.browser mobile 471859200 0
+wait 流量提醒
+type /
+type 设置 · 流量
+key enter
+at g.mobile
+key enter
+at com.phone.settings/traffic
+wait 流量套餐
+key enter
+at com.phone.settings/dataplan
+type /
+type 用完套餐时关闭移动数据
+key enter
+key enter
+wait-re 用完套餐时关闭移动数据 +开
+key f4
+at sys.idle
+data-charge com.phone.store mobile 209715200 0
+gone 4G 5000
+key up
+at sys.notifs
+wait 移动数据已关闭
+key enter
+at com.phone.settings/traffic
+wait 本周期的套餐用完了
+type /
+type 设置 · 移动数据
+key enter
+at g.mobile
+wait 已关闭：本周期的套餐用完了
+key enter
+wait 仍要打开移动数据吗
+key enter
+wait 4G 5000
+data-charge com.phone.store mobile 10485760 0
+sleep 1000
+wait 4G
+type /
+type 设置 · 流量
+key enter
+at g.mobile
+key enter
+at com.phone.settings/traffic
+wait 超出套餐后移动数据开着
+tel roaming 26202 Vodafone.de
+wait R ▂▄▆ 5000
+data-charge com.phone.browser mobile 5242880 0
+tel roaming off
+gone R ▂▄▆ 5000
+type r
+wait 本周期国外漫游：5.0 MB
+setting data_limit_off 0
+setting data_limit 0
+data-usage restore
+key esc
+at g.mobile
+key f4
+
+== 移动网卡的地址（设备）：一对 veth 顶替模拟基带的 simwwan0；systemd-networkd 按 telephonyd 报的承载给它配上 100.80.12.34/30、MTU 1400、经网关的默认路由（跃点 2048，让给 Wi-Fi 和有线），DNS 交给 systemd-resolved 管这块网卡；关掉移动数据后地址清掉、文件改成 Unmanaged，打开后又配上
+require-cell-net
+require-tel
+cell-veth on
+cell-link 100.80.12.34/30 20000
+key f4
+appstop com.phone.settings
+type /
+type 设置 · 移动数据
+key enter
+key enter
+cell-link none 20000
+key enter
+cell-link 100.80.12.34/30 20000
+cell-veth off
+key f4
+
+== 个人热点：设置首页「移动网络」下面一项；改密码后打开热点，状态栏显示 📡，Wi-Fi 随之关闭；模拟的平板用新密码连上，热点页显示已连接 1 台设备；关掉热点后图标消失，Wi-Fi 回来
+require-hotspot sim
+key f4
+appstop com.phone.settings
+type /
+type 设置 · 个人热点
+key enter
+at root
+key enter
+at com.phone.settings/hotspot
+wait 网络名称
+wait Kario-
+key down 2
+key enter
+at com.phone.settings/hotspotpass
+fill kario-hotspot-1
+key enter
+at com.phone.settings/hotspot
+wait kario-hotspot-1
+key up 2
+key enter
+wait 📡 8000
+wait 已连接 0 台设备
+radio wifi off
+hotspot-client 平板 kario-hotspot-1
+wait 已连接 1 台设备 8000
+snap hotspot
+key enter
+gone 📡 8000
+radio wifi on
+key esc
+at root
+key f4
+
+== 个人热点的选项：开着热点在设置 › 个人热点里改安全性（WPA2/WPA3 过渡模式、只用 WPA3）、隐藏网络、5 GHz 和最多 1 台设备；只认 WPA2 的设备连得上过渡模式、连不上只用 WPA3 的热点，没有 5 GHz 的设备连不上 5 GHz 的热点，满了以后再来的设备被拒绝；「已连接的设备」页列出设备名、MAC 和连接时间；设备用的流量记进本次和今天；最后改回原样、关掉热点
+require-hotspot sim
+key f4
+appstop com.phone.settings
+type /
+type 设置 · 个人热点
+key enter
+at root
+key enter
+at com.phone.settings/hotspot
+wait 最多连接设备数
+key enter
+wait 📡 8000
+wait 已连接 0 台设备
+radio wifi off
+type /
+type 安全性
+key enter
+key enter
+wait WPA2/WPA3
+hotspot-client 旧手机 @ wpa2
+wait 已连接 1 台设备 8000
+key enter
+wait 最安全；旧设备连不上
+wait 已连接 0 台设备 8000
+hotspot-client 旧手机 @ wpa2 refused
+key enter
+wait 所有设备都能连接
+type /
+type 隐藏网络
+key enter
+key enter
+hotspot-seen no
+key enter
+hotspot-seen yes
+type /
+type 频段
+key enter
+key enter
+wait 更快；没有 5 GHz 的设备看不到它
+hotspot-client 笔记本 @ 2.4ghz refused
+key enter
+wait 传得更远；所有设备都能连接
+type /
+type 最多连接设备数
+key enter
+key enter
+wait 0 台，最多 1 台
+hotspot-client 平板 @
+hotspot-client 笔记本 @ refused
+wait 1 台，最多 1 台 8000
+hotspot-traffic 2048 1024
+hotspot-usage 3072
+wait 本次 ↓2.0 KB ↑1.0 KB 8000
+type /
+type 已连接的设备
+key enter
+key enter
+at com.phone.settings/hotspotdevices
+wait 平板
+wait 02:4b:41:52:48:
+snap hotspot-devices
+key esc
+at com.phone.settings/hotspot
+type /
+type 最多连接设备数
+key enter
+key left
+wait 不限
+type /
+type 个人热点
+key enter
+key enter
+gone 📡 8000
+radio wifi on
+key esc
+at root
+key f4
+
+== 个人热点每天的上限：设置 › 个人热点里把「设备每天的流量上限」调到 500 MB；设备今天用到 400 MB 时以「设置」的名义提醒，用满 500 MB 时热点关掉、Wi-Fi 回来，通知点开就是热点页，写着上限已用完；当天再打开先确认，之后不再关；「流量」页里设备用的算在「热点上的设备」下；最后改回不设上限、关掉热点，流量的记录还原（模拟的热点）
+require-hotspot sim
+data-usage save
+key f4
+appstop com.phone.settings
+type /
+type 设置 · 个人热点
+key enter
+at root
+key enter
+at com.phone.settings/hotspot
+wait 最多连接设备数
+type /
+type 设备每天的流量上限
+key enter
+wait 不设上限
+key right
+wait 每天 500.0 MB
+type /
+type 个人热点
+key enter
+key enter
+wait 📡 8000
+radio wifi off
+hotspot-client 平板 @
+wait 已连接 1 台设备 8000
+key f4
+at sys.idle
+hotspot-traffic 419430400 0
+hotspot-usage 419430400
+wait 热点流量提醒
+hotspot-traffic 104857600 0
+hotspot-usage 524288000
+gone 📡 8000
+radio wifi on
+key up
+at sys.notifs
+wait 个人热点已关闭
+key enter
+at com.phone.settings/hotspot
+type /
+type 设备每天的流量上限
+key enter
+wait 今天的上限已用完
+type /
+type 个人热点
+key enter
+key enter
+wait 仍要打开热点吗
+key enter
+wait 📡 8000
+radio wifi off
+hotspot-client 平板 @
+hotspot-traffic 10485760 0
+hotspot-usage 10485760
+sleep 1000
+wait 📡
+type /
+type 设置 · 流量
+key enter
+at g.mobile
+key enter
+at com.phone.settings/traffic
+wait-re 热点上的设备 +510\.0 MB
+type /
+type 设置 · 个人热点
+key enter
+at root
+key enter
+at com.phone.settings/hotspot
+type /
+type 设备每天的流量上限
+key enter
+key left
+wait 设备用多少都可以
+type /
+type 个人热点
+key enter
+key enter
+gone 📡 8000
+radio wifi on
+data-usage restore
+key esc
+at root
+key f4
+
+== 个人热点（模拟器）：iwd 把手机的 Wi-Fi 变成接入点；空闲的模拟射频上的 wpa_supplicant 在自己的网络命名空间里用设置里改的密码连上，从 iwd 拿到地址，ping 通手机和 NAT 后面的网关；接入点网卡的计数器记下了这次的流量，「已连接的设备」页列出它（Shell 读 DHCP 请求里的名字）；关掉后 NAT 和转发撤掉，Wi-Fi 回来
+require-hotspot iwd
+require-netfw
+key f4
+appstop com.phone.settings
+type /
+type 设置 · 个人热点
+key enter
+at root
+key enter
+at com.phone.settings/hotspot
+wait 网络名称
+key down 2
+key enter
+at com.phone.settings/hotspotpass
+fill kario-hotspot-2
+key enter
+at com.phone.settings/hotspot
+wait kario-hotspot-2
+key up 2
+key enter
+wait 📡 15000
+radio wifi off
+hotspot-share default
+hotspot-client 平板 kario-hotspot-2
+wait 已连接 1 台设备 15000
+hotspot-ping phone
+hotspot-ping upstream
+hotspot-usage 200
+hotspot-report 平板
+type /
+type 已连接的设备
+key enter
+key enter
+at com.phone.settings/hotspotdevices
+wait 平板 15000
+key esc
+at com.phone.settings/hotspot
+type /
+type 个人热点
+key enter
+key enter
+gone 📡 15000
+hotspot-share none
+hotspot-client-off
+radio wifi on 15000
+key esc
+at root
+key f4
+
+== 换机：设置 › 我的设备 › 从旧手机迁移：Wi-Fi 没连上时开始接收就打开个人热点，页面显示配对二维码（安全界面，快照里遮住）和热点的名称、密码；旧手机（自带的协议客户端，不走 Shell 的代码）连上热点、扫码配对，发来 2 个联系人、3 条通话记录、2 条短信、1 个日历事件和 1 张照片；结束后热点关掉，页面列出各类的数量；通讯录、短信、电话的最近通话、「文件」里都有；「撤销这次导入」把它们全部删掉
+require-hotspot sim
+require-tel
+require-sms
+key f4
+appstop com.phone.settings
+type /
+type 设置 · 从旧手机迁移
+key enter
+at g.device
+key enter
+at com.phone.settings/switch
+wait 要迁移的内容
+type s
+wait 用旧手机上的「Kario 换机」扫这个码 8000
+wait 📡 8000
+masked
+snap switch-qr
+key down 20
+wait 网络名称
+wait 等待旧手机
+switch-send contacts call_log sms calendar photos
+wait Xiaomi Redmi Note 9 · android 12 10000
+wait 已完成
+gone 📡 8000
+wait-re 通讯录 +2
+wait-re 通话记录 +3
+wait-re 短信 +2
+wait-re 日历 +1
+wait-re 照片 +1
+snap switch-done
+key f4
+appstop com.phone.contacts
+key f2
+at com.phone.contacts/list
+type oyq
+wait 欧阳青
+key backspace 3
+type sml
+wait 司马蓝
+key backspace 3
+key f4
+appstop com.phone.messages
+type /
+type 短信
+key enter
+at com.phone.messages/list
+wait 欧阳青
+wait 好啊，周六早上八点山脚见
+key f4
+appstop com.phone.dialer
+type /
+type 电话
+key enter
+wait 最近通话
+wait 欧阳青
+wait 司马蓝
+wait 13655550199
+key f4
+files IMG_20261115_0800.jpg present
+files .ics present
+appstop com.phone.calendar
+type /
+type 日历
+key enter
+at com.phone.calendar/month 10000
+type 3
+at com.phone.calendar/search
+fill 爬山
+key enter
+wait 和欧阳青爬山 8000
+key f4
+appstop com.phone.settings
+type /
+type 设置 · 从旧手机迁移
+key enter
+at g.device
+key enter
+at com.phone.settings/switch
+wait 撤销这次导入
+type u
+wait 删掉这次导入的全部内容
+key enter
+wait 已撤销 8000
+files IMG_20261115_0800.jpg absent
+files .ics absent
+key f4
+appstop com.phone.calendar
+type /
+type 日历
+key enter
+at com.phone.calendar/month 10000
+type 3
+at com.phone.calendar/search
+fill 爬山
+key enter
+wait 没有找到日程 8000
+key f4
+appstop com.phone.contacts
+key f2
+at com.phone.contacts/list
+type oyq
+wait 找到（0）
+key backspace 3
+key f4
+appstop com.phone.messages
+type /
+type 短信
+key enter
+at com.phone.messages/list
+gone 欧阳青
+gone 13655550101
+key f4
+appstop com.phone.dialer
+type /
+type 电话
+key enter
+wait 最近通话
+gone 13655550199
+gone 司马蓝
+key f4
+
+== 换机（同一 Wi-Fi）：手机连着 Wi-Fi「Kario-Test」时开始接收，不开热点；页面写着经 Wi-Fi「Kario-Test」接收、旧手机要连同一个网络，并有「改用热点」；二维码里是网络名（wifi=），没有热点的名称和密码，旧手机连到手机在这个 Wi-Fi 上的地址，发来通讯录和照片，撤销后删掉；再在 Wi-Fi 上开始接收，手机换到「Kario-Office」时接收停下，页面说出原因，「改用热点接收」经热点重新开始，旧手机连上热点传完；最后在 Wi-Fi 上开始后按「改用热点」，换成热点的二维码，停止后热点关掉
+require-hotspot sim
+key f4
+wifi-ap Kario-Test kario-5678
+wifi-join Kario-Test kario-5678
+appstop com.phone.settings
+type /
+type 设置 · 从旧手机迁移
+key enter
+at g.device
+key enter
+at com.phone.settings/switch
+wait 要迁移的内容
+type s
+wait 用旧手机上的「Kario 换机」扫这个码 8000
+gone 📡
+key down 20
+wait 经 Wi-Fi 接收
+wait Kario-Test
+wait 旧手机要连同一个 Wi-Fi 网络
+wait 旧手机连不上的话
+switch-send contacts photos
+wait 已完成 10000
+wait-re 通讯录 +2
+wait-re 照片 +1
+type u
+wait 删掉这次导入的全部内容
+key enter
+wait 已撤销 8000
+files IMG_20261115_0800.jpg absent
+type s
+wait 用旧手机上的「Kario 换机」扫这个码 8000
+key down 20
+wait 旧手机连不上的话
+wifi-join Kario-Office kario1234
+wait 接收已停止 8000
+wait Kario-Office
+wait 改用热点接收
+type h
+wait 📡 8000
+key down 20
+wait 经 Kario 的热点接收
+wait 网络名称
+switch-send contacts
+wait 已完成 10000
+gone 📡 8000
+wait-re 通讯录 +2
+type u
+wait 删掉这次导入的全部内容
+key enter
+wait 已撤销 8000
+wifi-join Kario-Test kario-5678
+type s
+wait 用旧手机上的「Kario 换机」扫这个码 8000
+key down 20
+wait 旧手机连不上的话
+type h
+wait 📡 8000
+key down 20
+wait 经 Kario 的热点接收
+type x
+wait 停止接收？
+key enter
+gone 📡 8000
+key f4
+
+== 换机（蓝牙）：旧手机上不装应用。设置里搜索并核对配对码配对模拟的安卓旧手机（安卓那样写的 vCard 2.1 和 bMessage），在从旧手机迁移里按「经蓝牙迁移」、选中它；页面写着请在旧手机上允许，旧手机问两次（电话本、短信）都允许后读来通讯录（不要旧手机自己的名片）、通话记录（隐藏的号码算失败）和收件箱、已发送的短信（彩信取文字），页面列出各类的数量；通讯录、短信、电话的最近通话里都有；撤销这次导入全部删掉；再从模拟的 iPhone 迁移，通讯录和通话记录过来，短信写着只过来了一部分，撤销
+require-bt sim
+require-tel
+require-sms
+bt-oldphone android 旧安卓
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 蓝牙
+key enter
+key enter
+at com.phone.settings/bt
+key enter
+radio bt off 8000
+key enter
+radio bt on 8000
+wait 配对新设备
+key down
+key enter
+at com.phone.settings/btpair
+wait 旧安卓 8000
+key down
+key enter
+key-if enter 配对码 5000
+at com.phone.settings/bt 8000
+key f4
+appstop com.phone.settings
+type /
+type 设置 · 从旧手机迁移
+key enter
+at g.device
+key enter
+at com.phone.settings/switch
+wait 经蓝牙
+type b
+at com.phone.settings/switch_bt
+wait 旧安卓
+type /
+type 旧安卓
+key enter
+key enter
+at com.phone.settings/switch
+wait 请在「旧安卓」上允许 8000
+gone 用旧手机上的「Kario 换机」扫这个码
+snap switch-bt-ask
+bt-oldphone-allow yes
+bt-oldphone-allow yes
+wait 已完成 15000
+wait-re 通讯录 +3
+wait-re 通话记录 +3
+wait-re 短信 +4
+wait 有 1 项没有导入
+snap switch-bt-done
+key f4
+appstop com.phone.contacts
+key f2
+at com.phone.contacts/list
+type zgm
+wait 诸葛明
+key backspace 3
+type sgy
+wait 上官燕
+key backspace 3
+key f4
+appstop com.phone.messages
+type /
+type 短信
+key enter
+at com.phone.messages/list
+wait 好的，九点西湖边见
+wait 看看这张，去年在杭州拍的
+key f4
+appstop com.phone.dialer
+type /
+type 电话
+key enter
+wait 最近通话
+wait 诸葛明
+wait 上官燕
+wait 10086
+key f4
+appstop com.phone.settings
+type /
+type 设置 · 从旧手机迁移
+key enter
+at g.device
+key enter
+at com.phone.settings/switch
+wait 撤销这次导入
+type u
+wait 删掉这次导入的全部内容
+key enter
+wait 已撤销 8000
+key f4
+appstop com.phone.contacts
+key f2
+at com.phone.contacts/list
+type zgm
+wait 找到（0）
+key backspace 3
+key f4
+bt-oldphone iphone 旧 iPhone
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 蓝牙
+key enter
+key enter
+at com.phone.settings/bt
+key enter
+radio bt off 8000
+key enter
+radio bt on 8000
+wait 配对新设备
+key down
+key enter
+at com.phone.settings/btpair
+wait 旧 iPhone 8000
+key down
+key enter
+key-if enter 配对码 5000
+at com.phone.settings/bt 8000
+key f4
+appstop com.phone.settings
+type /
+type 设置 · 从旧手机迁移
+key enter
+at g.device
+key enter
+at com.phone.settings/switch
+type b
+at com.phone.settings/switch_bt
+wait 旧 iPhone
+type /
+type 旧 iPhone
+key enter
+key enter
+at com.phone.settings/switch
+bt-oldphone-allow yes
+bt-oldphone-allow yes
+wait 已完成 15000
+wait-re 通讯录 +2
+wait-re 通话记录 +3
+wait 经蓝牙只过来了一部分
+type u
+wait 删掉这次导入的全部内容
+key enter
+wait 已撤销 8000
+key f4
+
+== 换机（模拟器）：Wi-Fi 关着时开始接收，手机用 iwd 开个人热点（192.168.43.1）；空闲的模拟射频上的旧手机在自己的网络命名空间里按二维码里的名称和密码连上，从热点那一侧经防火墙连到手机的 47800 端口，配对并发来通讯录、通话记录、短信、日历和照片；结束后热点关掉；撤销这次导入后都删掉，Wi-Fi 再打开
+require-hotspot iwd
+require-tel
+require-sms
+key f4
+appstop com.phone.settings
+type /
+type Wi-Fi
+key enter
+key enter
+at com.phone.settings/wifi
+key enter
+radio wifi off 15000
+key esc
+key f4
+appstop com.phone.settings
+type /
+type 设置 · 从旧手机迁移
+key enter
+at g.device
+key enter
+at com.phone.settings/switch
+wait 要迁移的内容
+type s
+wait 用旧手机上的「Kario 换机」扫这个码 15000
+wait 📡 15000
+switch-send contacts call_log sms calendar photos
+wait 已完成 15000
+gone 📡 15000
+hotspot-client-off
+wait-re 通讯录 +2
+wait-re 通话记录 +3
+wait-re 短信 +2
+wait-re 日历 +1
+wait-re 照片 +1
+key f4
+appstop com.phone.contacts
+key f2
+at com.phone.contacts/list
+type oyq
+wait 欧阳青
+key backspace 3
+key f4
+appstop com.phone.messages
+type /
+type 短信
+key enter
+at com.phone.messages/list
+wait 好啊，周六早上八点山脚见
+key f4
+files IMG_20261115_0800.jpg present
+appstop com.phone.settings
+type /
+type 设置 · 从旧手机迁移
+key enter
+at g.device
+key enter
+at com.phone.settings/switch
+wait 撤销这次导入
+type u
+wait 删掉这次导入的全部内容
+key enter
+wait 已撤销 15000
+files IMG_20261115_0800.jpg absent
+key f4
+appstop com.phone.messages
+type /
+type 短信
+key enter
+at com.phone.messages/list
+gone 欧阳青
+key f4
+appstop com.phone.settings
+type /
+type Wi-Fi
+key enter
+key enter
+at com.phone.settings/wifi
+key enter
+radio wifi on 15000
+key esc
+key f4
+
+== 换机（模拟器，同一 Wi-Fi）：手机经 iwd 连着测试接入点「Kario-Test」（第二个模拟射频上 iwd 的接入点，用 DHCP 发地址）时开始接收，不开热点，页面写着经 Wi-Fi「Kario-Test」接收；空闲的模拟射频上的旧手机在自己的网络命名空间里用这个网络的密码连上「Kario-Test」、由 DHCP 拿到地址，从那个命名空间经射频连到手机在这个网络上的地址的 47800 端口，配对并发来通讯录和照片；撤销后都删掉
+require-hotspot iwd
+key f4
+wifi-ap Kario-Test kario-5678
+wifi-join Kario-Test kario-5678 30000
+appstop com.phone.settings
+type /
+type 设置 · 从旧手机迁移
+key enter
+at g.device
+key enter
+at com.phone.settings/switch
+wait 要迁移的内容
+type s
+wait 用旧手机上的「Kario 换机」扫这个码 15000
+gone 📡
+key down 20
+wait 经 Wi-Fi 接收
+wait Kario-Test
+wifi-client 旧手机 Kario-Test kario-5678
+switch-send contacts photos
+wait 已完成 15000
+wifi-client-off
+wait-re 通讯录 +2
+wait-re 照片 +1
+type u
+wait 删掉这次导入的全部内容
+key enter
+wait 已撤销 15000
+files IMG_20261115_0800.jpg absent
+key f4
+
+== 换机（模拟器，蓝牙）：第二个虚拟蓝牙控制器扮安卓旧手机（先解除和手机的配对，再发布电话本和短信服务），设置里重新搜索、核对配对码配对；经蓝牙迁移，Shell 在 BlueZ 交来的连接上读它的电话本、通话记录（L2CAP 上用单响应模式）和短信，旧手机问两次都允许；数量对，通讯录搜得到；撤销后删掉；最后对方改回「Kario 耳机」，在「配对新设备」里搜一轮，等手机的设置 › 蓝牙里也是这个名字
+require-bt bluez
+require-tel
+require-sms
+bt-oldphone android 旧手机
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 蓝牙
+key enter
+key enter
+at com.phone.settings/bt
+key enter
+radio bt off 15000
+key enter
+radio bt on 15000
+wait 配对新设备 15000
+key down
+key enter
+at com.phone.settings/btpair
+wait 旧手机 30000
+key down
+key enter
+key-if enter 配对码 15000
+at com.phone.settings/bt 30000
+key f4
+appstop com.phone.settings
+type /
+type 设置 · 从旧手机迁移
+key enter
+at g.device
+key enter
+at com.phone.settings/switch
+type b
+at com.phone.settings/switch_bt
+wait 旧手机 15000
+type /
+type 旧手机
+key enter
+key enter
+at com.phone.settings/switch
+wait 请在「旧手机」上允许 30000
+bt-oldphone-allow yes
+bt-oldphone-allow yes
+wait 已完成 60000
+wait-re 通讯录 +3
+wait-re 通话记录 +3
+wait-re 短信 +4
+key f4
+appstop com.phone.contacts
+key f2
+at com.phone.contacts/list
+type zgm
+wait 诸葛明
+key backspace 3
+key f4
+appstop com.phone.settings
+type /
+type 设置 · 从旧手机迁移
+key enter
+at g.device
+key enter
+at com.phone.settings/switch
+wait 撤销这次导入
+type u
+wait 删掉这次导入的全部内容
+key enter
+wait 已撤销 15000
+key f4
+bt-peer Kario 耳机
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 蓝牙
+key enter
+key enter
+at com.phone.settings/bt
+wait 配对新设备
+key down
+key enter
+at com.phone.settings/btpair
+bt-inquiry yes
+key esc
+at com.phone.settings/bt
+wait Kario 耳机 30000
+key esc
+key f4
+
+== 蓝牙搜索跟着页面：设置 › 蓝牙 › 配对新设备在前台时才搜索（像安卓）；按返回离开它、回到待机都停，之后蓝牙控制器不再发查询（模拟器上用 btmon 数 HCI Inquiry）；设置关掉以后也没有搜索在跑
+require-radios
+key f4
+appstop com.phone.settings
+radio bt-search off 8000
+type /
+type 设置
+key enter
+at root
+type /
+type 蓝牙
+key enter
+key enter
+at com.phone.settings/bt
+wait 配对新设备
+radio bt-search off 5000
+key down
+key enter
+at com.phone.settings/btpair
+radio bt-search on 8000
+bt-inquiry yes
+key esc
+at com.phone.settings/bt
+radio bt-search off 8000
+bt-inquiry no
+key enter
+at com.phone.settings/btpair
+radio bt-search on 8000
+key f4
+at sys.idle
+radio bt-search off 8000
+bt-inquiry no
+
+== 设置：撤销权限后能力调用被拒绝
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 应用权限
+key enter
+key enter
+wait 浏览器 · 网络
+type /
+type 鸿雁 · 摄像头
+key enter
+type d
+wait 拒绝
+key f4
+type /
+type 鸿雁
+key enter
+key f2
+wait 无法通话
+gone 无法通话
+
+== 输入法：全键盘拼音、候选与联想
+key down 12
+type zhongguo
+wait 1中国
+snap 17-ime-pinyin
+key space
+wait 特色
+key enter
+wait 收到：中国
+
+== 输入法：在独立进程 phone-imed 里；它崩溃时 Shell 用内置引擎接着打字，重启后接回
+ime-remote on
+ime-kill
+key down 12
+type b
+ime-remote off 100
+type eijing
+wait 1北京
+key space
+key enter
+wait 收到：北京
+ime-remote on 10000
+type shanghai
+wait 1上海
+key space
+key enter
+wait 收到：上海
+
+== 输入法：九宫格拼音（先选拼音再选字）
+keypad t9
+key down 12
+type 746854
+wait shou'ji
+wait 手机
+snap 18-ime-t9
+key enter
+key esc
+key enter
+wait 收到：手机
+
+== 输入法：九宫格笔画（1 横 2 竖 3 撇 4 点 5 折，6 代替记不清的一笔；正好打完一个字的笔画时它排第一）
+type #
+wait 笔画
+type 2512
+wait 丨乛一丨
+wait 中
+key enter
+key esc
+type 6334
+wait 火
+key enter
+key esc
+key enter
+wait 收到：中火
+imemode zh
+
+== 输入法：九宫格英文与全键盘英文补全（全键盘的英文句首自动大写）
+type ##
+type 43556
+wait hello
+key enter
+key enter
+wait 收到：hello
+keypad qwerty
+key ime
+type phon
+wait Phone
+snap 19-ime-english
+key right
+key enter
+key enter
+wait 收到：Phone
+imemode zh
+
+== 输入法：诺基亚式按键（# 切 Abc、多击、长按数字、* 符号表、长按 # 切 123）
+keypad t9
+type ###
+wait Abc
+type 4433555
+key right
+type 555666
+sleep 1600
+long 5
+type *
+wait 符号 1/3
+snap 20-ime-symbols
+key right
+key enter
+long #
+wait 123
+type 6
+long #
+wait Abc
+key enter
+wait 收到：Hello5。6
+keypad qwerty
+imemode zh
+
+== 全键盘的数字（照诺基亚 E71）：号码框不按 Fn 就打出键上的数字；待机界面打的字母照样搜索，通话键拨出字母背后的数字；背后不是数字的字母不拨；文字框里按住字母键出它的数字；Shift 点一下、点两下时状态栏显示 Abc、ABC
+fn-layer q=# w=1 e=2 r=3 s=4 d=5 f=6 z=7 x=8 c=9 .=0 a=* o=+ h=:
+key f4
+at sys.idle
+wait OK 菜单
+type wer
+wait 拨号 123
+snap 21-qwerty-dial
+key call
+at com.phone.dialer/main
+wait 123
+type sd
+wait 12345
+key f4
+at sys.idle
+type wet
+wait / wet
+gone 通话键
+key esc
+appstop com.phone.chat
+type /
+type 鸿雁
+key enter
+wait 产品群
+key enter
+wait 输入消息
+long w
+long e
+long r
+wait 123
+key shift-once
+wait Abc
+key shift-lock
+wait ABC
+key shift-off
+gone ABC
+key backspace
+key backspace
+key backspace
+gone 123
+key esc
+wait F2发起聊天
+key f4
+fn-layer
+appstop com.phone.dialer
+
+== 全键盘的编辑（照诺基亚 E71）：Shift + Chr 选输入语言；英文句首自动大写（状态栏 Abc）；按住 Chr 再按字母出重音字母；Shift + ← 选字、复制、粘贴，按住退格删掉一个词，撤销；Fn + ← 到开头；选项菜单里有复制、全选；中文里 Chr 符号表打句号出省略号等变体，按住 Chr 按两下逗号出顿号
+type /
+type 鸿雁
+key enter
+wait 张三
+type /
+type 张三
+key enter
+key enter
+wait 输入消息
+key lang
+wait 输入语言
+snap 21b-qwerty-lang
+key down
+key enter
+wait Abc
+type caf
+chr e
+wait Café
+key space
+type ok
+key space
+key backspace
+key shift+left 2
+snap 21c-qwerty-select
+key copy
+wait 已复制
+key last
+key space
+key paste
+wait Café ok ok
+long backspace
+gone ok ok
+key undo
+wait Café ok ok
+key first
+type oh
+key space
+wait Oh Café ok ok
+gone 已复制
+key tab
+wait 全选
+wait 粘贴「ok」
+snap 21d-qwerty-edit-menu
+key esc
+gone 全选
+key enter
+wait 收到：Oh Café ok ok
+key ime
+type nihao
+key space
+key sym
+wait 符号 1/3
+type .
+wait 「.」的变体
+snap 21e-qwerty-variants
+key right
+key enter
+wait 你好……
+chr , 2
+wait 你好……、
+key enter
+wait 收到：你好……、
+key f4
+
+== 全键盘的列表：打字母跳到这个字母开头的下一项（中文按拼音：设置里打 x 到「显示与亮度」、d 到「电池」），Fn + → / ← 到最后一项和第一项
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type x
+key enter
+at g.display
+key esc
+at root
+type d
+key enter
+at battery
+key esc
+at root
+key last
+key enter
+at crashes
+key esc
+at root
+key first
+key enter
+at g.device
+key esc
+key f4
+
+== 文档节点：Markdown 由系统渲染，链接进菜单
+key f4
+type /
+type 小程序
+key enter
+wait 我的小程序
+type /
+type 公告
+key enter
+key enter
+wait 平台更新公告
+wait 商户可信?
+wait 系统安全确认
+snap 12-markdown-doc
+key down 4
+wait 行内代码
+key down 4
+wait 渲染器
+snap 12b-markdown-table
+key down 8
+wait A = P(1 + r/n)ⁿᵗ
+snap 12c-markdown-code-math
+key enter
+wait 链接 1：平台架构
+key enter
+wait 打开链接：https://example.com/arch
+key esc
+
+== 小程序：JS 逻辑 + 数据绑定 + 本地存储
+type /
+type 便签
+key enter
+key enter
+wait 写一条便签
+type 买牛奶
+key enter
+wait 共 1 条
+wait 买牛奶
+key esc
+key enter
+wait 共 1 条
+key esc
+
+== 小程序：扫码点餐 + 支付（系统对话框标注来源）
+scan-code none
+type /
+type 咖啡
+key enter
+key enter
+wait 欢迎光临
+key enter
+wait 请求使用
+wait 晨光咖啡点餐
+wait 扫桌上的二维码开始点餐
+snap 13-miniapp-consent
+key enter
+wait 系统相机
+scan-code PAY|M10086|晨光咖啡|1800
+wait 菜单
+scan-report
+key enter
+key enter
+wait 合计 ¥36.00
+key down 3
+key enter
+wait 系统安全确认
+wait 来源：晨光咖啡点餐
+wait ¥36.00
+snap 14-miniapp-pay
+type 123456
+wait 支付成功
+wait 宿主服务端验签：通过
+key enter
+wait 欢迎光临
+
+== 小程序关掉后留着：点了单的小程序按 Q 退出回到小程序列表，再打开时还在点单页、点的东西都在（运行时留着，最多 5 分钟，像微信）；返回键退到首页、再退出小程序，最后结束宿主
+require-app com.phone.miniapp
+scan-code none
+appstop com.phone.miniapp
+key f4
+type /
+type 小程序
+key enter
+wait 我的小程序
+type /
+type 咖啡
+key enter
+key enter
+wait 欢迎光临
+key enter
+key-if enter 请求使用 3000
+wait 系统相机
+scan-code PAY|M10086|晨光咖啡|1800
+wait 菜单
+key enter
+wait 合计 ¥18.00
+type Q
+wait 我的小程序
+gone 合计 ¥18.00
+wait-re ▌ 咖 晨光咖啡点餐
+key enter
+wait 合计 ¥18.00
+key esc
+wait 欢迎光临
+key esc
+wait 我的小程序
+appstop com.phone.miniapp
+key f4
+
+
+== 小程序：授权按「宿主 + 小程序」记账，设置里能单独看到并撤销
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 应用权限
+key enter
+key enter
+wait 浏览器 · 网络
+type /
+type 晨光咖啡无此项
+wait / 晨光咖啡无此项
+wait （无匹配）
+key backspace
+key backspace
+key backspace
+type 点餐
+key enter
+wait 小程序「晨光咖啡点餐」 · 摄像头
+perm-state com.phone.miniapp/晨光咖啡点餐 camera granted
+perm-state com.phone.miniapp camera ask
+type d
+perm-state com.phone.miniapp/晨光咖啡点餐 camera denied
+perm-state com.phone.miniapp camera ask
+key f4
+
+== 沙箱：已生效的限制层全部符合预期（开发机上只有 seccomp 等无需 root 的层）
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type s
+wait 符合预期 8000
+wait seccomp
+gone ✗
+key esc
+at root
+
+== 沙箱：独立 uid、命名空间、Landlock（需 root，设备上执行）
+require-sandbox
+type s
+wait 沙箱自检 13/13 符合预期 8000
+key esc
+at root
+
+== 沙箱里的 DNS：有网络权限的应用读得到解析器的配置（/etc/resolv.conf 链到 /run 下 systemd-resolved 的目录，Landlock 放行那个目录），没有网络权限的读不到（需 root，设备上执行）
+require-sandbox
+sandbox-read com.phone.chat /etc/resolv.conf allowed
+sandbox-read com.phone.settings /etc/resolv.conf denied
+
+== 后台冻结：离开飞钱后进程被暂停，回来后恢复；鸿雁也不常驻（消息和来电靠推送）
+freeze-after 1000
+key f4
+at sys.idle
+type /
+type 飞钱
+key enter
+wait 账单
+key f4
+appstate com.phone.wallet frozen 8000
+appstate com.phone.chat frozen 8000
+type /
+type 飞钱
+key enter
+appstate com.phone.wallet running
+key enter
+wait 账单详情
+key esc
+freeze-after 0
+
+#part phone
+== 墓碑：内存紧张时系统结束了后台的鸿雁；从「切换应用」回去，还在原来的会话里，没发出去的草稿也在
+key f4
+type /
+type 鸿雁
+key enter
+wait 张三
+type /
+type 张三
+key enter
+key enter
+wait 输入消息
+type 明天见
+key f4
+at sys.idle
+saved com.phone.chat
+lowmem-kill com.phone.chat
+appstate com.phone.chat stopped
+key f3
+wait 切换应用
+wait 鸿雁
+key enter
+revived com.phone.chat
+wait 明天见
+key enter
+wait 收到：明天见
+key f4
+
+== 电话：智能拨号（数字筛选联系人）、拨出、接通、通话中按键发 DTMF（语音菜单；全键盘上 e、s 这些 Fn 下是数字的字母不再被快捷键占用）、挂断
+require-tel
+key f4
+type /
+type 电话
+key enter
+wait 最近通话
+type 94
+wait 张三
+snap 21-dialer-search
+key down
+key enter
+wait 正在呼叫 13800000001…
+audio call
+wait 通话中 6000
+audio call
+snap 22-call-active
+fn-layer w=1 e=2 r=3 s=4 d=5 f=6 z=7 x=8 c=9 .=0 q=# a=*
+type w
+type 0
+type #
+type e
+type s
+wait 已发送的按键：10#24
+fn-layer
+type m
+wait 已静音
+type l
+wait 免提
+type h
+wait 已保持
+type h
+wait 通话中
+key end
+wait 通话结束
+audio idle
+wait 已拨
+
+== 拨号码：*#06# 一打完就显示 IMEI（手机自己答）；*101# 是运营商的菜单，回复 2 查流量；网络主动发来的提问在电话应用里回复
+require-tel
+key f4
+type /
+type 电话
+key enter
+wait 最近通话
+type *#06#
+wait IMEI：860123456789014
+key esc
+key backspace 5
+type *101#
+key enter
+wait 2 查流量
+type 2
+key enter
+wait 本月剩余流量 3.2 GB
+key esc
+key backspace 5
+tel ussd 您的套餐下月到期，回复 1 续订
+wait 您的套餐下月到期
+type 1
+key enter
+wait 已收到
+key esc
+key f4
+
+== 电话：来电由系统界面接听，再交给电话应用
+require-tel
+key f4
+tel ring 13800000002
+wait 来电 · 中国移动
+wait 李四
+audio ring
+snap 23-cell-incoming
+key enter
+wait 通话中 6000
+audio call
+key end
+wait 通话结束
+audio idle
+
+== 电话：电话应用还没启动时在待机界面一口气打 152 再按 OK，拨的就是 152（以前 OK 赶在电话应用的首页之后、5 和 2 之前，拨了「1」，只提示无法拨打）；打 10086 按通话键也一样
+require-tel
+key f4
+appstop com.phone.dialer
+at sys.idle
+type 152
+key enter
+wait 正在呼叫 152… 3000
+wait 通话中 6000
+key end
+wait 通话结束
+key f4
+appstop com.phone.dialer
+at sys.idle
+type 10086
+key call
+wait 正在呼叫 10086… 3000
+key end
+wait 通话结束
+key f4
+
+== 电话：基带迟迟不应答拨号时，待机打 152 按 OK 立刻出通话界面「正在呼叫 152…」，不等基带（以前号码页停着不动，像卡住了）；等待时返回键照样能用，基带应答后状态栏出现通话、按通话键回来；基带应答前挂断，应答一到就挂掉
+require-tel
+key f4
+at sys.idle
+tel slow 3000
+type 152
+key enter
+at com.phone.dialer/call 400
+wait 正在呼叫 152… 400
+snap 23b-call-dialing
+key esc
+at sys.idle 400
+wait ● 正在呼叫 6000
+key call
+at com.phone.dialer/call
+wait 通话中 6000
+key end
+wait 通话结束
+key f4
+type 153
+key enter
+wait 正在呼叫 153… 400
+key end
+at com.phone.dialer/main 400
+sleep 3500
+gone ● 正在呼叫 6000
+tel slow 0
+key f4
+
+== 电话：通话中按返回键或右软键「最小化」，通话转到后台继续；状态栏在别的界面都显示「● 通话」和时长，待机界面提示「通话键 回到通话」；按通话键、选项菜单的「返回通话」、通知中心里通话那一行都回到通话界面
+require-tel
+key f4
+at sys.idle
+type 152
+key enter
+wait 正在呼叫 152…
+wait 通话中 6000
+wait 最小化
+key esc
+at sys.idle
+wait-re ● 通话 00:0[0-9]
+wait 通话键 回到通话
+snap 23c-call-background
+key call
+at com.phone.dialer/call
+gone ● 通话 100
+key f2
+at sys.idle
+wait ● 通话
+key tab
+wait 返回通话
+type R
+at com.phone.dialer/call
+key esc
+at sys.idle
+type /
+type 计算器
+key enter
+wait ÷
+wait ● 通话
+snap 23d-call-background-app
+key esc
+at sys.idle
+key up
+at sys.notifs
+wait 电话 · 通话
+snap 23e-call-notifs
+key enter
+at com.phone.dialer/call
+key end
+wait 通话结束
+gone ● 通话
+key f4
+
+== 电话：通话中在待机界面打数字是第二个电话：电话打开「新通话」页（返回键回到通话），拨出时原来的通话保持；两路之间能切换，挂断一路另一路还在；还在接通或已有两路时打数字，系统说明原因和「按通话键回到通话」，不会停在拨号失败上
+require-tel
+key f4
+at sys.idle
+tel slow 0 8000
+type 152
+key enter
+wait 对方振铃…
+key esc
+at sys.idle
+type 3
+wait 通话还在接通：按通话键回到通话
+at sys.idle
+key call
+at com.phone.dialer/call
+key end
+wait 通话结束
+tel slow 0
+key f4
+type 152
+key enter
+wait 通话中 6000
+key esc
+at sys.idle
+type 1
+at com.phone.dialer/add
+wait 新通话
+wait 正在和 152 通话，拨出时保持
+key esc
+at com.phone.dialer/call
+key esc
+at sys.idle
+type 10086
+key enter
+wait 正在呼叫 10086…
+wait 另一路：152，已保持
+snap 23f-call-second
+wait 中国移动
+wait-re 通话中 00:0
+key esc
+at sys.idle
+type 3
+wait 已有两个通话：按通话键回到通话
+key call
+at com.phone.dialer/call
+type o
+wait 另一路：中国移动，已保持
+key end
+wait 和 152 的通话结束
+gone 和 152 的通话结束
+wait 已保持
+type h
+wait-re 通话中 00:
+key end
+wait 通话结束
+key f4
+
+== 电话：通话在后台时对方挂断，系统提示「和 152 的通话结束」，状态栏的标记随之消失，再按通话键是最近通话；通话在后台、人在别的应用里时按挂断键也直接挂断（诺基亚的红键）
+require-tel
+key f4
+at sys.idle
+type 152
+key enter
+wait 通话中 6000
+key esc
+at sys.idle
+wait ● 通话
+tel hangup 152
+wait 和 152 的通话结束
+gone ● 通话
+key call
+at com.phone.dialer/main
+wait 最近通话
+key f4
+at sys.idle
+type 152
+key enter
+wait 通话中 6000
+key f2
+at sys.idle
+type /
+type 计算器
+key enter
+wait ÷
+wait ● 通话
+key end
+wait 和 152 的通话结束
+gone ● 通话
+at com.phone.calc/calc
+key esc
+
+== 电话：通话中来电（呼叫等待）：系统来电界面说明接听后原来的通话保持；按通话键接听后两路都在通话界面，挂断新的一路后保持的还在；拒接就回到原来的通话；对方先挂掉算未接，进通知
+require-tel
+key f4
+at sys.idle
+type 152
+key enter
+wait 通话中 6000
+tel ring 13800000002
+wait 来电 · 中国移动
+wait 接听后和 152 的通话保持
+snap 23g-call-waiting
+key call
+at com.phone.dialer/call
+wait 李四
+wait 另一路：152，已保持
+key end
+gone 李四
+wait 已保持
+tel ring 13800000002
+wait 来电 · 中国移动
+key end
+gone 来电 · 中国移动
+at com.phone.dialer/call
+type h
+wait-re 通话中 00:
+tel ring 13800000003
+wait 来电 · 中国移动
+tel hangup 13800000003
+gone 来电 · 中国移动
+at com.phone.dialer/call
+key end
+wait 通话结束
+key f4
+at sys.idle
+wait 电话：未接来电
+
+== 短信：发送并收到回复；发不出去的标「未发出」、可重发；后台来短信进通知
+require-tel
+key f4
+type /
+type 短信
+key enter
+wait 新信息
+key f2
+wait 收件人号码
+type 13800000003
+key down
+type nihao
+key space
+key down
+key enter
+wait 收到：你好
+wait 王五
+snap 24-sms-thread
+key esc
+wait 新信息
+key f2
+wait 收件人号码
+type 10086999
+key down
+type nihao
+key space
+key down
+key enter
+wait 未发出
+key up
+key enter
+wait 已重新发送
+key f4
+tel sms 10086 【中国移动】流量提醒：本月已用 80%
+wait 流量提醒
+gone 流量提醒 8000
+
+== 短信：应用没开时来的短信进通知，从通知打开会话并回复；中文按 70 字一条计数；对方收到后标「已送达」
+require-tel
+require-sms
+key f4
+appstop com.phone.messages
+tel sms 13800000004 晚上一起吃饭吗
+wait 晚上一起吃饭吗
+key up
+at sys.notifs
+wait 晚上一起吃饭吗
+key enter
+at com.phone.messages/thread
+wait 13800000004
+type 你好
+wait 还可输入 68 字 · 1 条
+key enter
+wait 收到：你好 8000
+wait 已送达
+snap 24-sms-delivered
+key esc
+at com.phone.messages/list
+wait 13800000004
+key f4
+
+== 短信：验证码短信的通知里能「复制验证码」，在新信息里粘贴得到
+require-tel
+require-sms
+key f4
+tel sms 10690000 【某银行】您的验证码是 482913，5 分钟内有效，请勿泄露
+wait 验证码是 482913
+key up
+at sys.notifs
+wait 验证码是 482913
+type c
+wait 已复制
+key f4
+type /
+type 短信
+key enter
+at com.phone.messages/list
+key f2
+at com.phone.messages/new
+key down
+key tab
+wait 粘贴「482913」
+type v
+wait › 482913
+key esc
+at com.phone.messages/list
+key f4
+
+== 短信：删一条短信、删整个会话都先确认
+require-tel
+require-sms
+key f4
+tel sms 13800000004 再确认一下时间
+wait 再确认一下时间
+key up
+at sys.notifs
+key enter
+at com.phone.messages/thread
+wait 收到：你好
+key up
+type d
+wait 删除这条短信？
+key enter
+wait 已删除
+gone 再确认一下时间 8000
+key up
+type /
+type 删除会话
+key enter
+wait 删除和 13800000004 的整个会话？
+key enter
+at com.phone.messages/list
+gone 13800000004
+key f4
+
+== 短信：拦截的号码发来的短信不通知，放进「已拦截」；取消拦截后照常
+require-tel
+require-sms
+key f4
+type /
+type 短信
+key enter
+at com.phone.messages/list
+type k
+at com.phone.messages/blocked
+type a
+at com.phone.messages/block-number
+type 10690666
+key enter
+at com.phone.messages/blocked
+wait 拦截的号码（1）
+key f4
+at sys.idle
+tel sms 10690666 恭喜您中奖了，点链接领取
+sleep 1000
+gone 恭喜您中奖了 100
+key up
+at sys.notifs
+gone 恭喜您中奖了 100
+key f4
+type /
+type 短信
+key enter
+at com.phone.messages/blocked
+wait 恭喜您中奖了
+key enter
+wait 已取消拦截 10690666
+wait 拦截的号码（0）
+key esc
+at com.phone.messages/list
+key f4
+
+== 短信：phone-smsd 崩溃时到的短信由 telephonyd 留着，smsd 重启后收下、通知，再让 telephonyd 放手
+require-tel
+require-sms
+key f4
+sms-kill
+tel sms 13800000005 smsd 重启时到的短信
+tel pending 1 2000
+wait smsd 重启时到的短信 10000
+tel pending 0 5000
+key f4
+
+== 短信：telephonyd 存下短信、还没交给 smsd 就崩溃，重启后从自己的存储里再交出来，smsd 收下、通知，短信不丢
+require-tel
+require-sms
+key f4
+tel held 13800000006 telephonyd 崩溃前没交出的短信
+tel pending 1 2000
+sleep 1000
+gone telephonyd 崩溃前没交出的短信 100
+tel kill
+wait telephonyd 崩溃前没交出的短信 15000
+tel pending 0 8000
+key up
+at sys.notifs
+wait telephonyd 崩溃前没交出的短信
+key f4
+
+== 彩信：运营商的 WAP 推送里是彩信通知，手机经彩信中心取回：通知里有文字，会话里有文字和图片，图片进相册；回复时附上一张照片，作为彩信发给彩信中心
+require-tel
+require-sms
+key f4
+mms offer 13800000007 周末去爬山吗？
+wait 周末去爬山吗？ 15000
+key up
+at sys.notifs
+wait 周末去爬山吗？
+key enter
+at com.phone.messages/thread
+wait 周末去爬山吗？
+wait 图片 · photo.png 10000
+mms album 13800000007
+snap 24-mms-thread
+key tab
+type p
+wait 选择照片
+key enter
+wait 已添加 1 张图片
+type 好啊
+key enter
+mms sent 1 10000
+wait 已发出 10000
+key esc
+at com.phone.messages/list
+mms album-drop 13800000007
+key f4
+
+== 闪信：class 0 短信直接弹出系统对话框，不存；关掉就没有了，选保存才进短信
+require-tel
+require-sms
+key f4
+tel flash 10086 闪信测试：您的余额为 3.20 元
+flashes 1
+wait 发来的闪信
+wait 闪信测试：您的余额为 3.20 元
+snap 24-flash
+tel pending 0 5000
+key esc
+gone 闪信测试：您的余额为 3.20 元
+tel flash 10086 闪信保存：本月流量剩余 1.2 GB
+flashes 2
+wait 闪信保存：本月流量剩余 1.2 GB
+key enter
+wait 已保存到短信
+key f4
+type /
+type 短信
+key enter
+at com.phone.messages/list
+wait 闪信保存：本月流量剩余 1.2 GB
+type s
+at com.phone.messages/search
+type 闪信测试
+wait 找到 0 条
+key esc
+at com.phone.messages/list
+key f4
+
+== 拦截名单：电话的通话记录里拦截号码，它再来电不响铃、不弹来电界面，直接拒接并记为已拦截；它的短信进「已拦截」；设置 › 号码拦截按号段拦截，号段里的短信也不通知；最后都取消拦截
+require-tel
+require-sms
+key f4
+tel ring 13700000077
+wait 来电
+key esc
+gone 来电 3000
+type /
+type 电话
+key enter
+at com.phone.dialer/main
+key down
+wait 13700000077
+key tab
+type b
+wait 拦截 13700000077？
+key enter
+wait 已拦截 13700000077
+key f4
+tel ring 13700000077
+sleep 1500
+gone 来电 100
+tel sms 13700000077 推销电话套餐
+sleep 1000
+gone 推销电话套餐 100
+key up
+at sys.notifs
+gone 推销电话套餐 100
+key f4
+type /
+type 电话
+key enter
+at com.phone.dialer/main
+wait 已拦截
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root 10000
+type /
+type 设置 · 号码拦截
+key enter
+key enter
+at com.phone.settings/blocking
+type a
+at com.phone.settings/block-add
+type 1066*
+key enter
+at com.phone.settings/blocking
+wait 以 1066 开头的号码
+key f4
+tel sms 10665551234 号段里的广告
+sleep 1000
+gone 号段里的广告 100
+type /
+type 短信
+key enter
+at com.phone.messages/list
+type k
+at com.phone.messages/blocked
+wait 推销电话套餐
+wait 号段里的广告
+key esc
+at com.phone.messages/list
+key f4
+type /
+type 设置 · 号码拦截
+key enter
+key enter
+at com.phone.settings/blocking
+wait 拦截的号码（2）
+key down 2
+key enter
+wait 拦截的号码（1）
+key enter
+wait 拦截的号码（0）
+key f4
+
+== 默认短信应用：设置 › 应用 › 默认应用里把商店装的短信应用设为默认（系统先问）；新短信的通知归它，它能删会话，系统的短信不能删；改回短信不用问
+require-tel
+require-sms
+require-example smslite
+key f4
+setting developer_mode 1
+at sys.idle
+pkg-install smslite
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root 10000
+type /
+type 设置 · 默认应用
+key enter
+key enter
+at com.phone.settings/defaults
+wait 短信
+wait 不是系统自带的
+key down
+key enter
+wait 把「简讯」设为默认短信应用？
+key enter
+key esc
+wait 短信：简讯
+key f4
+tel sms 13800000011 给默认应用的短信
+wait 给默认应用的短信
+key up
+at sys.notifs
+wait 给默认应用的短信
+key f4
+type /
+type 短信
+key enter
+at com.phone.messages/list
+wait 给默认应用的短信
+key first
+type d
+wait 删除和 13800000011 的整个会话？
+key enter
+wait 只有默认短信应用
+key f4
+type /
+type 简讯
+key enter
+wait 给默认应用的短信
+key down 2
+type d
+wait 确认删除会话？
+key enter
+gone 给默认应用的短信 5000
+key f4
+type /
+type 设置 · 默认应用
+key enter
+key enter
+at com.phone.settings/defaults
+key enter
+key esc
+wait 短信：短信
+key f4
+appstop com.example.smslite
+pkg-uninstall com.example.smslite
+setting developer_mode 0
+
+== 通讯录：待机按右软键打开通讯录（诺基亚的名片夹）；新建联系人：姓名、两个号码（在选项里选号码类型）和备注，存进系统的通讯录；搜索框按拼音首字母、九宫格数字都找得到
+key f4
+at sys.idle
+key f2
+at com.phone.contacts/list
+wait 全部（
+key f2
+at com.phone.contacts/edit
+wait 新建联系人
+type 赵六
+key enter
+type 13700001234
+wait 住宅号码
+key enter
+type 01065520000
+key tab
+wait 类型：工作
+type 3
+wait 工作号码
+key enter
+key enter
+type 大学同学
+key f2
+at com.phone.contacts/view
+wait 13700001234
+wait 01065520000
+wait 大学同学
+snap 50-contacts-view
+key esc
+at com.phone.contacts/list
+wait 赵六
+type zl
+wait 找到（1）
+wait 赵六
+key backspace 2
+wait 全部（
+type 95
+wait 找到（1）
+wait 赵六
+snap 51-contacts-search
+key backspace 2
+key f4
+
+== 通讯录：新建的联系人在电话里智能拨号也找得到（九宫格数字拼出拼音首字母），列出的是它的号码
+key f4
+type /
+type 电话
+key enter
+wait 最近通话
+type 95
+wait 赵六
+wait 13700001234
+key backspace 2
+key f4
+
+== 通讯录：联系人页上按通话键直接拨出（系统的通讯录和电话一样不再确认），通话界面归电话应用；「发短信」打开和这个号码的会话，返回回到通讯录
+require-tel
+require-sms
+key f4
+appstop com.phone.contacts
+key f2
+at com.phone.contacts/list
+type zl
+wait 赵六
+key down
+key enter
+at com.phone.contacts/view
+key call
+wait 正在呼叫
+wait 赵六
+wait 通话中 6000
+key end
+wait 通话结束
+key f4
+key f2
+at com.phone.contacts/view
+type m
+at com.phone.messages/thread
+wait 赵六
+key esc
+at com.phone.contacts/view
+key f4
+
+== 通讯录：编辑联系人：改名、删掉一个号码，存好后详情跟着变
+key f4
+appstop com.phone.contacts
+key f2
+at com.phone.contacts/list
+type zl
+wait 找到（1）
+key down
+key enter
+at com.phone.contacts/view
+wait 01065520000
+type e
+at com.phone.contacts/edit
+wait 编辑联系人
+fill 赵小六
+key enter
+key enter
+fill
+key f2
+at com.phone.contacts/view
+wait 赵小六
+gone 01065520000
+wait 13700001234
+key f4
+
+== 通讯录：电话的最近通话里把陌生号码存为联系人：电话请通讯录新建（号码已填好），存好后回到电话，记录上显示名字；在通讯录里删掉后记录上又只有号码
+require-tel
+key f4
+tel ring 13700005678
+wait 来电 · 中国移动
+key esc
+gone 来电 · 中国移动
+type /
+type 电话
+key enter
+wait 最近通话
+wait 13700005678
+key down
+type /
+type 保存号码
+key enter
+at com.phone.contacts/edit
+wait 13700005678
+type 钱七
+key f2
+at com.phone.dialer/main
+wait 钱七
+key f4
+appstop com.phone.contacts
+key f2
+at com.phone.contacts/list
+type qq
+wait 钱七
+key down
+key enter
+at com.phone.contacts/view
+type d
+wait 删除联系人「钱七」？
+key enter
+at com.phone.contacts/list
+wait 已删除「钱七」
+key f4
+type /
+type 电话
+key enter
+wait 13700005678
+gone 钱七
+key f4
+
+== 通讯录：短信会话里把陌生号码存为联系人，存好后会话标题换成名字
+require-tel
+require-sms
+key f4
+tel sms 13700004444 我是新来的同事
+wait 我是新来的同事 10000
+key f4
+appstop com.phone.messages
+type /
+type 短信
+key enter
+at com.phone.messages/list
+wait 13700004444
+key enter
+at com.phone.messages/thread
+wait 我是新来的同事
+key up
+type /
+type 保存号码
+key enter
+at com.phone.contacts/edit
+wait 13700004444
+type 吴十
+key f2
+at com.phone.messages/thread
+wait 吴十
+key esc
+at com.phone.messages/list
+wait 吴十
+key f4
+appstop com.phone.contacts
+key f2
+at com.phone.contacts/list
+type ws
+wait 吴十
+key down
+key enter
+at com.phone.contacts/view
+type d
+wait 删除联系人「吴十」？
+key enter
+at com.phone.contacts/list
+key f4
+
+== 通讯录：从「文件」导入 vCard 名片：系统列出「文件」里的 .vcf，读出新联系人请用户确认，已在通讯录里的不再加一遍
+file-put 朋友.vcf BEGIN:VCARD\nVERSION:3.0\nFN:孙八\nTEL;TYPE=CELL:13700002222\nNOTE:从名片导入\nEND:VCARD\nBEGIN:VCARD\nVERSION:2.1\nN;CHARSET=UTF-8:张;三\nTEL;CELL:13800000001\nEND:VCARD
+key f4
+appstop com.phone.contacts
+key f2
+at com.phone.contacts/list
+key down
+type /
+type 导入
+key enter
+wait 导入联系人
+wait 朋友.vcf
+key enter
+wait 里有 1 个新联系人
+wait 孙八
+wait 另有 1 个已在通讯录里
+snap 52-contacts-import
+key enter
+wait 已加入 1 个联系人
+wait 孙八
+type sb
+wait 找到（1）
+key down
+key enter
+at com.phone.contacts/view
+wait 13700002222
+wait 从名片导入
+key f4
+
+== 通讯录：从 SIM 卡导入：导入菜单里有「SIM 卡上的联系人」，系统经 telephonyd 读 SIM 卡的电话簿（模拟基带上是 sim-network.json 里的三个），用户确认后加入；再导一次不重复加
+require-tel
+key f4
+appstop com.phone.contacts
+key f2
+at com.phone.contacts/list
+key down
+type /
+type 导入
+key enter
+wait 导入联系人
+wait SIM 卡上的联系人
+type s
+wait 里有 3 个新联系人 8000
+wait 刘阿姨
+key enter
+wait 已加入 3 个联系人
+type wsf
+wait 王师傅
+key backspace 3
+key down
+type /
+type 导入
+key enter
+wait SIM 卡上的联系人
+type s
+wait 里的联系人都已在通讯录里 8000
+type lay
+wait 刘阿姨
+key down
+key enter
+at com.phone.contacts/view
+wait 13800138000
+type d
+wait 删除联系人「刘阿姨」？
+key enter
+at com.phone.contacts/list
+key backspace 3
+type wsf
+wait 王师傅
+key down
+key enter
+at com.phone.contacts/view
+wait 8613912345678
+type d
+wait 删除联系人「王师傅」？
+key enter
+at com.phone.contacts/list
+key backspace 3
+type zgydkf
+wait 中国移动客服
+key down
+key enter
+at com.phone.contacts/view
+type d
+wait 删除联系人「中国移动客服」？
+key enter
+at com.phone.contacts/list
+key f4
+
+== 短信：没发出去的内容是会话的草稿：列表里写「草稿：」，再打开会话时在输入框里；phone-smsd 重启后还在；清空输入框后草稿没了
+require-tel
+require-sms
+key f4
+appstop com.phone.messages
+type /
+type 短信
+key enter
+at com.phone.messages/list
+key f2
+at com.phone.messages/new
+type 13800000012
+key down
+type 周五开会别忘了
+key esc
+at com.phone.messages/list
+wait 草稿：周五开会别忘了
+sms-kill
+sleep 1500
+key f4
+appstop com.phone.messages
+type /
+type 短信
+key enter
+at com.phone.messages/list
+wait 草稿：周五开会别忘了 10000
+key first
+key enter
+at com.phone.messages/thread
+wait 13800000012
+wait 周五开会别忘了
+key backspace 7
+key esc
+at com.phone.messages/list
+gone 草稿：周五开会别忘了 8000
+gone 13800000012
+key f4
+
+== 短信：定时发送：新信息的选项里「定时发送」，选好日期和时间后存成定时短信，会话里写「定时发送 · 时间」；phone-smsd 重启后还在；到点发出、对方收到；最后删掉会话
+require-tel
+require-sms
+key f4
+appstop com.phone.messages
+type /
+type 短信
+key enter
+at com.phone.messages/list
+key f2
+at com.phone.messages/new
+type 13800000013
+key down
+type 明天早上见
+key tab
+wait 定时发送
+type t
+at com.phone.messages/schedule
+wait 发给 13800000013：明天早上见
+key f2
+wait 将在
+at com.phone.messages/thread
+wait 定时发送 · 8000
+sms-kill
+sleep 1500
+key esc
+at com.phone.messages/list
+wait 定时：明天早上见 10000
+key first
+key enter
+at com.phone.messages/thread
+wait 定时发送 · 8000
+sms due
+wait 已送达 10000
+gone 定时发送 ·
+key up
+type /
+type 删除会话
+key enter
+wait 删除和 13800000013 的整个会话？
+key enter
+at com.phone.messages/list
+gone 13800000013 8000
+key f4
+
+== 短信：按关键词拦截：「已拦截」里加关键词，含有它的短信（字中间夹了空格也算）不通知、放进「已拦截」；最后取消关键词、删掉那条
+require-tel
+require-sms
+key f4
+appstop com.phone.messages
+type /
+type 短信
+key enter
+at com.phone.messages/list
+type k
+at com.phone.messages/blocked
+type w
+at com.phone.messages/block-word
+type 代开发票
+key enter
+at com.phone.messages/blocked
+wait 拦截的关键词（1）
+key f4
+at sys.idle
+tel sms 13800000015 本公司代开 发票，价格优惠
+sleep 1000
+gone 价格优惠 100
+key up
+at sys.notifs
+gone 价格优惠 100
+key f4
+type /
+type 短信
+key enter
+at com.phone.messages/blocked
+wait 价格优惠
+key first
+key enter
+wait 已取消拦截「代开发票」
+wait 拦截的关键词（0）
+key first
+wait-re 13800000015
+type d
+wait 删除和 13800000015 的整个会话？
+key enter
+gone 价格优惠 8000
+key esc
+at com.phone.messages/list
+key f4
+
+== 短信：从「文件」恢复安卓手机的备份（「SMS Backup & Restore」的 XML）：系统写明有几条、确认后加进会话，再恢复一次一条不多；备份到「文件」（同样的格式，系统先问）
+require-tel
+require-sms
+key f4
+file-put android-sms.xml <?xml version='1.0' encoding='UTF-8' standalone='yes' ?>\n<smses count="2" type="full"><sms protocol="0" address="13800000014" date="1763000000000" type="1" body="安卓上的旧短信 &#55357;&#56832;" read="1" /><sms protocol="0" address="13800000014" date="1763000060000" type="2" body="收到了" read="1" /></smses>
+appstop com.phone.messages
+type /
+type 短信
+key enter
+at com.phone.messages/list
+key tab
+wait 从文件恢复
+type r
+wait 恢复短信 · 给「短信」
+wait android-sms.xml
+key enter
+wait 」里有 2 条
+key enter
+wait 已恢复 2 条短信 8000
+key tab
+type r
+wait android-sms.xml
+key enter
+wait 」里有 2 条
+key enter
+wait 已恢复 0 条短信 8000
+key tab
+wait 备份到文件
+type f
+wait 条短信存成「sms-
+key enter
+wait 已存到文件
+files sms- present
+type s
+at com.phone.messages/search
+type 安卓上的旧短信
+wait 找到 1 条
+key down
+key enter
+at com.phone.messages/thread
+wait 收到了
+key up
+type /
+type 删除会话
+key enter
+wait 删除和 13800000014 的整个会话？
+key enter
+at com.phone.messages/search
+key esc
+at com.phone.messages/list
+key f4
+files-drop android-sms
+files-drop sms-
+files sms- absent
+
+== 彩信：彩信里的名片可以加入通讯录（和从「文件」导入名片一样由系统写明、确认）
+require-tel
+require-sms
+key f4
+mms vcard 13800000016 李雷.vcf BEGIN:VCARD\nVERSION:3.0\nFN:李雷\nTEL;TYPE=CELL:13700006666\nEND:VCARD
+wait 李雷.vcf 15000
+key up
+at sys.notifs
+wait 李雷.vcf
+key enter
+at com.phone.messages/thread
+wait 名片：李雷.vcf 10000
+key up
+key enter
+wait 里有 1 个新联系人
+wait 李雷
+key enter
+wait 已加入 1 个联系人
+type /
+type 删除会话
+key enter
+wait 删除和 13800000016 的整个会话？
+key enter
+at com.phone.messages/list
+key f4
+appstop com.phone.contacts
+key f2
+at com.phone.contacts/list
+type ll
+wait 李雷
+key down
+key enter
+at com.phone.contacts/view
+wait 13700006666
+type d
+wait 删除联系人「李雷」？
+key enter
+at com.phone.contacts/list
+key f4
+
+== 通讯录：群组：新建「家人」，把妈妈加进去，群组页只列它的联系人，联系人页写着所在的群组；删掉群组时联系人还在
+key f4
+appstop com.phone.contacts
+key f2
+at com.phone.contacts/list
+key tab
+wait 群组
+type g
+at com.phone.contacts/groups
+key f2
+at com.phone.contacts/group-name
+type 家人
+key enter
+at com.phone.contacts/groups
+wait 0 个联系人
+key first
+key enter
+at com.phone.contacts/group
+wait 这个群组里没有联系人
+key tab
+type a
+at com.phone.contacts/group-add
+type ma
+wait 妈妈
+key down
+key enter
+wait 已加入「妈妈」
+key esc
+at com.phone.contacts/group
+wait 全部（1）
+wait 妈妈
+key first
+key enter
+at com.phone.contacts/view
+wait 家人
+key esc
+at com.phone.contacts/group
+key esc
+at com.phone.contacts/groups
+wait 1 个联系人
+key first
+type d
+wait 删除群组「家人」？
+key enter
+wait 还没有群组
+key esc
+at com.phone.contacts/list
+type ma
+wait 妈妈
+key backspace 2
+key f4
+
+== 通讯录：合并重复的联系人：同名的两个「周七」列在「合并重复的联系人」里，确认后合成一个、两个号码都在；最后删掉
+file-put 周七.vcf BEGIN:VCARD\nVERSION:3.0\nFN:周七\nTEL;TYPE=CELL:13700007777\nEND:VCARD\nBEGIN:VCARD\nVERSION:3.0\nFN:周七\nTEL;TYPE=WORK:13700008888\nNOTE:老同事\nEND:VCARD
+key f4
+appstop com.phone.contacts
+key f2
+at com.phone.contacts/list
+key down
+type /
+type 导入
+key enter
+wait 导入联系人
+wait 周七.vcf
+key enter
+wait 里有 2 个新联系人
+key enter
+wait 已加入 2 个联系人
+key tab
+type m
+at com.phone.contacts/dups
+wait 周七 / 周七
+key first
+key enter
+wait 合并成「周七」
+key enter
+wait 已合并成「周七」
+wait 没有重复的联系人
+key esc
+at com.phone.contacts/list
+type zq
+wait 找到（1）
+key down
+key enter
+at com.phone.contacts/view
+wait 13700007777
+wait 13700008888
+wait 老同事
+type d
+wait 删除联系人「周七」？
+key enter
+at com.phone.contacts/list
+key f4
+files-drop 周七.vcf
+
+== 通讯录：联系人的邮箱、地址和照片：导入的名片带着邮箱和地址，按邮箱搜得到；新建时填邮箱（选项里选类型）、在地址页填地址，联系人页列出它们；从图片里选一张做照片，再去掉；最后删掉两个
+file-put 吴九.vcf BEGIN:VCARD\nVERSION:3.0\nFN:吴九\nTEL;TYPE=CELL:13700009999\nEMAIL;TYPE=INTERNET,HOME:wujiu@kario.test\nADR;TYPE=HOME:;;解放路 9 号;杭州;浙江;310000;中国\nEND:VCARD
+key f4
+appstop com.phone.contacts
+key f2
+at com.phone.contacts/list
+key down
+type /
+type 导入
+key enter
+wait 导入联系人
+wait 吴九.vcf
+key enter
+wait 里有 1 个新联系人
+key enter
+wait 已加入 1 个联系人
+type kario.test
+wait 找到（1）
+wait 吴九
+key down
+key enter
+at com.phone.contacts/view
+wait wujiu@kario.test
+wait 解放路 9 号、杭州
+type d
+wait 删除联系人「吴九」？
+key enter
+at com.phone.contacts/list
+key f4
+appstop com.phone.contacts
+key f2
+at com.phone.contacts/list
+wait 全部（
+key f2
+at com.phone.contacts/edit
+wait 新建联系人
+type 周八
+key enter
+type 13600008888
+wait 住宅号码
+key enter
+key enter
+key enter
+fill zhouba@kario.test
+key tab
+wait 类型：工作
+type 2
+wait 工作邮箱
+key enter
+key enter
+at com.phone.contacts/address
+wait 住宅地址（选项里选类型）
+type 建国路 2 号
+key enter
+key enter
+type 北京
+key f2
+at com.phone.contacts/edit
+wait 建国路 2 号、北京
+key f2
+at com.phone.contacts/view
+wait zhouba@kario.test
+wait 建国路 2 号、北京
+type p
+wait 选择照片
+key enter
+wait 已存好照片 8000
+carddav-contact 周八 | 带照片
+wait ▀▀▀▀ 8000
+type x
+wait 确认去掉照片？
+key enter
+wait 已去掉照片
+type d
+wait 删除联系人「周八」？
+key enter
+at com.phone.contacts/list
+key f4
+files-drop 吴九.vcf
+
+== 短信：商店装的应用经系统的联系人选择器填收件人（只拿到选中的号码），发起等验证码：下一条带验证码的短信来时系统写明给谁、用户同意才交给它
+require-tel
+require-sms
+require-example smslite
+key f4
+setting developer_mode 1
+at sys.idle
+pkg-install smslite
+type /
+type 简讯
+key enter
+at com.example.smslite/main
+key tab
+wait 选择联系人
+type c
+wait 选择联系人 · 给「简讯」
+type lisi
+wait 李四 · 手机 13800000002
+key enter
+at com.example.smslite/main
+wait 13800000002
+key tab
+type o
+wait 正在等带验证码的短信
+tel sms 10690000 【某银行】您的验证码是 739201，5 分钟内有效
+wait 把验证码 739201 交给它？ 8000
+wait 「简讯」要这条短信里的验证码
+key enter
+wait 验证码：739201
+key f4
+appstop com.example.smslite
+pkg-uninstall com.example.smslite
+setting developer_mode 0
+appstop com.phone.messages
+type /
+type 短信
+key enter
+at com.phone.messages/list
+key first
+wait-re 10690000
+key enter
+at com.phone.messages/thread
+wait 739201
+key up
+type d
+wait 删除这条短信？
+key enter
+wait 已删除
+gone 739201 8000
+key esc
+at com.phone.messages/list
+key f4
+
+#part chat
+== 通讯录：蓝牙收名片：配对的设备发来 .vcf（vCard 2.1，quoted-printable 编码的中文名），收进「文件」后系统读出联系人、问要不要加入通讯录
+require-radios
+key f4
+bt-push 名片.vcf BEGIN:VCARD\nVERSION:2.1\nN;CHARSET=UTF-8;ENCODING=QUOTED-PRINTABLE:=E5=91=A8;=E4=B9=9D\nTEL;CELL:13700003333\nEND:VCARD
+wait 通过蓝牙给你发来 8000
+wait 名片.vcf
+key enter
+bt-peer-result ok
+wait 里有 1 个新联系人 5000
+wait 周九
+wait 来自：Kario 耳机
+key enter
+wait 已加入 1 个联系人
+appstop com.phone.contacts
+key f2
+at com.phone.contacts/list
+type zj
+wait 周九
+key down
+key enter
+at com.phone.contacts/view
+wait 13700003333
+type d
+wait 删除联系人「周九」？
+key enter
+at com.phone.contacts/list
+key f4
+
+#part phone
+== 通讯录：全部导出成 vCard 存进「文件」：系统先确认（文件不交给应用）；导入时列得出导出的文件
+key f4
+appstop com.phone.contacts
+key f2
+at com.phone.contacts/list
+key down
+type /
+type 导出
+key enter
+wait 放进文件？
+wait 能看到所有联系
+key enter
+wait 已存到文件
+type /
+type 导入
+key enter
+wait-re 通讯录 \d{4}-\d{2}-\d{2}\.vcf
+key esc
+gone 导入联系人
+key f4
+
+== 通讯录：删除联系人先确认：取消就留着，确认后通讯录里没有了，电话的智能拨号也找不到
+key f4
+appstop com.phone.contacts
+key f2
+at com.phone.contacts/list
+type zxl
+wait 赵小六
+key down
+type /
+type 删除
+key enter
+wait 删除联系人「赵小六」？
+key esc
+gone 删除联系人
+wait 赵小六
+type /
+type 删除
+key enter
+wait 删除联系人「赵小六」？
+key enter
+wait 已删除「赵小六」
+wait 找到（0）
+key f4
+type /
+type 电话
+key enter
+wait 最近通话
+type 95
+wait 没有匹配的联系人
+key backspace 2
+key f4
+appstop com.phone.contacts
+key f2
+at com.phone.contacts/list
+type sb
+wait 孙八
+key down
+key enter
+at com.phone.contacts/view
+type d
+wait 删除联系人「孙八」？
+key enter
+at com.phone.contacts/list
+key f4
+
+#part keys
+== SIM 卡 PIN：卡锁着时系统界面要 PIN 码，输错提示剩余次数，输对后注册上网络；锁着也能打紧急电话（PIN 界面输 112 按通话键），别的号码还是要先输 PIN
+require-tel
+key f4
+tel lock 1234
+wait SIM 卡已锁定
+wait 拨打紧急电话：输入号码后按通话键。
+type 112
+key call
+at com.phone.dialer/call
+wait 112
+key f4
+at com.phone.dialer/main
+key f4
+at sys.idle
+type 10086
+key call
+wait SIM 卡已锁定
+wait SIM 已锁
+type 0000
+key enter
+wait PIN 码不对，还可以试 2 次
+snap 47-sim-pin
+type 1234
+key enter
+gone SIM 卡已锁定 5000
+gone SIM 已锁 5000
+
+== 设置 › SIM 卡锁：改 PIN 码、关掉 PIN 锁都在系统的 PIN 界面输入（设置应用拿不到 PIN 码）
+require-tel
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · SIM 卡锁
+key enter
+wait 开机时要输入 PIN 码
+type c
+wait 修改 PIN 码
+type 1234
+key enter
+wait 新的 PIN 码
+type 2468
+key enter
+wait 再输一次新的 PIN 码
+type 2468
+key enter
+wait PIN 码已修改
+key enter
+wait 关闭 SIM 卡锁
+type 1234
+key enter
+wait PIN 码不对
+type 2468
+key enter
+wait 已关闭 SIM 卡锁
+key f4
+
+== 闹钟：系统到点响铃（应用不在前台）
+key f4
+type /
+type 闹钟
+key enter
+wait 新建闹钟
+key f2
+wait 标签
+type +2
+key down
+type qichuang
+key space
+key down
+key enter
+wait 闹钟已设为
+key f4
+timeshift 180
+wait 闹钟响了 4000
+wait 起床
+audio alarm
+vibrated
+snap 25-alarm
+key enter
+gone 闹钟响了
+audio idle
+type /
+type 闹钟
+key enter
+wait 起床
+type d
+wait 确认删除
+key enter
+wait 没有闹钟
+key f4
+
+== 计算器：宫格按键，诺基亚式 * 切换运算符
+key f4
+type /
+type 计算器
+key enter
+wait 小数点
+type 12
+type *
+type 30
+key enter
+wait = 42
+snap 26-calc
+type 6
+type **
+type 2
+type =
+wait = 4
+
+== 画布应用：诺基亚式贪吃蛇。棋盘是应用给的图形（单色液晶屏，分数是像素字），由系统画（文本和像素界面都行）；开局前选级别、切换撞墙 / 穿墙，聚焦的画布收到方向键、数字、# 和 OK，「选项」菜单列出同样的动作和按键，返回仍归系统；级别存在应用数据里，进程结束后还在
+key f4
+type /
+type 贪吃蛇
+key enter
+wait 级别 5 · 4 6 调整
+snap 47-snake-menu
+key right
+wait 级别 6 · 4 6 调整
+key tab
+wait 提高级别（更快）
+wait 改成穿墙：从对边出来
+type 6
+wait 级别 7 · 4 6 调整
+type #
+wait 穿墙：蛇从对边出来
+type #
+wait 撞墙：碰到边游戏结束
+gone 撞墙：碰到边游戏结束 5000
+key enter
+wait 方向键或 2 4 6 8 转向
+snap 47-snake
+type 5
+wait 已暂停
+snap 47-snake-paused
+type 5
+wait 方向键或 2 4 6 8 转向
+key tab
+wait 关闭声音
+key esc
+wait 已暂停
+type 5
+wait 方向键或 2 4 6 8 转向
+key down
+wait OK 开新局 10000
+snap 47-snake-over
+key enter
+wait 级别 7 · 4 6 调整
+key esc
+at sys.idle
+lowmem-kill com.phone.snake
+appstate com.phone.snake stopped
+type /
+type 贪吃蛇
+key enter
+wait 级别 7 · 4 6 调整
+key esc
+at sys.idle
+
+== 音乐：后台播放不被冻结；来电时暂停，挂断后继续
+require-audio
+require-tel
+key f4
+type /
+type 音乐
+key enter
+wait 晨光
+key enter
+wait 播放中
+audio media
+wait-re 0:0[3-9] 5000
+snap 27-music
+freeze-after 1000
+key f4
+sleep 2000
+appstate com.phone.music running
+tel ring 13800000001
+wait 来电 · 中国移动
+audio ring
+audio paused media
+key esc
+gone 来电 · 中国移动
+audio media
+freeze-after 0
+type /
+type 音乐
+key enter
+wait 正在播放
+key enter
+wait 已暂停
+key f4
+
+== 媒体键：播放 / 暂停、下一首、上一首在任何界面都能用（耳机线控、键盘的媒体键）
+require-audio
+key f4
+type /
+type 音乐
+key enter
+wait 晨光
+key enter
+wait 播放中
+key f4
+at sys.idle 3000
+wait 正在播放 晨光
+key playpause
+audio paused media
+key playpause
+audio media
+key next
+wait 正在播放 夜行
+key previous
+wait 正在播放 晨光
+key playpause
+audio paused media
+
+#part chat
+== 推送：到账通知由系统显示，不唤醒冻结的飞钱；数据推送短暂唤醒它记账
+require-push
+freeze-after 500
+key f4
+at sys.idle
+type /
+type 飞钱
+key enter
+wait 账单
+key f4
+appstate com.phone.wallet frozen 8000
+push com.phone.wallet 到账提醒 | 张三向你转账 ¥88.00 |
+wait 飞钱 · 到账提醒
+snap 28-push-banner
+sleep 1000
+appstate com.phone.wallet frozen 100
+push com.phone.wallet | | {"type":"income","id":"R1001","from":"张三","amount":8800}
+appstate com.phone.wallet running 4000
+appstate com.phone.wallet frozen 8000
+type /
+type 飞钱
+key enter
+wait 张三 转入
+key f4
+
+== 推送：应用进程不在时，数据推送在后台启动它
+require-push
+appkill com.phone.wallet
+appstate com.phone.wallet stopped
+push sealed com.phone.wallet | | {"type":"income","id":"R1002","from":"李四","amount":12000}
+push-sealed com.phone.wallet
+appstate com.phone.wallet running 4000
+appstate com.phone.wallet frozen 8000
+freeze-after 0
+type /
+type 飞钱
+key enter
+wait 1 笔
+key down 3
+key enter
+wait 李四 转入
+snap 29-push-bill
+key f4
+
+== 推送：普通优先级的数据不立刻唤醒冻结的应用，等系统统一唤醒时再交付
+require-push
+freeze-after 500
+type /
+type 飞钱
+key enter
+wait 账单
+key f4
+appstate com.phone.wallet frozen 8000
+push normal com.phone.wallet | | {"type":"income","id":"R1003","from":"王五","amount":500}
+sleep 1500
+appstate com.phone.wallet frozen 100
+timeshift 960
+appstate com.phone.wallet running 4000
+appstate com.phone.wallet frozen 8000
+type /
+type 飞钱
+key enter
+wait 王五 转入
+key f4
+freeze-after 0
+
+== 推送网关集群：两个实例互相同步；推到设备没连着的实例，由连着的那个送达；设备连着的实例被杀掉，设备马上换到另一个，令牌照用、消息照到；被杀的实例重启后从同伴拉回状态
+require-push
+require-pushgw-cluster
+key f4
+push other com.phone.wallet 经另一个实例 | 网关集群 |
+wait 飞钱 · 经另一个实例
+pushgw-kill
+push com.phone.wallet 实例被杀之后 | 网关集群 |
+wait 飞钱 · 实例被杀之后
+push other com.phone.wallet 重启的实例 | 网关集群 |
+wait 飞钱 · 重启的实例 10000
+
+== 推送：鸿雁的 VoIP 推送由应用报告来电，系统全屏接听；消息推送进会话
+require-push
+push voip com.phone.chat | | {"type":"call","peer":"lisi"}
+wait 邀请你视频通话 8000
+key esc
+gone 邀请你视频通话
+push com.phone.chat | | {"type":"msg","peer":"zhangsan","text":"推送送达的消息"}
+wait 推送送达的消息
+gone 推送送达的消息 8000
+
+== 鸿雁不常驻：进程冻结后，由服务器经推送叫醒并报告来电
+require-push
+freeze-after 500
+key f4
+type /
+type 鸿雁
+key enter
+wait 输入消息
+key esc
+key tab
+type i
+wait 3 秒后张三来电
+key f4
+appstate com.phone.chat frozen 2500
+wait 邀请你视频通话 8000
+key end
+gone 邀请你视频通话
+freeze-after 0
+type /
+type 鸿雁
+key enter
+wait 张三
+type /
+type 张三
+key enter
+key enter
+wait 输入消息
+key f4
+
+== 鸿雁：语音消息（录音有状态栏指示；录音和回放都走共享内存，不经过 Shell）
+require-audio
+key f4
+type /
+type 鸿雁
+key enter
+wait 输入消息
+key tab
+type r
+wait 录音中
+wait ● 麦克风
+sleep 1500
+snap 32-voice-rec
+key enter
+wait [语音 0:0
+gone ● 麦克风
+wait 收到语音
+key up 2
+key enter
+audio media
+snap 33-voice-sent
+
+== 录音：应用离开前台时系统停止录音
+require-audio
+key tab
+type r
+wait ● 麦克风
+key f4
+at sys.idle
+gone ● 麦克风
+type /
+type 鸿雁
+key enter
+wait 录音已中断
+key esc
+wait 输入消息
+key f4
+
+== 相机：系统取景框，OK 拍照，照片进系统图片（应用只拿到照片编号）
+key f4
+type /
+type 相机
+key enter
+wait 拍照
+key enter
+wait 按 OK 拍照
+frames 5
+snap 34-camera
+key enter
+wait 已保存到图片
+snap 35-camera-shot
+key f4
+
+== 图片：「相册」权限（系统应用预授权）把示例照片和刚拍的照片排成网格；← → 翻看，详细信息里是尺寸和格式
+key f4
+type /
+type 图片
+key enter
+wait-re 图片（1[01]）
+wait 相机拍摄
+wait 示例：海边
+snap 36-gallery
+key enter
+wait 相机拍摄 · 1/9
+key right
+wait 示例：傍晚 · 2/9
+key left
+wait 相机拍摄 · 1/9
+key left
+wait 9/9
+key right
+wait 1/9
+type i
+wait 480×360
+wait image/jpeg
+key esc
+wait 1/9
+key esc
+wait-re 图片（1[01]）
+key f4
+
+== 视频：图片里的示例视频由系统解码（应用只拿到画面的流名），画面跟着声音走；OK 暂停，→ 快进，离开画面就关闭
+require-video
+key f4
+type /
+type 图片
+key enter
+wait-re 图片（[0-9]+）
+type /
+type 湿地
+key enter
+key enter
+wait 正在播放
+frames 10
+wait-re 0:0[2-4] / 0:15
+snap 52-video
+key enter
+wait 已暂停
+key right
+wait-re 0:0[6-8] / 0:15
+key enter
+wait 正在播放
+wait-re 0:(09|1[0-4]) / 0:15
+key esc
+wait-re 图片（[0-9]+）
+key f4
+
+== 鸿雁：发图走系统选择器，只交出选中的一张（只读文件）
+key f4
+type /
+type 鸿雁
+key enter
+wait 输入消息
+key tab
+type p
+wait 选择照片
+snap 37-picker
+key enter
+wait 已发送照片
+gone 已发送照片 5000
+key down 5
+wait 这张拍得好
+snap 38-chat-photo
+key f4
+
+== 图片：删除照片要系统确认（照片属于系统，应用跳不过这一步）
+key f4
+type /
+type 图片
+key enter
+wait-re 图片（1[01]）
+type /
+type 相机拍摄
+key enter
+key enter
+wait 相机拍摄 · 1/9
+key f2
+wait 要删除照片
+key esc
+gone 要删除照片
+wait 1/9
+key f2
+wait 要删除照片
+key enter
+wait 已删除
+wait-re 图片（(9|10)）
+key f4
+
+== 分享：系统列出能接收的应用，照片随分享授权给对方
+key f4
+type /
+type 图片
+key enter
+wait-re 图片（(9|10)）
+type /
+type 示例：傍晚
+key enter
+key enter
+wait 示例：傍晚 · 1/8
+type s
+wait 分享到
+wait 分享照片
+snap 42-share
+key enter
+wait 分享给
+key enter
+wait 已分享给
+wait 这张拍得好
+key f4
+
+#part keys
+== 菜单：九宫格设备上，主菜单里按数字键直达应用（3 是「通讯录」），第 10 到 12 格是 * 0 #（10 是「工具」），文件夹里也一样（「工具」里按 1 是计算器）
+keypad t9
+key f4
+at sys.idle
+key enter
+at sys.menu
+type 3
+at com.phone.contacts/list
+key f4
+key enter
+at sys.menu
+type *
+at sys.folder:tools
+wait 闹钟
+snap 48-menu-folder
+type 1
+wait ÷
+key f4
+keypad qwerty
+
+== 待机：直接按数字拨号（诺基亚）；全键盘上打字即搜索（黑莓）
+keypad t9
+key f4
+at sys.idle
+type 1
+at main
+type 0086
+wait 中国移动
+snap 30-idle-dial
+key f4
+keypad qwerty
+at sys.idle
+snap 31-idle-active
+type 飞
+wait 命令
+key enter
+wait 账单
+key f4
+at sys.idle
+
+#part phone
+== 通话键：待机时按通话键看最近通话，再按一次回拨；通话中按挂断键挂断（诺基亚的绿键、红键）
+require-tel
+key f4
+at sys.idle
+key call
+wait 最近通话
+key call
+wait 正在呼叫
+wait 通话中 6000
+key end
+wait 通话结束
+key f4
+at sys.idle
+
+#part keys
+== 来电：按挂断键拒接，按通话键接听
+require-tel
+tel ring 13800000002
+wait 来电 · 中国移动
+key end
+gone 来电 · 中国移动
+tel ring 13800000002
+wait 来电 · 中国移动
+key call
+wait 通话中 6000
+key end
+wait 通话结束
+key f4
+
+== 键盘锁：待机时左软键再按 * 锁定；锁定后按键只提示怎么解锁，左软键再按 * 解锁
+key f4
+at sys.idle
+key tab
+type *
+wait 键盘已锁
+snap 39-keylock
+type 5
+at sys.idle
+key enter
+at sys.idle
+wait 按「解锁」再按 *
+key tab
+type *
+wait 键盘已解锁
+key enter
+at sys.menu
+key f4
+
+== 紧急呼叫：键盘锁着也能拨 112，不用解锁
+require-tel
+key f4
+at sys.idle
+key tab
+type *
+wait 键盘已锁
+type 112
+wait 紧急号码 112
+key call
+wait 正在呼叫 8000
+wait 112
+key end
+wait 通话结束 8000
+wait 出 112
+key f4
+at sys.idle
+type 5
+wait 按「解锁」再按 *
+key tab
+type *
+wait 键盘已解锁
+key f4
+
+== 锁屏 PIN 码：设置 › 安全里设置，PIN 码在系统界面输入（设置应用拿不到），由密钥服务保存慢哈希
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 指纹与密码
+key enter
+key enter
+wait 屏幕锁定
+key enter
+wait 设置锁屏 PIN 码
+type 123
+key enter
+wait PIN 码是 4 到 16 位数字
+type 2468
+key enter
+wait 再输一次新的 PIN 码
+type 2468
+key enter
+wait 已设置锁屏 PIN 码
+wait 用 PIN 码或指纹解锁
+snap 71-security
+
+== 锁屏指纹：设置 › 安全 › 指纹要先确认 PIN 码；同一个手指触碰几次录入，换了手指不算；打开「指纹用于支付」
+type /
+type 指纹
+key enter
+key enter
+wait 确认 PIN 码
+type 2468
+key enter
+wait 指纹用于
+gone 确认 PIN 码
+key enter
+wait 已按 0 次，共 5 次
+snap 72-enrol
+finger 右手拇指
+wait 已按 1 次
+finger 左手食指
+wait 换了手指
+finger 右手拇指
+wait 已按 2 次
+finger 右手拇指
+wait 已按 3 次
+finger 右手拇指
+wait 已按 4 次
+finger 右手拇指
+wait 已添加指纹「指纹 1」
+gone 已添加指纹 10000
+wait 指纹 1
+type /
+type 支付
+wait / 支付
+key enter
+key enter
+key f4
+
+== 锁屏：息屏就锁上，待机界面换成锁屏（按键只叫出 PIN 码界面）；录入的手指一碰就解锁
+key f4
+at sys.idle
+type /
+type 计算器
+key enter
+wait ÷
+screen-auto on
+timeshift 31
+screen off
+locked on
+screen-key enter
+screen on
+at sys.idle
+wait OK：输入 PIN 码
+wait 或触碰指纹传感器
+snap 73-lock-screen
+key down
+wait 已锁定：按 OK 输入 PIN 码
+screen-auto off
+finger 右手拇指
+locked off
+wait ÷
+key f4
+
+== 锁屏通知：锁着时待机界面只显示应用名和条数，解锁后才看到内容；锁着时来的短信横幅也不显示内容
+require-push
+require-tel
+key f4
+at sys.idle
+key up
+at sys.notifs
+type x
+key f4
+at sys.idle
+push com.phone.wallet 到账提醒 | 张三向你转账 ¥66.00 |
+wait 飞钱：到账提醒
+screen-auto on
+timeshift 31
+screen off
+locked on
+screen-key enter
+screen on
+wait 飞钱：1 条通知
+gone 到账提醒
+snap 74-lock-notifs
+tel sms 13800000009 锁着时看不到的短信
+wait 新通知 5000
+gone 锁着时看不到的短信
+screen-auto off
+finger 右手拇指
+locked off
+wait 飞钱：到账提醒
+key up
+at sys.notifs
+type x
+key f4
+
+== 紧急警报：小区广播的最高级别在锁屏上也弹出，有自己的提示音和振动；设置里关掉的级别不弹，「短信 › 紧急警报」里都有记录
+require-tel
+require-sms
+key f4
+at sys.idle
+screen-auto on
+timeshift 31
+screen off
+locked on
+tel cb 4370 1 国家级演练：这是一条测试警报，无需采取行动
+screen on
+wait 紧急警报
+wait 国家级警报
+wait 国家级演练
+audio alert
+vibrated
+alerts 1
+snap 75-emergency-alert
+key enter
+gone 国家级演练
+audio idle
+locked on
+screen-auto off
+finger 右手拇指
+locked off
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 紧急警报
+key enter
+key enter
+at com.phone.settings/alerts
+wait 总是显示
+key enter
+wait-re 特别严重警报 +关
+key f4
+tel cb 4371 2 特别严重：暴雨橙色预警
+sleep 1500
+alerts 1
+type /
+type 短信
+key enter
+at com.phone.messages/list
+type e
+at com.phone.messages/alerts
+wait 特别严重：暴雨橙色预警
+wait 国家级演练
+key esc
+at com.phone.messages/list
+key f4
+type /
+type 设置
+key enter
+at com.phone.settings/alerts
+key enter
+key f4
+
+== 锁屏：陌生手指连续 5 次识别失败后指纹停用，要输入 PIN 码；输错的 PIN 码有提示
+key f4
+at sys.idle
+key tab
+type *
+wait 已锁定
+locked on
+finger 陌生人
+wait 未能识别指纹
+sleep 300
+finger 陌生人
+sleep 300
+finger 陌生人
+sleep 300
+finger 陌生人
+sleep 300
+finger 陌生人
+wait 指纹尝试次数过多
+finger 右手拇指
+sleep 1200
+locked on
+key enter
+wait 输入 PIN 码
+type 1111
+key enter
+wait PIN 码不对，再错 4 次就要等待
+snap 75-lock-pin
+type 2468
+key enter
+locked off
+key f4
+
+== 锁屏紧急呼叫：锁着时打 112 再按通话键就拨出，不用解锁、不显示打的数字
+require-tel
+key f4
+at sys.idle
+key tab
+type *
+wait 已锁定
+type 112
+wait 输入 PIN 码
+key call
+wait 正在呼叫 8000
+wait 112
+key end
+wait 通话结束 8000
+key f4
+at sys.idle
+locked on
+type 2468
+key enter
+locked off
+key f4
+
+== 锁屏：通话中息屏上锁，点亮后还是通话界面（返回键、右软键都出不去，挂断后回到锁屏）；通话在后台时上锁，锁屏提示「通话键 回到通话」，按通话键不用解锁就回到通话
+require-tel
+key f4
+at sys.idle
+type 152
+key enter
+wait 通话中 6000
+screen-auto on
+timeshift 31
+screen off
+locked on
+screen-key enter
+screen on
+screen-auto off
+at com.phone.dialer/call
+key esc
+key f2
+at com.phone.dialer/call
+wait-re 通话中 00:
+snap 73b-call-locked
+key end
+wait 通话结束
+at sys.idle 10000
+locked on
+wait OK：输入 PIN 码
+type 2468
+key enter
+locked off
+key f4
+type 152
+key enter
+wait 通话中 6000
+key esc
+at sys.idle
+key tab
+type *
+wait 已锁定
+locked on
+wait 通话键 回到通话
+key call
+at com.phone.dialer/call
+locked on
+key end
+wait 通话结束
+at sys.idle 10000
+locked on
+type 2468
+key enter
+locked off
+key f4
+
+== 锁屏指纹支付：飞钱付款时系统确认框里碰一下指纹即可（第一次先用支付密码开通），商户验签照常通过
+key f4
+appstop com.phone.wallet
+type /
+type 飞钱
+key enter
+wait 设备可信
+key f2
+key-if enter 请求使用 2000
+wait 晨光咖啡 10000
+key enter
+wait 系统安全确认
+wait 先用支付密码确认一次
+type 123456
+wait 支付成功
+wait 已用支付密码确认
+key enter
+key f2
+key-if enter 请求使用 1000
+wait 晨光咖啡 10000
+key enter
+wait 触碰指纹传感器确认
+snap 76-pay-fingerprint
+finger 陌生人
+wait 未能识别指纹，请再试一次
+finger 右手拇指
+wait 支付成功
+wait 服务端验签：通过
+wait 已用指纹确认
+key enter
+key f4
+
+== 锁屏指纹支付：再录一个指纹后飞钱的指纹密钥作废，付款退回支付密码，确认后重新开通，新录的手指也能付
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 指纹与密码
+key enter
+key enter
+wait 屏幕锁定
+type /
+type 指纹
+key enter
+key enter
+wait 确认 PIN 码
+type 2468
+key enter
+wait 指纹用于
+gone 确认 PIN 码
+key down
+key enter
+wait 已按 0 次
+finger 右手食指
+wait 已按 1 次
+finger 右手食指
+wait 已按 2 次
+finger 右手食指
+wait 已按 3 次
+finger 右手食指
+wait 已按 4 次
+finger 右手食指
+wait 已添加指纹「指纹 2」
+key f4
+appstop com.phone.wallet
+type /
+type 飞钱
+key enter
+wait 设备可信
+key f2
+key-if enter 请求使用 1000
+wait 晨光咖啡 10000
+key enter
+wait 系统安全确认
+wait 开通指纹支付后指纹有变动
+snap 77-pay-invalidated
+type 123456
+wait 支付成功
+wait 已用支付密码确认
+key enter
+key f2
+key-if enter 请求使用 1000
+wait 晨光咖啡 10000
+key enter
+wait 触碰指纹传感器确认
+finger 右手食指
+wait 已用指纹确认
+key enter
+key f4
+
+== 锁屏 PIN 码：删除后指纹一并删除，恢复成键盘锁
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 指纹与密码
+key enter
+key enter
+wait 屏幕锁定
+key tab
+wait 删除 PIN 码
+type d
+key-if enter 删除 PIN 码 1000
+wait 删除锁屏 PIN 码
+type 2468
+key enter
+wait 已删除锁屏 PIN 码
+wait 关闭时键盘锁不需要密码
+key f4
+at sys.idle
+key tab
+type *
+wait 键盘已锁
+key tab
+type *
+wait 键盘已解锁
+key f4
+
+== 挂断键：菜单打开时也直接回待机（诺基亚的红键）
+key f4
+type /
+type 计算器
+key enter
+wait ÷
+key tab
+wait 选项
+key end
+at sys.idle
+
+== 设置：声音音量交给 audiod，左右键调节；自动键盘锁（用 timeshift 快进时间）；关于本机
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 声音与振动
+key enter
+key enter
+wait 铃声与闹钟
+key down
+key left
+wait 60%
+key left
+wait 50%
+key right
+wait 60%
+key esc
+wait 媒体 60%
+type /
+type 键盘锁
+key enter
+key enter
+at lock
+type /
+type 15 秒
+key enter
+key enter
+key esc
+wait 自动锁定：15 秒
+key f4
+at sys.idle
+timeshift 20
+wait 解锁
+key tab
+type *
+wait 键盘已解锁
+type /
+type 设置
+key enter
+wait 自动锁定：15 秒
+type /
+type 键盘锁
+key enter
+key enter
+at lock
+key enter
+key esc
+wait 自动锁定：关
+type /
+type 设置 · 关于本机
+key enter
+key enter
+wait phone.ui/0
+wait 版本
+snap 40-about
+key esc
+key f4
+
+== 状态栏：设置 › 通知与状态栏里打开「显示实时网速」，右上角显示每秒的流量；关掉「显示电量百分比」，只剩电池图标；都恢复默认
+key f4
+appstop com.phone.settings
+type /
+type 设置 · 显示实时网速
+key enter
+at g.status
+key enter
+wait-re [0-9]+(\.[0-9])?[KM]/s 4000
+type /
+type 显示电量百分比
+key enter
+key enter
+wait 🔋
+wait-re 显示电量百分比 +关
+snap 49-status-settings
+type /
+type 显示实时网速
+key enter
+key enter
+gone /s
+wait-re 显示实时网速 +关
+type /
+type 显示电量百分比
+key enter
+key enter
+gone 🔋
+wait-re 显示电量百分比 +开
+key f4
+
+#part chat
+== 主题与壁纸：查看照片时设为待机和锁屏壁纸；设置 › 壁纸恢复默认，设置 › 主题换颜色
+key f4
+appstop com.phone.gallery
+type /
+type 图片
+key enter
+wait-re 图片（[0-9]+）
+wait 示例：海边
+type /
+type 海边
+key enter
+key enter
+wait 示例：海边 ·
+type w
+wait 待机和锁屏
+key enter
+wait 已设为待机和锁屏壁纸
+key f4
+at sys.idle
+snap 50-wallpaper
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 壁纸
+key enter
+wait 待机 照片 · 锁屏 照片
+key enter
+at wallpaper
+key enter
+wait 默认
+key esc
+wait 待机 默认 · 锁屏 照片
+type /
+type 设置 · 主题
+key enter
+key enter
+at theme
+type /
+type 复古绿
+key enter
+key enter
+key esc
+at g.display
+wait 复古绿
+key esc
+at root
+snap 51-theme
+type /
+type 设置 · 主题
+key enter
+key enter
+at theme
+type /
+type 深色
+key enter
+key enter
+key esc
+at g.display
+wait 深色
+key esc
+at root
+key f4
+
+== 四套主题的截图：待机、主菜单、设置首页在每套主题下各截一张，供设计评审（26-design-system.md §6）
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 主题
+key enter
+key enter
+at theme
+type /
+type 浅色
+key enter
+key enter
+key esc
+at g.display
+wait 浅色
+key esc
+at root
+snap 90-theme-light-settings
+key f4
+at sys.idle
+snap 90-theme-light-idle
+key enter
+at sys.menu
+snap 90-theme-light-menu
+key f4
+at sys.idle
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 主题
+key enter
+key enter
+at theme
+type /
+type 复古绿
+key enter
+key enter
+key esc
+at g.display
+wait 复古绿
+key esc
+at root
+snap 90-theme-retro-settings
+key f4
+at sys.idle
+snap 90-theme-retro-idle
+key enter
+at sys.menu
+snap 90-theme-retro-menu
+key f4
+at sys.idle
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 主题
+key enter
+key enter
+at theme
+type /
+type 琥珀
+key enter
+key enter
+key esc
+at g.display
+wait 琥珀
+key esc
+at root
+snap 90-theme-amber-settings
+key f4
+at sys.idle
+snap 90-theme-amber-idle
+key enter
+at sys.menu
+snap 90-theme-amber-menu
+key f4
+at sys.idle
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 主题
+key enter
+key enter
+at theme
+type /
+type 深色
+key enter
+key enter
+key esc
+at g.display
+wait 深色
+key esc
+at root
+snap 90-theme-dark-settings
+key f4
+at sys.idle
+snap 90-theme-dark-idle
+key enter
+at sys.menu
+snap 90-theme-dark-menu
+key f4
+at sys.idle
+
+#part keys
+== 亮度：设置 › 显示与亮度里左右键调亮度，背光跟着变（没有背光的机器上是模拟的）；调回默认
+appstop com.phone.settings
+type /
+type 设置 · 亮度
+key enter
+at g.display
+wait-re 亮度 +80%
+snap 91-brightness
+key left
+wait-re 亮度 +70%
+backlight 70
+key right
+key right
+wait-re 亮度 +90%
+backlight 90
+key left
+wait-re 亮度 +80%
+backlight 80
+key f4
+
+== 自动亮度：设置 › 显示与亮度里打开自动亮度，背光跟着光线传感器（没有传感器的机器上是模拟的）：暗处变暗，日光下到最亮、键盘背光关掉；回到室内回到设置的亮度、键盘背光重新亮起；关掉后不再跟着光线
+lux 300
+appstop com.phone.settings
+type /
+type 设置 · 自动亮度
+key enter
+at g.display
+wait-re 自动亮度 +关
+key enter
+wait-re 自动亮度 +开
+backlight 80
+keylight 80
+lux 5
+backlight 36 12000
+snap 92-auto-brightness
+lux 20000
+backlight 100 8000
+keylight off 8000
+lux 300
+backlight 80 12000
+keylight 80
+key enter
+wait-re 自动亮度 +关
+lux 5
+sleep 1500
+backlight 80
+key f4
+
+== 动画效果：设置 › 显示与亮度里左右键在标准、减弱、关闭之间换（像素渲染器按它决定转场和缓动）；换回标准
+appstop com.phone.settings
+type /
+type 设置 · 动画效果
+key enter
+at g.display
+wait-re 动画效果 +标准
+key right
+wait-re 动画效果 +减弱
+wait 页面和菜单不再有转场
+key right
+wait-re 动画效果 +关
+key left
+key left
+wait-re 动画效果 +标准
+key f4
+
+== 刷新率：模拟的 60/120 Hz 屏上，phone-displayd 在画面不动时用 60 Hz；设置首页往下滚动时升到 120 Hz，停下 400 毫秒后回到 60 Hz
+require-display
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+display 60 5000
+display report
+key down
+key down
+key last
+display went 120 3000
+display 60 5000
+key f4
+at sys.idle
+
+== 刷新率设置：设置 › 显示与亮度 › 刷新率（屏有不止一种刷新率时才有这一行）换成「标准 60 Hz」后滚动也停在 60 Hz，「高 120 Hz」不动也是 120 Hz；电量低于 15% 没在充电时最高 60 Hz，手机发热时也是；换回自动
+require-display
+display 60 5000
+appstop com.phone.settings
+type /
+type 设置 · 刷新率
+key enter
+at g.display
+wait-re 刷新率 +自动
+key right
+wait-re 刷新率 +标准 60 Hz
+display reason setting
+display 60 3000
+key down
+key up
+display stayed 60 800
+key right
+wait-re 刷新率 +高 120 Hz
+display 120 3000
+display stayed 120 1000
+power 9
+display reason cap:battery 3000
+display 60
+power 82
+display 120 3000
+display thermal hot
+display reason cap:thermal 3000
+display 60
+display thermal cool
+display 120 3000
+key right
+wait-re 刷新率 +自动
+display reason idle 5000
+display 60
+key f4
+at sys.idle
+
+== 大字号：设置里打开后，像素界面里系统和应用整体放大一级，关掉后恢复
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 大字号
+key enter
+key enter
+wait-re 大字号 +开
+snap 91-large-text-settings
+key f4
+at sys.idle
+snap 91-large-text-idle
+type /
+type 设置
+key enter
+at g.display
+type /
+type 设置 · 大字号
+key enter
+key enter
+wait-re 大字号 +关
+key f4
+at sys.idle
+
+== 辅助功能·视觉：设置 › 辅助功能里打开高对比度文字、粗体文字、颜色反转，颜色校正换成绿色弱，帧带上这几项（像素渲染器按它们画）；全部关掉
+appstop com.phone.settings
+type /
+type 设置 · 高对比度文字
+key enter
+at g.a11y
+wait-re 高对比度文字 +关
+key enter
+wait-re 高对比度文字 +开
+frame-a11y contrast true
+key down
+wait-re 粗体文字 +关
+key enter
+wait-re 粗体文字 +开
+frame-a11y bold true
+key down
+wait-re 颜色反转 +关
+key enter
+wait-re 颜色反转 +开
+frame-a11y invert true
+key down
+wait-re 颜色校正 +关
+key right
+wait-re 颜色校正 +绿色弱
+frame-a11y daltonize "deuteranomaly"
+snap 93-a11y-seeing
+key left
+wait-re 颜色校正 +关
+frame-a11y daltonize -
+key up
+wait-re 颜色反转 +开
+key enter
+wait-re 颜色反转 +关
+key up
+wait-re 粗体文字 +开
+key enter
+wait-re 粗体文字 +关
+key up
+wait-re 高对比度文字 +开
+key enter
+wait-re 高对比度文字 +关
+frame-a11y contrast -
+frame-a11y bold -
+frame-a11y invert -
+key f4
+at sys.idle
+
+== 辅助功能·放大：同时按两个音量键放大焦点周围（像素渲染器画 2 倍），倍数可换成 3 倍，再按一次复原；快捷方式改成颜色反转后它开关颜色反转；改回
+appstop com.phone.settings
+type /
+type 设置 · 放大
+key enter
+at g.a11y
+wait-re 放大 +2 倍
+key a11y
+wait 已放大 2 倍
+frame-a11y magnify 2
+snap 93-a11y-magnifier
+key right
+wait-re 放大 +3 倍
+frame-a11y magnify 3
+key left
+wait-re 放大 +2 倍
+key a11y
+wait 已取消放大
+frame-a11y magnify -
+type /
+type 设置 · 辅助功能快捷方式
+key enter
+at g.a11y
+wait-re 辅助功能快捷方式 +放大
+key right
+wait-re 辅助功能快捷方式 +屏幕阅读器
+key right
+wait-re 辅助功能快捷方式 +颜色反转
+key a11y
+wait 颜色反转已打开
+frame-a11y invert true
+frame-a11y magnify -
+key a11y
+wait 颜色反转已关闭
+frame-a11y invert -
+key left
+wait-re 辅助功能快捷方式 +屏幕阅读器
+key left
+wait-re 辅助功能快捷方式 +放大
+key f4
+at sys.idle
+
+== 辅助功能·按键：重复延迟、重复速率、长按时间、慢速键、粘滞键在设置里改（手机的键盘按它们计时；自测的按键不经键盘，不受影响），按键反馈选声音与振动后每按一下振动一次；全部改回
+appstop com.phone.settings
+type /
+type 设置 · 按键重复延迟
+key enter
+at g.a11y
+wait-re 按键重复延迟 +0.25 秒
+key right
+wait-re 按键重复延迟 +0.5 秒
+key down
+wait-re 按键重复速率 +每秒 30 次
+key left
+wait-re 按键重复速率 +不重复
+key down
+wait-re 长按时间 +0.6 秒
+key right
+wait-re 长按时间 +1 秒
+key down
+wait-re 慢速键 +关
+key right
+wait-re 慢速键 +0.3 秒
+key down
+wait-re 粘滞键 +关
+key enter
+wait-re 粘滞键 +开
+key down
+wait-re 按键反馈 +无
+key left
+wait-re 按键反馈 +声音与振动
+key down
+vibrated
+wait-re 单声道音频 +关
+key up
+wait-re 按键反馈 +声音与振动
+key right
+wait-re 按键反馈 +无
+key up
+wait-re 粘滞键 +开
+key enter
+wait-re 粘滞键 +关
+key up
+wait-re 慢速键 +0.3 秒
+key left
+wait-re 慢速键 +关
+key up
+wait-re 长按时间 +1 秒
+key left
+wait-re 长按时间 +0.6 秒
+key up
+wait-re 按键重复速率 +不重复
+key right
+wait-re 按键重复速率 +每秒 30 次
+key up
+wait-re 按键重复延迟 +0.5 秒
+key left
+wait-re 按键重复延迟 +0.25 秒
+key f4
+at sys.idle
+
+== 辅助功能·听觉：单声道音频和左右声道平衡交给 phone-audiod（它把两路混成一路、把一边调低）；改回
+require-audio
+appstop com.phone.settings
+type /
+type 设置 · 单声道音频
+key enter
+at g.a11y
+wait-re 单声道音频 +关
+key enter
+wait-re 单声道音频 +开
+audio-channels mono 0
+key down
+wait-re 左右声道平衡 +居中
+key left
+wait-re 左右声道平衡 +偏左 10%
+key left
+wait-re 左右声道平衡 +偏左 20%
+audio-channels mono -0.2
+key right
+wait-re 左右声道平衡 +偏左 10%
+key right
+wait-re 左右声道平衡 +居中
+audio-channels mono 0
+key up
+wait-re 单声道音频 +开
+key enter
+wait-re 单声道音频 +关
+audio-channels stereo 0
+key f4
+at sys.idle
+
+== 辅助功能·屏幕阅读器：打开后说焦点所在的项（标题、角色、状态、第几项）和变化，按键照常移动；按需朗读时只在按住两个音量键时读；语音引擎是模拟的（只写进日志）；关掉
+appstop com.phone.settings
+type /
+type 设置 · 屏幕阅读器
+key enter
+at g.a11y
+wait-re 屏幕阅读器 +关
+key enter
+wait-re 屏幕阅读器 +开
+spoken 屏幕阅读器已打开
+spoken 已开启，第 1 项，共 17 项
+key down
+wait-re 朗读方式 +焦点移动时
+spoken 朗读方式
+key enter
+wait-re 朗读方式 +按需
+key down
+wait-re 大字号 +关
+unspoken 1000
+long a11y
+spoken 大字号，系统界面和所有应用一起放大一级，开关，已关闭，第 3 项，共 17 项
+key up
+wait-re 朗读方式 +按需
+unspoken 500
+key enter
+wait-re 朗读方式 +焦点移动时
+spoken 焦点移动时
+key up
+wait-re 屏幕阅读器 +开
+spoken 屏幕阅读器
+key enter
+wait-re 屏幕阅读器 +关
+spoken 屏幕阅读器已关闭
+key f4
+at sys.idle
+
+#part chat
+== 剪贴板：应用只能写；粘贴由用户在输入框的选项菜单里发起
+key f4
+appstop com.phone.chat
+type /
+type 鸿雁
+key enter
+wait 张三
+type /
+type 张三
+key enter
+key enter
+wait 输入消息
+type 复制这一句
+key enter
+wait 收到：复制这一句
+key up 2
+key tab
+type c
+wait 已复制
+key down 5
+key tab
+wait 粘贴「复制这一句」
+type v
+wait › 复制这一句
+key enter
+key f4
+
+#part location
+== 天气：定位要用户授权、只给前台应用；后台定时刷新由系统按预算唤醒
+location at 39.90870 116.39750
+key f4
+type /
+type 天气
+key enter
+wait 请求使用
+wait 位置
+key enter
+wait 📍
+wait 后台刷新 0 次
+snap 41-weather
+freeze-after 500
+key f4
+appstate com.phone.weather frozen 3000
+timeshift 5500
+appstate com.phone.weather running 3000
+appstate com.phone.weather frozen 6000
+freeze-after 0
+type /
+type 天气
+key enter
+wait 后台刷新 1 次
+key f4
+
+== 后台任务：不到截止不唤醒，到期的任务合并成一次唤醒、跟着推送顺带跑；「只在充电时」的任务插上电源才跑
+job com.phone.weather refresh runs 1
+timeshift 3700
+job com.phone.weather refresh runs 1
+push com.phone.wallet | | {"type":"ping"}
+job com.phone.weather refresh runs 2
+timeshift 86400
+job com.phone.weather refresh runs 3
+job com.phone.weather cleanup runs 0
+power 82 charging
+wait ⚡82%
+job com.phone.weather cleanup runs 1
+timeshift 86400
+job com.phone.weather cleanup with refresh
+power 82
+gone ⚡82%
+
+== 后台任务遇到计费网络：要求不计费网络的任务（插着电时跑）在不计费的 Wi-Fi 上跑着，用户在设置 › Wi-Fi 里把这个网络设成按流量计费，应用（这里是计算器，它自己没有别的后台任务）收到 job.stop（原因 metered），几秒后任务的唤醒结束、应用被冻结；设回不计费后任务马上重跑，仍然要求不计费网络；最后改回自动检测、取消任务、忘记网络
+require-radios
+wifi-ap Kario-Test kario-5678
+wifi-join Kario-Test kario-5678
+job-add com.phone.calc sync 15 charging unmetered
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type Wi-Fi
+key enter
+key enter
+at com.phone.settings/wifi
+wait Kario-Test
+type /
+type Kario-Test
+key enter
+type m
+wait 按流量计费（你的设置）
+type m
+wait 不按流量计费（你的设置）
+timeshift 960
+power 82 charging
+wait ⚡82%
+job com.phone.calc sync runs 1 8000
+type m
+gone 不按流量计费（你的设置）
+type m
+wait 按流量计费（你的设置）
+job com.phone.calc sync stops 1 8000
+appstate com.phone.calc frozen 15000
+type m
+wait 不按流量计费（你的设置）
+job com.phone.calc sync runs 2 15000
+type m
+gone 不按流量计费（你的设置）
+job-cancel com.phone.calc sync
+power 82
+gone ⚡82%
+type d
+wait 确认忘记网络
+key enter
+gone 已连接 · 5000
+key esc
+at root
+key f4
+
+== 后台数据：设置 › 流量 › 流量节省里打开应用商店的页面、关掉「后台数据」后，商店不在屏幕上时它的移动数据被挡住（设备上按它的 uid 发不出去，开发机上按 Shell 的策略），在前台、亮着屏时又能用；它要网络的后台任务在移动数据上等着，连上 Wi-Fi 后才跑；最后打开后台数据、取消任务、忘记网络
+require-tel
+require-radios
+require-app com.phone.store
+data-usage save
+key f4
+appstop com.phone.settings
+type /
+type 设置 · 流量
+key enter
+at g.mobile
+key enter
+at com.phone.settings/traffic
+type /
+type 流量节省
+key enter
+key enter
+at com.phone.settings/datasaver
+type /
+type 应用商店
+key enter
+key enter
+at com.phone.settings/appdata:com.phone.store
+wait-re 后台数据 +开
+key first
+key enter
+wait-re 后台数据 +关
+net-blocked com.phone.store background_data
+net-send com.phone.store blocked
+key f4
+at sys.idle
+type /
+type 应用商店
+key enter
+at com.phone.store/main
+net-blocked com.phone.store none
+net-send com.phone.store sent
+key f4
+at sys.idle
+net-blocked com.phone.store background_data
+job-add com.phone.store bgsync 15 network
+timeshift 1500
+job com.phone.store bgsync waits blocked 8000
+wifi-ap Kario-Test kario-5678
+wifi-join Kario-Test kario-5678
+job com.phone.store bgsync runs 1 8000
+job-cancel com.phone.store bgsync
+setting app_background_data 1 com.phone.store
+net-blocked com.phone.store none
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type Wi-Fi
+key enter
+key enter
+at com.phone.settings/wifi
+wait Kario-Test
+type /
+type Kario-Test
+key enter
+type d
+wait 确认忘记网络
+key enter
+gone 已连接 · 5000
+key esc
+at root
+key f4
+data-usage restore
+
+== 应用的流量上限：设置 › 流量里打开浏览器的页面，把「移动数据上限」设成 100 MB；用到 80 MB 时以「设置」的名义提醒，写着浏览器；用满后浏览器的移动数据被挡住（在前台也一样），通知点开就是它的页面，写着上限用完了，「各应用的移动数据」里它那一行也写着；上限调到 200 MB 后放开；最后改回不设上限、流量的记录还原（计数是记上去的）
+require-app com.phone.browser
+data-usage save
+key f4
+appstop com.phone.settings
+data-charge com.phone.browser mobile 52428800 0
+type /
+type 设置 · 流量
+key enter
+at g.mobile
+key enter
+at com.phone.settings/traffic
+wait-re 浏览器 +5[0-9]\.[0-9] MB
+type /
+type 浏览器
+key enter
+key enter
+at com.phone.settings/appdata:com.phone.browser
+wait 移动数据上限
+type /
+type 移动数据上限
+key enter
+key enter
+at com.phone.settings/adlimit:com.phone.browser
+fill 100 MB
+key enter
+at com.phone.settings/appdata:com.phone.browser
+wait-re 移动数据上限 +100\.0 MB
+key f4
+at sys.idle
+# With the page still open behind, the notification's own push of it would
+# land after the next step had already matched the old one.
+appstop com.phone.settings
+data-charge com.phone.browser mobile 36700160 0
+wait 「浏览器」快用完移动数据上限了
+data-charge com.phone.browser mobile 20971520 0
+net-blocked com.phone.browser app_limit
+net-send com.phone.browser blocked
+key up
+at sys.notifs
+wait 「浏览器」的移动数据上限用完了
+key enter
+at com.phone.settings/appdata:com.phone.browser
+wait 它的移动数据被挡住了
+key esc
+at com.phone.settings/traffic
+wait 上限用完了
+setting app_data_limit 209715200 com.phone.browser
+net-blocked com.phone.browser none
+setting app_data_limit 0 com.phone.browser
+data-usage restore
+key f4
+at sys.idle
+
+== 流量节省：设置 › 流量 › 流量节省打开后，没设成不受限制的应用不在屏幕上时移动数据被挡住（这里是浏览器和应用商店）；在浏览器的页面里打开「不受流量节省限制」后它放开；最后关掉流量节省，浏览器改回原样
+require-app com.phone.browser
+require-app com.phone.store
+data-usage save
+key f4
+appstop com.phone.settings
+type /
+type 设置 · 流量
+key enter
+at g.mobile
+key enter
+at com.phone.settings/traffic
+type /
+type 流量节省
+key enter
+key enter
+at com.phone.settings/datasaver
+wait-re 流量节省 +关
+key first
+key enter
+wait-re 流量节省 +开
+net-blocked com.phone.browser background_data
+net-blocked com.phone.store background_data
+net-send com.phone.browser blocked
+type /
+type 浏览器
+key enter
+key enter
+at com.phone.settings/appdata:com.phone.browser
+wait-re 不受流量节省限制 +关
+type /
+type 不受流量节省限制
+key enter
+key enter
+wait-re 不受流量节省限制 +开
+net-blocked com.phone.browser none
+net-send com.phone.browser sent
+key esc
+at com.phone.settings/datasaver
+key first
+key enter
+wait-re 流量节省 +关
+net-blocked com.phone.store none
+setting app_data_unrestricted 0 com.phone.browser
+key f4
+at sys.idle
+data-usage restore
+== 后台任务拔掉电源：只在插着电时跑的任务跑着时拔掉电源，应用（计算器）收到 job.stop（原因 unplugged），几秒后任务的唤醒结束、应用被冻结；再插上电源后任务马上重跑，仍然只在插着电时跑；最后取消任务、拔掉电源
+key f4
+at sys.idle 3000
+job-add com.phone.calc backup 15 charging
+timeshift 960
+power 82 charging
+wait ⚡82%
+job com.phone.calc backup runs 1 8000
+appstate com.phone.calc running 3000
+power 82
+gone ⚡82%
+job com.phone.calc backup stops 1 8000
+appstate com.phone.calc frozen 15000
+job com.phone.calc backup runs 1
+power 82 charging
+wait ⚡82%
+job com.phone.calc backup runs 2 15000
+job-cancel com.phone.calc backup
+power 82
+gone ⚡82%
+
+== 分享：文字分享给短信，收件人由用户自己填
+key f4
+type /
+type 天气
+key enter
+wait 后台刷新
+type s
+wait 分享到
+wait 一段文字
+type 1
+wait 新信息
+wait 北京今天
+key f4
+
+== 应用贡献的设置和待机小组件：清单里声明，设置里统一呈现，改了之后应用立刻收到
+key f4
+at sys.idle 3000
+wait 天气：北京
+wait °C
+appstop com.phone.settings
+key f4
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 应用设置
+key enter
+key enter
+wait 2 项设置
+type /
+type 天气
+key enter
+key enter
+wait 温度单位
+wait 摄氏
+key enter
+wait 华氏
+key down
+wait 预报天数
+type +
+wait 4
+key f4
+at sys.idle 3000
+wait °F
+key down
+wait ▶ 天气：
+key enter
+wait 未来 4 天
+key f4
+
+== 定位：持续定位（天气 › 我的位置）只给前台；卫星定位有人要才开，切到后台暂停并关掉，回来接着定位，返回就停
+location at 39.90870 116.39750
+location gnss off
+key f4
+type /
+type 天气
+key enter
+wait 后台刷新
+type l
+at com.phone.weather/here
+location gnss on
+location indicator on
+wait 39.90870, 116.39750
+wait 卫星
+location at 31.23040 121.47370 12.5 90
+wait 31.23040, 121.47370
+wait 45.0 公里/小时
+snap 41-location-here
+key f4
+at sys.idle
+location gnss off 10000
+location indicator off 8000
+location at 22.54310 114.05790
+type /
+type 天气
+key enter
+at com.phone.weather/here
+location gnss on
+wait 22.54310, 114.05790
+key esc
+at com.phone.weather/main
+location gnss off 10000
+location indicator off 8000
+location recent com.phone.weather
+location at 39.90870 116.39750
+key f4
+
+== 设置 › 位置：总开关关掉后所有应用都拿不到位置、卫星定位立即关；最近 24 小时用过位置的应用列在这里；可以只给某个应用大致位置（约 2 公里）
+appstop com.phone.settings
+key f4
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 位置
+key enter
+key enter
+at com.phone.settings/location
+wait 你允许的应用可以询问手机在哪里
+wait 最近访问（24 小时内）
+wait 有位置权限的应用
+wait 天气
+snap 41-settings-location
+key enter
+wait 所有应用都不能使用
+key f4
+type /
+type 天气
+key enter
+at com.phone.weather/main
+type l
+at com.phone.weather/here
+wait 无法定位
+location gnss off 3000
+location indicator off 8000
+key esc
+key f4
+type /
+type 设置
+key enter
+at com.phone.settings/location
+key enter
+wait 你允许的应用可以询问手机在哪里
+type /
+type 天气
+key enter
+type p
+key f4
+type /
+type 天气
+key enter
+type l
+at com.phone.weather/here
+wait 大致位置
+wait ±2000
+key esc
+key f4
+type /
+type 设置
+key enter
+at com.phone.settings/location
+type p
+key f4
+type /
+type 天气
+key enter
+type l
+at com.phone.weather/here
+wait 卫星
+key esc
+key f4
+
+== 定位：授权框里选精确、大致或拒绝（Android 12）；选了大致位置的天气只拿到约 2 公里的格子；「设置 › 应用权限」里看得到精度、改回精确
+appstop com.phone.weather
+appstop com.phone.settings
+key f4
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 应用权限
+key enter
+key enter
+wait 浏览器 · 网络
+type /
+type 天气 · 位置
+key enter
+wait 天气 · 位置
+type q
+perm-state com.phone.weather location ask
+key f4
+type /
+type 天气
+key enter
+wait 请求使用
+wait 精确
+wait 大致：约 2 公里的范围
+snap 41-location-dialog
+key right
+key enter
+perm-state com.phone.weather location granted
+type l
+at com.phone.weather/here
+wait 大致位置
+wait ±2000
+key esc
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 应用权限
+key enter
+key enter
+wait 浏览器 · 网络
+type /
+type 天气 · 位置
+key enter
+wait 大致位置
+type p
+wait 精确位置
+key f4
+type /
+type 天气
+key enter
+type l
+at com.phone.weather/here
+wait 卫星
+key esc
+key f4
+
+== 定位：「始终允许」只能在设置里给（先「使用时允许」，Android 10/11）；没给时天气的后台刷新拿不到位置，给了之后拿得到，最近访问标出「在后台使用」，系统发通知提醒，点开就是「设置 › 位置」
+location at 39.90870 116.39750
+perm-state com.phone.weather location granted
+perm-state com.phone.weather location_background ask
+freeze-after 500
+key f4
+type /
+type 天气
+key enter
+wait 后台刷新
+key f4
+appstate com.phone.weather frozen 3000
+timeshift 5500
+appstate com.phone.weather running 3000
+appstate com.phone.weather frozen 6000
+location recent com.phone.weather foreground
+freeze-after 0
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 位置
+key enter
+key enter
+at com.phone.settings/location
+type /
+type 天气
+key enter
+wait 使用时允许
+type b
+perm-state com.phone.weather location_background granted
+wait 始终允许
+freeze-after 500
+key f4
+type /
+type 天气
+key enter
+wait 后台刷新
+key f4
+appstate com.phone.weather frozen 3000
+timeshift 5500
+appstate com.phone.weather running 3000
+location recent com.phone.weather background 10000
+appstate com.phone.weather frozen 30000
+freeze-after 0
+timeshift 3700
+at sys.idle
+key up
+at sys.notifs
+wait 有应用在后台使用了你的位置 10000
+wait 天气
+key enter
+at com.phone.settings/location 8000
+wait 在后台使用
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 应用权限
+key enter
+key enter
+wait 浏览器 · 网络
+type /
+type 天气 · 后台使用位置
+key enter
+wait 天气 · 后台使用位置
+type d
+perm-state com.phone.weather location_background denied
+key f4
+
+== 定位：卫星定位不到时，按附近的 Wi-Fi 和所在的基站（开发机和模拟器上是模拟的网络定位服务）给出位置，页面写明来源；卫星回来后换回卫星定位；「设置 › 位置」里可以关掉网络定位
+require-netloc fake
+location at 31.23040 121.47370
+location sky off
+key f4
+type /
+type 天气
+key enter
+type l
+at com.phone.weather/here
+location gnss on
+location fix network 15000
+wait 31.23040, 121.47370
+wait 由 Wi-Fi 和移动网络定位
+snap 41-location-network
+location sky on
+location fix gnss 15000
+wait 卫星
+gone 由 Wi-Fi 和移动网络定位
+location report
+key esc
+location gnss off 10000
+appstop com.phone.settings
+key f4
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 位置
+key enter
+key enter
+at com.phone.settings/location
+wait Wi-Fi 和移动网络定位
+wait 模拟的服务
+type /
+type Wi-Fi 和移动网络定位
+key enter
+key enter
+wait 已关闭：只用卫星定位
+location sky off
+sleep 3000
+key f4
+type /
+type 天气
+key enter
+type l
+at com.phone.weather/here
+location gnss on
+sleep 8000
+wait 正在定位
+key esc
+location gnss off 10000
+location sky on
+location network on
+location at 39.90870 116.39750
+key f4
+
+== 定位：NMEA 管道——本机像模拟器那样从命名管道读接收机的 NMEA 语句（Shell 自己建管道，没人要位置时不读），解析出位置
+require-gnss sim
+location use fifo
+location source fifo
+location at 30.65840 104.06470
+key f4
+type /
+type 天气
+key enter
+type l
+at com.phone.weather/here
+location gnss on
+wait 30.65840, 104.06470 15000
+wait 卫星
+location at 30.66000 104.07000
+wait 30.66000, 104.07000
+location report
+key esc
+location gnss off 10000
+location use sim
+location source sim
+location at 39.90870 116.39750
+key f4
+
+== 定位（设备）：QEMU 的接收机是 SKU 里的命名管道（运行目录里的 gnss.nmea），自测往里写 NMEA 语句，Shell 用真的解析路径得到位置
+require-gnss fifo
+location source fifo
+location at 30.65840 104.06470
+key f4
+type /
+type 天气
+key enter
+type l
+at com.phone.weather/here
+location gnss on
+wait 30.65840, 104.06470 15000
+wait 卫星
+location at 30.66000 104.07000
+wait 30.66000, 104.07000
+location report
+key esc
+location gnss off 10000
+location at 39.90870 116.39750
+key f4
+
+== 应用商店：安装包要验签，系统列出权限请用户确认；装好的应用只跑包里的代码；卸载连数据一起删
+setting developer_mode 1
+pkg-build notes com.phone.store downloads/notes.phoneapp
+pkg-build notes com.phone.store downloads/notes-bad.phoneapp tamper
+key f4
+type /
+type 应用商店
+key enter
+wait notes-bad.phoneapp
+wait 还没有安装应用
+key enter
+wait 无法完成
+setting developer_mode 0
+key down
+key enter
+wait 请先打开开发
+setting developer_mode 1
+key enter
+wait 安装「便签」1.0？
+wait 示例开发者
+snap 43-install
+key enter
+wait 已安装「便签」
+wait 版本 1.0
+key f4
+type /
+type 便签
+key enter
+wait 还没有便签
+type 买牛奶
+key enter
+wait 买牛奶
+key f4
+type /
+type 应用商店
+key enter
+wait 版本 1.0
+key down 2
+type d
+wait 卸载「便签」
+key enter
+wait 已卸载「便签」
+wait 还没有安装应用
+key down
+key enter
+wait 安装「便签」
+key enter
+wait 已安装「便签」
+key f4
+type /
+type 便签
+key enter
+wait 还没有便签
+key f4
+
+== 已安装的应用每次开机后首次启动前重新验签：开发版商店的应用只在开发者模式下运行，改过的文件不让运行
+require-app com.example.notes
+appkill com.example.notes
+appstate com.example.notes stopped
+setting developer_mode 0
+key f4
+type /
+type 便签
+key enter
+wait 请先打开开发
+setting developer_mode 1
+key f4
+type /
+type 便签
+key enter
+wait 还没有便签
+key f4
+appkill com.example.notes
+appstate com.example.notes stopped
+pkg-tamper com.example.notes phone-app-notes
+setting developer_mode 1
+type /
+type 便签
+key enter
+wait 安装包校验失败
+key f4
+setting developer_mode 0
+setting developer_mode 0
+
+== 启动时间：同一个便签应用的 TypeScript 版（KarioUI，商店装的，跑源码和跑设备上预编译的字节码）和 Go 版，加上系统镜像里的 TypeScript 示例，各从打开量到第一页、再看内存（每个一行 PHONE-APP-BENCH，只报告，不判定）
+require-example karioui-notes
+require-example notes
+key f4
+setting developer_mode 1
+at sys.idle
+pkg-install karioui-notes
+pkg-install notes
+jscache com.example.kariouinotes ready 60000
+jscache com.example.kariouinotes source
+app-bench com.example.kariouinotes ts-store-source 5
+jscache com.example.kariouinotes cache
+app-bench com.example.kariouinotes ts-store-bytecode 5
+jscache com.example.kariouinotes used
+app-bench com.example.hellots ts-system-bytecode 5
+app-bench com.example.notes go-store 5
+key f4
+appstop com.example.notes
+appstop com.example.hellots
+pkg-uninstall com.example.kariouinotes
+setting developer_mode 0
+
+== 应用商店后台：开发者带证件号注册、核验后发证书，新应用经人工审核上架；用户从目录下载安装，应用页公示开发者和备案号、可以举报；同一开发者的新版本作为增量更新出现；分批发布到 0% 时这台手机看不到新版本，开发者放到 100% 后充电、连着不计费的 Wi-Fi 时在后台自动更新；商店下架后，商店在后台取下架清单，应用不能再启动
+require-store
+store-publish notes 1.0
+key f4
+type /
+type 应用商店
+key enter
+wait 商店 · 便签
+wait 版本 1.0
+key down 2
+type d
+wait 卸载「便签」
+key enter
+wait 已卸载「便签」
+wait 还没有安装应用
+key down 20
+key enter
+wait 应用商店（已审核）
+wait 安装「便签」
+key enter
+wait 已安装「便签」
+key down 20
+type i
+wait 开发者：示例开发者
+wait 统一社会信用代码：
+wait 没有填写 APP 备案号
+type j
+wait 举报「便签」
+type 测试举报：诱导分享
+key enter
+wait 已提交举报
+key esc
+wait 商店目录
+store-publish notes 1.1
+type r
+wait 可更新
+key down 20
+key enter
+wait 更新「便签」1.1
+wait 增量
+key enter
+wait 已更新「便签」
+store-publish notes 1.2 rollout 0
+type r
+sleep 1500
+gone 可更新
+store-rollout com.example.notes 1.2 100
+type r
+wait 可更新
+key f4
+wifi-ap Kario-Test kario-5678
+wifi-join Kario-Test kario-5678
+power 82 charging
+timeshift 21700
+wait 已自动更新
+power 82
+store-takedown com.example.notes 测试：违规收集个人信息
+timeshift 23500
+revoked com.example.notes
+type /
+type 便签
+key enter
+wait 已被商店下架
+key f4
+
+== cgroup：每个应用一个组，有内存和进程上限，前台的 CPU 权重高；冻结用 cgroup 冻结器，整棵进程树一起停
+require-cgroup
+key f4
+type /
+type 计算器
+key enter
+wait 计算器
+cgroup com.phone.calc memory.max 201326592
+cgroup com.phone.calc pids.max 128
+cgroup com.phone.calc cpu.weight 400
+freeze-after 500
+key f4
+appstate com.phone.calc frozen 3000
+cgroup com.phone.calc cgroup.freeze 1
+cgroup com.phone.calc cpu.weight 50
+appenv com.phone.calc GOMEMLIMIT 144MiB
+freeze-after 0
+type /
+type 计算器
+key enter
+cgroup com.phone.calc cgroup.freeze 0
+key f4
+
+== 内核特性：开机时探测过，主线内核上沙箱和应用生命周期要的都在，没有缺的保护，也没有退而求其次的做法（老内核上缺什么、怎么降级见 24-sku-framework.md §7.5；需 root 和委派的 cgroup，设备上执行）
+require-sandbox
+require-cgroup
+kernel missing none
+kernel fallback none
+
+== Python 应用：协议与语言无关
+require-app com.phone.hellopy
+key f4
+type /
+type Python
+key enter
+wait Hello from Python
+key enter
+wait 已点击 1 次
+
+#part apps
+== 内存不足：系统结束后台应用，前台应用不受影响
+key f4
+type /
+type 计算器
+key enter
+wait 计算器
+key f4
+type /
+type 闹钟
+key enter
+at com.phone.clock/main
+mem-low 30
+appstate com.phone.calc stopped 3000
+appstate com.phone.clock running
+key f4
+type /
+type 计算器
+key enter
+wait 计算器
+key f4
+
+== 音量键：放音乐时调媒体音量，系统菜单能暂停；来电时按音量键静音铃声；静音模式下来电只振动
+require-audio
+require-tel
+key f4
+type /
+type 音乐
+key enter
+wait 晨光
+key enter
+audio media
+key f4
+wait 正在播放
+key voldown
+wait 媒体音量
+type /
+type 暂停播放
+key enter
+audio paused media
+type /
+type 继续播放
+key enter
+audio media
+tel ring 13800000002
+wait 来电 · 中国移动
+audio ring
+key volup
+wait 铃声已静音
+key esc
+gone 来电 · 中国移动
+setting silent 1
+tel ring 13800000002
+wait 静音模式 · 振动
+vibrated 5000
+key esc
+gone 来电 · 中国移动
+setting silent 0
+key f4
+
+== 按应用防火墙：设置里关掉鸿雁的网络，它重启后连不上自己的服务器；打开后恢复
+require-sandbox
+require-app com.phone.chat
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 应用权限
+key enter
+key enter
+wait 浏览器 · 网络
+type /
+type 鸿雁 · 网络
+key enter
+type d
+perm-state com.phone.chat net denied
+appstate com.phone.chat stopped 5000
+key f4
+type /
+type 鸿雁
+key enter
+wait 连不上鸿雁服务器 10000
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 应用权限
+key enter
+key enter
+wait 浏览器 · 网络
+type /
+type 鸿雁 · 网络
+key enter
+type a
+perm-state com.phone.chat net granted
+appstate com.phone.chat stopped 5000
+key f4
+type /
+type 鸿雁
+key enter
+wait 张三 8000
+gone 连不上鸿雁服务器 4000
+key f4
+
+== 企业 Wi-Fi（802.1X）：填用户名、密码和服务器的域名才连；服务器证书的域名不对时不连，改对后用 PEAP 连上；忘记后再用 TTLS/PAP 连上（模拟器上是 hostapd 的 EAP 服务器）
+require-eap-ap
+keypad qwerty
+wifi-eap-ap Kario-Corp alice@corp.kario.test corp-pass radius.kario.test
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type Wi-Fi
+key enter
+key enter
+wait Kario-Corp
+type /
+type Kario-Corp
+key enter
+key enter
+wait 服务器域名
+fill alice@corp.kario.test
+key down
+fill corp-pass
+key down
+fill evil.example
+key down 2
+key enter
+wait 连接失败 5000
+key up 2
+fill radius.kario.test
+key down 2
+key enter
+gone 服务器域名 8000
+wait 已连接 5000
+type /
+type Kario-Corp
+key enter
+type d
+wait 确认忘记网络
+key enter
+wait 企业网络 5000
+key enter
+wait 服务器域名
+fill alice@corp.kario.test
+key down
+fill corp-pass
+key down
+fill radius.kario.test
+key down
+key enter
+wait TTLS · PAP
+key down
+key enter
+gone 服务器域名 8000
+key esc
+wait 已连接「Kario-Corp」 8000
+key f4
+
+== 按应用流量与只用 Wi-Fi：应用发出的流量按网卡类型记进「设置 › 流量」这个周期的移动数据（防火墙按应用的计数器；模拟器的有线网卡算移动网络）；设成只用 Wi-Fi 后从移动网络发不出去（立即生效，不重启应用），改回来又能发
+require-netfw
+require-app com.phone.store
+appstop com.phone.settings
+net-send com.phone.store sent
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 流量
+key enter
+key enter
+wait 各应用的移动数据
+wait 应用商店
+wait ↑384 B
+data-usage report
+key esc
+at g.mobile
+type /
+type 设置 · 应用权限
+key enter
+key enter
+wait 浏览器 · 网络
+type /
+type 应用商店 · 网络
+key enter
+type w
+perm-state com.phone.store net wifi
+wait 只用 Wi-Fi
+net-send com.phone.store blocked
+type a
+perm-state com.phone.store net granted
+net-send com.phone.store sent
+key esc
+at g.privacy
+type /
+type 设置 · 流量
+key enter
+key enter
+type r
+wait ↑768 B
+key f4
+
+== VPN：「文件」里的 WireGuard 配置（经 USB 从电脑拷来的那种）在设置 › VPN 里从系统的文件列表导入，私钥只交给系统；连上后状态栏显示 VPN、页面显示已连接，详情里有地址、服务器和握手；断开后指示消失（设备上隧道的网卡和策略路由都删掉）；删除前先确认
+vpn-file wg-office.conf
+key f4
+appstop com.phone.settings
+type /
+type 设置 · VPN
+key enter
+at root
+key enter
+at com.phone.settings/vpn
+wait 导入配置文件
+type /
+type 导入配置文件
+key enter
+wait 导入 VPN 配置
+wait wg-office.conf
+key enter
+wait 已导入「wg-office」
+wait 部分地址
+type /
+type wg-office
+key enter
+key enter
+vpn on 20000
+wait 已连接 · 10.77.0.2/32
+snap 53-vpn
+type i
+wait 最近握手
+wait 192.0.2.77:51820
+wait 10.77.0.0/24
+key esc
+at com.phone.settings/vpn
+key enter
+vpn off 20000
+wait 部分地址
+type d
+wait 删除 VPN「wg-office」？
+key enter
+wait 已删除 VPN「wg-office」
+gone 部分地址
+key f4
+
+== VPN 始终开启、屏蔽和按应用：「文件」里的全隧道配置导入后在详情里设为始终开启，马上连上；打开「屏蔽未使用 VPN 的连接」；隧道断了自己连回来，底下换了网络也重连；按应用：只让浏览器走 VPN 时应用商店不走，排除浏览器时反过来；断开要确认，之后始终开启和屏蔽都关掉；删除配置。开发机上是模拟的隧道，应用的包去哪儿按 Shell 的策略判断（设备上同样的策略见后面两个设备用例）
+require-vpn sim
+require-app com.phone.store
+require-app com.phone.browser
+vpn-file wg-home.conf full
+key f4
+appstop com.phone.settings
+type /
+type 设置 · VPN
+key enter
+at root
+key enter
+at com.phone.settings/vpn
+wait 导入配置文件
+type /
+type 导入配置文件
+key enter
+wait 导入 VPN 配置
+wait wg-home.conf
+key enter
+wait 已导入「wg-home」
+wait 全部流量
+type /
+type wg-home
+key enter
+type i
+wait 始终开启的 VPN
+type /
+type 始终开启的 VPN
+key enter
+key enter
+vpn on 20000
+wait 屏蔽未使用 VPN 的连接
+wait-re 屏蔽未使用 VPN 的连接 +关 15000
+type /
+type 屏蔽未使用 VPN 的连接
+key enter
+key enter
+wait-re 屏蔽未使用 VPN 的连接 +开 15000
+vpn-lock on
+vpn-route com.phone.store tunnel
+vpn-drop 20000
+vpn-net wwan0 20000
+vpn-route com.phone.store tunnel
+key esc
+at com.phone.settings/vpn
+type /
+type 走 VPN 的应用
+key enter
+key enter
+at com.phone.settings/vpnapps
+type /
+type 只有选中的应用
+key enter
+key enter
+wait 浏览器
+type /
+type 浏览器
+key enter
+key enter
+vpn-route com.phone.browser tunnel
+vpn-route com.phone.store direct
+type /
+type 除选中的应用外的全部
+key enter
+key enter
+vpn-route com.phone.browser direct
+vpn-route com.phone.store tunnel
+type /
+type 浏览器
+key enter
+key enter
+type /
+type 全部应用
+key enter
+key enter
+gone 浏览器
+key esc
+at com.phone.settings/vpn
+type /
+type wg-home
+key enter
+key enter
+wait 是始终开启的
+key enter
+vpn off 20000
+vpn-lock off
+type d
+wait 删除 VPN「wg-home」？
+key enter
+wait 已删除 VPN「wg-home」
+key f4
+
+== VPN 始终开启，Shell 重启后：设为始终开启的 VPN 在 Shell 重启后自己连上；断开（确认）后删除
+require-vpn sim
+require-restart
+vpn-file wg-boot.conf full
+key f4
+appstop com.phone.settings
+type /
+type 设置 · VPN
+key enter
+at root
+key enter
+at com.phone.settings/vpn
+type /
+type 导入配置文件
+key enter
+wait wg-boot.conf
+key enter
+wait 已导入「wg-boot」
+type /
+type wg-boot
+key enter
+type i
+wait 始终开启的 VPN
+type /
+type 始终开启的 VPN
+key enter
+key enter
+vpn on 20000
+key f4
+shell-restart
+at sys.idle 10000
+vpn on 20000
+appstop com.phone.settings
+type /
+type 设置 · VPN
+key enter
+at root
+key enter
+at com.phone.settings/vpn
+wait 已连接 · 10.77.0.2/32
+key enter
+wait 是始终开启的
+key enter
+vpn off 20000
+type d
+wait 删除 VPN「wg-boot」？
+key enter
+wait 已删除 VPN「wg-boot」
+key f4
+
+== VPN（设备）：设置 › VPN 里生成本机的密钥对（只显示公钥），导入管理员发来的、不带私钥的配置；用真的 systemd-networkd 和内核的 WireGuard 连到网络命名空间里的服务器（隔着一对 veth），握手成功；发往服务器隧道地址的 TCP 回显、经它的 DNS 解析和别的地址都走隧道（全隧道），隧道自己的包从 veth 出去；应用的包过了按应用防火墙进隧道；断开后网卡和策略路由都清掉
+require-vpn-peer
+require-app com.phone.store
+key f4
+appstop com.phone.settings
+type /
+type 设置 · VPN
+key enter
+at root
+key enter
+at com.phone.settings/vpn
+type /
+type 本机密钥对
+key enter
+key enter
+at com.phone.settings/vpnkey
+wait 复制公钥
+vpn-peer wg-peer.conf
+key esc
+at com.phone.settings/vpn
+type /
+type 导入配置文件
+key enter
+key enter
+wait wg-peer.conf
+key enter
+wait 已导入「wg-peer」
+type /
+type wg-peer
+key enter
+key enter
+vpn on 30000
+wait 已连接 · 10.77.7.2/32
+vpn-check com.phone.store
+key enter
+vpn off 30000
+type d
+wait 删除 VPN「wg-peer」？
+key enter
+wait 已删除 VPN「wg-peer」
+vpn-peer off
+key f4
+
+== VPN 始终开启和按应用（设备）：设置 › VPN 里生成本机的密钥对，导入网络命名空间里的 WireGuard 服务器的全隧道配置，在详情里设为始终开启后马上连上（握手、回显、经它的 DNS 解析、应用商店的包进隧道）；打开「屏蔽未使用 VPN 的连接」后防火墙里有屏蔽链，商店的包照样进隧道；删掉隧道的网卡后 Shell 自己把它连回来、又握上手；按应用（防火墙按 uid 打上隧道的标记，策略路由让它绕过隧道的表，源地址伪装成出去的网卡的）：排除浏览器时浏览器的包不进隧道、商店的进，只让浏览器走时反过来；断开（确认）后始终开启和屏蔽都关掉，屏蔽链删掉
+require-vpn-peer
+require-netfw
+require-app com.phone.store
+require-app com.phone.browser
+key f4
+appstop com.phone.settings
+type /
+type 设置 · VPN
+key enter
+at root
+key enter
+at com.phone.settings/vpn
+type /
+type 本机密钥对
+key enter
+key enter
+at com.phone.settings/vpnkey
+wait 复制公钥
+vpn-peer wg-peer2.conf
+key esc
+at com.phone.settings/vpn
+type /
+type 导入配置文件
+key enter
+key enter
+wait wg-peer2.conf
+key enter
+wait 已导入「wg-peer2」
+type /
+type wg-peer2
+key enter
+type i
+wait 始终开启的 VPN
+type /
+type 始终开启的 VPN
+key enter
+key enter
+vpn on 30000
+vpn-check com.phone.store
+wait-re 屏蔽未使用 VPN 的连接 +关 15000
+type /
+type 屏蔽未使用 VPN 的连接
+key enter
+key enter
+wait-re 屏蔽未使用 VPN 的连接 +开 15000
+vpn-lock on
+vpn-route com.phone.store tunnel 15000
+vpn-drop 30000
+vpn-check
+key esc
+at com.phone.settings/vpn
+type /
+type 走 VPN 的应用
+key enter
+key enter
+at com.phone.settings/vpnapps
+type /
+type 除选中的应用外的全部
+key enter
+key enter
+wait 浏览器
+type /
+type 浏览器
+key enter
+key enter
+vpn-route com.phone.browser direct 15000
+vpn-route com.phone.store tunnel 15000
+type /
+type 只有选中的应用
+key enter
+key enter
+vpn-route com.phone.browser tunnel 15000
+vpn-route com.phone.store direct 15000
+type /
+type 浏览器
+key enter
+key enter
+type /
+type 全部应用
+key enter
+key enter
+gone 浏览器
+key esc
+at com.phone.settings/vpn
+type /
+type wg-peer2
+key enter
+key enter
+wait 是始终开启的
+key enter
+vpn off 30000
+vpn-lock off
+type d
+wait 删除 VPN「wg-peer2」？
+key enter
+wait 已删除 VPN「wg-peer2」
+vpn-peer off
+key f4
+
+== VPN 屏蔽未使用 VPN 的连接（设备）：始终开启的分隧道（终点是文档用的地址）打开屏蔽后，应用商店发往隧道以外地址的包被防火墙挡住（EPERM）；按应用排除商店后它的包带着隧道的标记绕过隧道照常发出（分隧道的路由这时放进隧道自己的表，Shell 重建隧道），改回全部应用又挡住；断开（确认）后屏蔽撤掉，商店照常发出
+require-vpn-peer
+require-netfw
+require-app com.phone.store
+vpn-file wg-lan.conf
+key f4
+appstop com.phone.settings
+type /
+type 设置 · VPN
+key enter
+at root
+key enter
+at com.phone.settings/vpn
+type /
+type 导入配置文件
+key enter
+wait 导入 VPN 配置
+wait wg-lan.conf
+key enter
+wait 已导入「wg-lan」
+type /
+type wg-lan
+key enter
+type i
+wait 始终开启的 VPN
+type /
+type 始终开启的 VPN
+key enter
+key enter
+vpn on 30000
+wait-re 屏蔽未使用 VPN 的连接 +关 15000
+type /
+type 屏蔽未使用 VPN 的连接
+key enter
+key enter
+wait-re 屏蔽未使用 VPN 的连接 +开 15000
+vpn-lock on
+vpn-route com.phone.store blocked 15000
+key esc
+at com.phone.settings/vpn
+type /
+type 走 VPN 的应用
+key enter
+key enter
+at com.phone.settings/vpnapps
+type /
+type 除选中的应用外的全部
+key enter
+key enter
+wait 应用商店
+type /
+type 应用商店
+key enter
+key enter
+vpn-route com.phone.store direct 30000
+key enter
+type /
+type 全部应用
+key enter
+key enter
+gone 应用商店
+vpn-route com.phone.store blocked 30000
+key esc
+at com.phone.settings/vpn
+type /
+type wg-lan
+key enter
+key enter
+wait 是始终开启的
+key enter
+vpn off 30000
+vpn-lock off
+vpn-route com.phone.store direct
+type d
+wait 删除 VPN「wg-lan」？
+key enter
+wait 已删除 VPN「wg-lan」
+key f4
+
+== 通讯录同步（CardDAV）：设置 › 账号里登录 Kario 账号（产品的账号服务器换成 Shell 里的模拟 CardDAV 服务器）：密码不对时页面说清楚、不留账号；用邮箱和应用专用密码登录后回到账号列表，打开账号：「使用移动数据」关了再开，双向同步：服务器上的「云端李雷」（带照片、邮箱和群组「同事」）进了通讯录、在群组「同事」里，手机上的联系人传到服务器；服务器上改了李雷的号码，「立即同步」后手机上跟着变；没有网络时页面写着「等待网络」，网络一回来就同步；退出登录并删除它的联系人：李雷从手机上消失，手机上原有的联系人留着；最后在通讯录里删掉空了的群组「同事」
+carddav-server alice@kario.test wxyz-abcd-efgh-ijkl
+key f4
+appstop com.phone.settings
+type /
+type 设置 · 账号
+key enter
+at root
+key enter
+at com.phone.settings/accounts
+wait 其他 CardDAV 账号
+key enter
+at com.phone.settings/acctadd:kario
+wait 应用专用密码
+fill alice@kario.test
+key down
+fill wrong-password
+key down
+key enter
+wait 不接受 8000
+key up
+fill wxyz-abcd-efgh-ijkl
+key down
+key enter
+at com.phone.settings/accounts 8000
+wait 前已同步 15000
+wait alice@kario.test
+key first
+key enter
+at com.phone.settings/acct:a1
+wait-re 使用移动数据 +开
+key last
+key up
+key up
+key enter
+wait-re 使用移动数据 +关
+key enter
+wait-re 使用移动数据 +开
+carddav-has FN:张三 present
+carddav-contact 云端李雷 | 139 1234 0000
+carddav-contact 云端李雷 | lei@kario.test
+carddav-group 同事 | 云端李雷
+snap accounts
+carddav-card lei.vcf BEGIN:VCARD\nVERSION:3.0\nUID:kario-selftest-lei\nFN:云端李雷\nN:李;雷;;;\nTEL;TYPE=CELL:+86 139 1234 9999\nEMAIL;TYPE=INTERNET:lei@kario.test\nCATEGORIES:同事\nEND:VCARD
+type s
+carddav-contact 云端李雷 | 139 1234 9999
+carddav-net offline
+type s
+wait 等待网络
+carddav-net real
+wait 前已同步 15000
+key f4
+appstop com.phone.contacts
+key f2
+at com.phone.contacts/list
+wait 云端李雷
+wait 139 1234 9999
+key f4
+type /
+type 设置 · 账号
+key enter
+at root
+key enter
+at com.phone.settings/accounts
+wait-re alice@kario\.test · .*前已同步
+key first
+key enter
+at com.phone.settings/acct:a1
+type r
+wait 退出「alice@kario.test」
+wait 删掉
+key enter
+wait 添加账号 8000
+carddav-contact 云端李雷 | absent
+carddav-contact 张三 |
+carddav-has 云端李雷 present
+carddav-group 同事 |
+key f4
+appstop com.phone.contacts
+key f2
+at com.phone.contacts/list
+key tab
+wait 群组
+type g
+at com.phone.contacts/groups
+wait 同事
+key first
+type d
+wait 删除群组「同事」？
+key enter
+wait 还没有群组
+carddav-group 同事 | absent
+carddav-server off
+key f4
+
+== 通讯录同步：一个账号里的几本通讯录、iPhone 那样的分组名片、邮箱和地址、联系人照片：模拟服务器上另有一本「工作」（王总的名片带邮箱和地址，分组名片「项目组」里有他）；登录后账号页列出两本，只有第一本在同步；打开「工作」，王总带着邮箱、地址进了通讯录，在群组「项目组」里；新联系人改存到「工作」后，新建的「测试孙九」（带邮箱）传到「工作」那本；在通讯录里把他加进「项目组」，服务器的分组名片里多了他；从图片里给他选一张照片，服务器上的名片带上 JPEG，去掉后也没有了；关掉「工作」并删掉它的联系人：王总不在了；退出登录并删除联系人；最后删掉孙九和空了的群组
+carddav-server alice@kario.test wxyz-abcd-efgh-ijkl
+carddav-book work 工作
+carddav-card @work boss.vcf BEGIN:VCARD\nVERSION:3.0\nUID:kario-selftest-boss\nFN:王总\nN:王;总;;;\nTEL;TYPE=WORK:010 8888 0001\nEMAIL;TYPE=INTERNET,WORK:boss@work.test\nADR;TYPE=WORK:;;建国路 1 号;北京;;100000;中国\nEND:VCARD
+carddav-card @work team.vcf BEGIN:VCARD\nVERSION:3.0\nPRODID:-//Apple Inc.//iOS 18//EN\nUID:kario-selftest-team\nN:项目组\nFN:项目组\nX-ADDRESSBOOKSERVER-KIND:group\nX-ADDRESSBOOKSERVER-MEMBER:urn:uuid:kario-selftest-boss\nEND:VCARD
+key f4
+appstop com.phone.settings
+type /
+type 设置 · 账号
+key enter
+at root
+key enter
+at com.phone.settings/accounts
+wait 其他 CardDAV 账号
+key enter
+at com.phone.settings/acctadd:kario
+wait 应用专用密码
+fill alice@kario.test
+key down
+fill wxyz-abcd-efgh-ijkl
+key down
+key enter
+at com.phone.settings/accounts 8000
+wait 前已同步 15000
+key first
+key enter
+at com.phone.settings/acct:a2
+wait 不同步：里面的联系人不在手机上
+carddav-contact 云端李雷 | a2/b1
+carddav-contact 王总 | absent
+key first
+key down
+key down
+key enter
+carddav-contact 王总 | boss@work.test 15000
+carddav-contact 王总 | 建国路 1 号, 北京, 100000, 中国
+carddav-contact 王总 | a2/b2
+carddav-group 项目组 | 王总
+wait-re 1 个联系人，其中 1 个来自服务器 8000
+key esc
+at com.phone.settings/accounts
+wait-re 新联系人存到
+key first
+key down
+key enter
+at com.phone.settings/acctdefault
+wait 只在手机上
+key first
+key down
+key enter
+wait 新联系人存到 工作
+at com.phone.settings/accounts
+wait 工作 · Kario 账号
+key f4
+appstop com.phone.contacts
+key f2
+at com.phone.contacts/list
+wait 全部（
+key f2
+at com.phone.contacts/edit
+wait 新建联系人
+type 测试孙九
+key enter
+type 13900009999
+wait 住宅号码
+key enter
+key enter
+key enter
+fill sun@kario.test
+key f2
+at com.phone.contacts/view
+wait sun@kario.test
+wait 存在：工作 · Kario 账号
+carddav-has @work FN:测试孙九 present 30000
+carddav-has @work EMAIL;TYPE=INTERNET,HOME:sun@kario.test present
+key esc
+at com.phone.contacts/list
+key tab
+wait 群组
+type g
+at com.phone.contacts/groups
+wait 项目组
+wait 同事
+key last
+key enter
+at com.phone.contacts/group
+wait 王总
+key tab
+type a
+at com.phone.contacts/group-add
+type cssj
+wait 测试孙九
+key down
+key enter
+wait 已加入「测试孙九」
+key esc
+at com.phone.contacts/group
+carddav-group 项目组 | 测试孙九,王总
+carddav-has @work X-ADDRESSBOOKSERVER-MEMBER:urn:uuid:kario-selftest-boss\nX-ADDRESSBOOKSERVER-MEMBER:urn:uuid: present 30000
+key esc
+at com.phone.contacts/groups
+key esc
+at com.phone.contacts/list
+type cssj
+wait 测试孙九
+key down
+key enter
+at com.phone.contacts/view
+type p
+wait 选择照片
+key enter
+wait 已存好照片 8000
+carddav-contact 测试孙九 | 带照片
+carddav-has @work PHOTO;ENCODING=b;TYPE=JPEG: present 30000
+wait ▀▀▀▀ 8000
+type x
+wait 确认去掉照片？
+key enter
+wait 已去掉照片
+carddav-has @work PHOTO absent 30000
+key f4
+type /
+type 设置 · 账号
+key enter
+at root
+key enter
+at com.phone.settings/accounts
+key first
+key enter
+at com.phone.settings/acct:a2
+key first
+key down
+key down
+type x
+wait 不再同步「工作」
+key enter
+carddav-contact 王总 | absent
+carddav-contact 测试孙九 | 13900009999
+type r
+wait 退出「alice@kario.test」
+key enter
+wait 添加账号 8000
+carddav-contact 云端李雷 | absent
+carddav-group 项目组 | 测试孙九
+key f4
+appstop com.phone.contacts
+key f2
+at com.phone.contacts/list
+type cssj
+wait 测试孙九
+key down
+key enter
+at com.phone.contacts/view
+type d
+wait 删除联系人「测试孙九」？
+key enter
+at com.phone.contacts/list
+key tab
+wait 群组
+type g
+at com.phone.contacts/groups
+wait 项目组
+key first
+type d
+wait 删除群组「同事」？
+key enter
+gone 同事
+key first
+type d
+wait 删除群组「项目组」？
+key enter
+wait 还没有群组
+carddav-group 项目组 | absent
+carddav-group 同事 | absent
+carddav-server off
+key f4
+
+== 通讯录：只读的通讯录、生日和别的字段、副本、搬到另一本、日历里的生日：模拟服务器上只读的「System」里有「只读赵六」（生日、单位和职位、网址）；登录后账号页写着它只读、不同步，打开后赵六进了通讯录；联系人页写着只读、职位和单位、生日、网址，「编辑」打开的是存到可写那本的副本，存好后服务器上多了副本；把副本搬到「只在手机上」，服务器上的副本删掉；日历里搜得到「只读赵六的生日」，写着满几岁、来自通讯录；退出登录并删除它的联系人；最后删掉副本
+carddav-server alice@kario.test wxyz-abcd-efgh-ijkl
+carddav-card @a-system ro.vcf BEGIN:VCARD\nVERSION:3.0\nUID:kario-selftest-ro\nFN:只读赵六\nN:赵;六;;;\nTEL;TYPE=WORK:010 6666 0001\nBDAY:1980-05-06\nORG:总部;行政\nTITLE:主任\nURL:https://ro.kario.test/zhao\nEND:VCARD
+key f4
+appstop com.phone.settings
+type /
+type 设置 · 账号
+key enter
+at root
+key enter
+at com.phone.settings/accounts
+wait 其他 CardDAV 账号
+key enter
+at com.phone.settings/acctadd:kario
+wait 应用专用密码
+fill alice@kario.test
+key down
+fill wxyz-abcd-efgh-ijkl
+key down
+key enter
+at com.phone.settings/accounts 8000
+wait 前已同步 15000
+key first
+key enter
+wait 使用移动数据
+wait 只读 · 不同步
+key first
+key down
+key down
+key enter
+wait 只读：1 个联系人来自服务器 15000
+carddav-contact 只读赵六 | 010 6666 0001
+carddav-contact 只读赵六 | 生日：1980-05-06
+key f4
+appstop com.phone.contacts
+key f2
+at com.phone.contacts/list
+type zdzl
+wait 只读赵六
+key down
+key enter
+at com.phone.contacts/view
+wait 主任 · 总部
+wait 1980-05-06
+wait https://ro.kario.test/zhao
+wait 只读：来自「System
+type e
+at com.phone.contacts/edit
+wait 联系人的副本
+key f2
+wait 已保存「只读赵六」
+at com.phone.contacts/view
+carddav-has FN:只读赵六 present 30000
+carddav-has BDAY:1980-05-06 present
+type v
+at com.phone.contacts/move
+wait 把「只读赵六」移到
+key first
+key enter
+wait 已移到 只在手机上
+at com.phone.contacts/view
+wait 存在：只在手机上
+carddav-has FN:只读赵六 absent 30000
+key f4
+appstop com.phone.calendar
+type /
+type 日历
+key enter
+at com.phone.calendar/month 10000
+type 3
+at com.phone.calendar/search
+fill 只读赵六
+key enter
+wait 只读赵六的生日 10000
+key down
+key enter
+at com.phone.calendar/event
+wait-re 满 [0-9]+ 岁
+wait 来自通讯录
+key f4
+type /
+type 设置 · 账号
+key enter
+at root
+key enter
+at com.phone.settings/accounts
+key first
+key enter
+wait 使用移动数据
+type r
+wait 退出「alice@kario.test」
+key enter
+wait 添加账号 8000
+key f4
+appstop com.phone.contacts
+key f2
+at com.phone.contacts/list
+type zdzl
+wait 只读赵六
+key down
+key enter
+at com.phone.contacts/view
+type d
+wait 删除联系人「只读赵六」？
+key enter
+at com.phone.contacts/list
+carddav-contact 只读赵六 | absent
+carddav-server off
+key f4
+
+== 小程序：签名的小程序包由宿主验签后加载，改过的包被拒绝；每个小程序的存储各自独立
+require-app com.phone.miniapp
+mp-build mp-counter com.phone.miniapp downloads/counter.mpk
+mp-build mp-counter com.phone.miniapp downloads/counter-bad.mpk tamper
+appstop com.phone.miniapp
+key f4
+type /
+type 小程序
+key enter
+wait 我的小程序
+type a
+wait 已添加「计数器」
+wait counter-bad.mpk 校验失败
+type /
+type 计数器
+key enter
+key enter
+wait 已点 0 次
+key enter
+wait 已点 1 次
+key f4
+appstop com.phone.miniapp
+type /
+type 小程序
+key enter
+wait 示例小程序：签名打包
+key enter
+wait 已点 1 次
+key f4
+
+== 相机：设备有 V4L2 摄像头时，取景框和照片来自真实画面（模拟器上是内核的 vivid 虚拟摄像头）
+require-v4l2
+camera-frames 10
+key f4
+type /
+type 相机
+key enter
+wait 拍照
+key enter
+wait 按 OK 拍照
+frames 5
+key enter
+wait 已保存到图片
+camera-frames 30
+key f4
+
+== 渲染器崩溃：看门狗启动新的渲染器并补发整帧
+require-gui
+key f4
+at sys.idle
+gui-crash
+at sys.idle
+type /
+type 计算器
+key enter
+wait 计算器
+snap gui-restarted
+key f4
+
+== 鼠标指针：指着图块点一下，焦点移过去并选中它（渲染器把指针位置换成节点）
+require-gui
+key f4
+at sys.idle
+key enter
+at sys.menu
+wait 工具
+tap 工具
+at sys.folder:tools
+wait 计算器
+tap 计算器
+at com.phone.calc/calc
+tap 7
+tap 8
+wait 78
+key f4
+
+== C++ 应用：通过 C 接口（sdk/c）讲协议，能力调用也走同一条连接
+require-app com.phone.hellocpp
+key f4
+type /
+type C++
+key enter
+wait 通过 C 接口讲 phone.Ui 协议
+key enter
+wait 已点击 1 次
+key down
+key enter
+wait 已复制到剪贴板
+key f4
+
+== TypeScript 应用：kario build 编译、kario-jsrt 运行；列表、输入框、软键、剪贴板能力和定时器都走同一套协议，系统选择器交出的照片作为只读文件到了 JavaScript（读出大小和文件头），便签存在应用数据里，打开的那页交给墓碑，进程被系统结束后都还在
+require-app com.example.hellots
+key f4
+type /
+type TypeScript
+key enter
+wait TypeScript 便签
+wait 还没有便签
+type 买牛奶
+key enter
+wait 已添加「买牛奶」
+wait 1 条便签
+snap 48-typescript-notes
+gone 已添加「买牛奶」 6000
+key down
+key enter
+wait 3 个字
+key enter
+wait 已把「买牛奶」复制到剪贴板
+key f4
+at sys.idle
+saved com.example.hellots
+lowmem-kill com.example.hellots
+appstate com.example.hellots stopped
+key f3
+wait 切换应用
+wait TypeScript 示例
+key enter
+revived com.example.hellots
+wait 3 个字
+key esc
+wait 买牛奶
+key tab
+wait 附上照片
+type p
+wait 选择照片
+key enter
+wait 已附上照片
+wait-re (PNG|JPEG) 照片「.+」：[1-9]
+key f2
+wait 删除全部便签？
+key enter
+wait 还没有便签
+key f4
+
+== KarioUI 计算器：TypeScript 和 KarioUI 写的系统应用；内存紧张时系统结束了后台的计算器，从「切换应用」回去，算到一半的式子还在（KarioUI 把它交给墓碑），接着算
+key f4
+type /
+type 计算器
+key enter
+type C
+wait 小数点
+type 7+8
+wait 7+8
+key f4
+at sys.idle
+saved com.phone.calc
+lowmem-kill com.phone.calc
+appstate com.phone.calc stopped
+key f3
+wait 切换应用
+wait 计算器
+key enter
+revived com.phone.calc
+wait 7+8
+type =
+wait = 15
+type C
+wait 小数点
+key f4
+
+== 原生模块：TypeScript 应用带 C 写的原生模块（包里的 lib/<架构>/imgproc.so，随包签名），安装确认写明含原生代码；装好后原生代码、工作线程和 TypeScript 各模糊同一张图，像素一样，原生的快得多（两边的毫秒数记在应用日志的「imgproc bench」一行）
+require-example imgproc
+setting developer_mode 1
+pkg-build imgproc com.phone.store downloads/imgproc.phoneapp
+appstop com.phone.store
+key f4
+type /
+type 应用商店
+key enter
+wait imgproc.phoneapp
+key enter
+wait 安装「图片滤镜」1.0？
+wait 含原生代码（imgproc）
+snap 49-native-install
+key enter
+wait 已安装「图片滤镜」
+key f4
+type /
+type 图片滤镜
+key enter
+wait 原生代码：imgproc 1.0
+key enter
+wait ：原生代码，
+wait 校验和
+key down
+key enter
+wait ：TypeScript，
+key down
+key enter
+wait 在工作线程上模糊完了 10000
+key down
+key enter
+wait 两边的像素完全一样 60000
+snap 50-native-compare
+app-log com.example.imgproc imgproc bench
+key f4
+appstop com.example.imgproc
+setting developer_mode 0
+
+== 教程的示例（KarioUI 便签）：从商店装的 TypeScript 应用打开每天提醒（后台任务），用 fetch 把推送令牌发给自己的服务器（本机回环上的测试服务器）；冻结时推送的数据短暂唤醒它、加进便签，通知由系统显示；提醒的任务到期时在后台唤醒它，它自己发通知；最后卸载
+require-example karioui-notes
+require-push
+setting developer_mode 1
+pkg-build karioui-notes com.phone.store downloads/KarioUI-notes.phoneapp
+appstop com.phone.store
+key f4
+type /
+type 应用商店
+key enter
+wait KarioUI-notes.phoneapp
+key enter
+wait 安装「KarioUI 便签」1.0？
+key enter
+wait 已安装「KarioUI 便签」
+key f4
+type /
+type KarioUI
+key enter
+wait 还没有便签
+key tab
+wait 推送和提醒
+type p
+wait 每天提醒
+wait 推送令牌
+key enter
+wait 关掉
+snap 53-tutorial-reminder
+fetch-server 127.0.0.1:47123
+key down
+key down
+type http://127.0.0.1:47123
+key enter
+wait 令牌已发给 http://127.0.0.1:47123 15000
+fetch-got POST /register "app":"com.example.kariouinotes"
+key esc
+wait 还没有便签
+key f4
+at sys.idle
+freeze-after 500
+appstate com.example.kariouinotes frozen 8000
+push com.example.kariouinotes 新便签 | 买牛奶 | {"note":"买牛奶"}
+wait KarioUI 便签 · 新便签
+appstate com.example.kariouinotes running 4000
+appstate com.example.kariouinotes frozen 8000
+timeshift 88200
+job com.example.kariouinotes digest runs 1
+wait KarioUI 便签 · 1 条便签
+appstate com.example.kariouinotes frozen 8000
+freeze-after 0
+type /
+type KarioUI
+key enter
+wait 买牛奶
+wait 1 条便签
+key tab
+type p
+wait 关掉
+key enter
+gone 关掉
+key esc
+key f4
+appstop com.example.kariouinotes
+type /
+type 应用商店
+key enter
+wait 版本 1.0
+type /
+type KarioUI 便签
+key enter
+type d
+wait 卸载「KarioUI 便签」
+key enter
+wait 已卸载「KarioUI 便签」
+key f4
+setting developer_mode 0
+
+== 开发者模式：电脑经信任过的数据线（kario device：SSH 到开发镜像的 dropbear，再经 phone-dev 交给 Shell）装应用、看日志、重新载入、重启、卸载；开发者模式关着、数据线没插或没信任时一律拒绝，系统应用不让碰；商店装的 TypeScript 应用装好后在设备上预编译成字节码、从字节码启动，改过的字节码不用、重新编译，卸载时一起删掉
+require-usb
+require-example karioui-notes
+key f4
+setting developer_mode 0
+at sys.idle
+dev !install karioui-notes -> developer mode is off
+setting developer_mode 1
+dev !install karioui-notes -> no trusted computer
+usb-cable on
+wait 信任这台电脑吗？ 30000
+key enter
+dev trust devstore -> trust
+dev install karioui-notes -> installed com.example.kariouinotes 1.0
+wait 已从电脑安装「KarioUI 便签」
+jscache com.example.kariouinotes ready 30000
+dev restart com.example.kariouinotes -> restarted com.example.kariouinotes
+at com.example.kariouinotes/main 10000
+wait 还没有便签
+jscache com.example.kariouinotes used
+dev logs com.example.kariouinotes
+dev !logs com.phone.calc -> is not an installed app
+dev !restart com.phone.calc -> is not an installed app
+jscache com.example.kariouinotes tamper
+dev restart com.example.kariouinotes -> restarted
+at com.example.kariouinotes/main 10000
+jscache com.example.kariouinotes unused
+jscache com.example.kariouinotes ready 30000
+dev reload com.example.kariouinotes -> reloading
+sleep 2000
+revived com.example.kariouinotes
+jscache com.example.kariouinotes used
+key f4
+setting developer_mode 0
+dev !uninstall com.example.kariouinotes -> developer mode is off
+setting developer_mode 1
+dev uninstall com.example.kariouinotes -> uninstalled
+jscache com.example.kariouinotes none
+key f4
+usb-cable off
+wait 已停止与电脑共享 10000
+dev !install karioui-notes -> no trusted computer
+setting developer_mode 0
+
+== 开发者模式：电脑经数据线按键、打字（kario device key、type），状态栏写「电脑在按键」；解锁设备的系统确认和键盘锁不接受电脑的按键（取消可以），要用手机自己的按键
+require-usb
+key f4
+setting developer_mode 1
+at sys.idle
+usb-cable on
+wait 信任这台电脑吗？ 30000
+key enter
+at sys.idle
+dev !key bogus -> not a key
+dev type / -> typed 1 characters
+dev key esc -> pressed 1 keys
+at sys.idle
+wait 电脑在按键
+setting device_unlocked 1
+wait 解锁设备？
+dev !key enter -> takes only the keys of the person holding the phone
+wait 电脑发来的按键不能回答这个
+wait 解锁设备？
+dev key esc -> pressed 1 keys
+gone 解锁设备？
+key f4
+at sys.idle
+key tab
+type *
+wait 键盘已锁
+dev !key tab -> the lock takes only
+dev !type * -> the lock takes only
+key tab
+type *
+wait 键盘已解锁
+key f4
+usb-cable off
+wait 已停止与电脑共享 10000
+setting developer_mode 0
+
+== 开发者模式：电脑经数据线推送、拉取文件（kario device push、pull，在 SSH 命令的输入输出里传）：只到开发者目录和开发者模式装的应用的数据里，别处一律拒绝
+require-usb
+require-example karioui-notes
+key f4
+setting developer_mode 1
+at sys.idle
+usb-cable on
+wait 信任这台电脑吗？ 30000
+key enter
+at sys.idle
+dev push hello.txt 来自电脑的文件 -> pushed
+dev pull hello.txt -> 来自电脑的文件
+dev-rm hello.txt
+dev !pull hello.txt -> no such file
+dev !pull /etc/passwd -> only the developer directory
+dev !push ../escape.txt x -> names no file inside
+dev !pull com.phone.calc:main.js -> is not an installed app
+dev trust devstore -> trust
+dev install karioui-notes -> installed com.example.kariouinotes 1.0
+jscache com.example.kariouinotes ready 30000
+dev push com.example.kariouinotes:fixtures/seed.txt 种子数据 -> pushed
+dev pull com.example.kariouinotes:fixtures/seed.txt -> 种子数据
+dev uninstall com.example.kariouinotes -> uninstalled
+jscache com.example.kariouinotes none
+dev !pull com.example.kariouinotes:fixtures/seed.txt -> is not an installed app
+key f4
+usb-cable off
+wait 已停止与电脑共享 10000
+setting developer_mode 0
+
+== 开发者模式：电脑经数据线取问题报告（kario device bugreport，私人数据不在里面）、看系统日志（syslog）、旁加载系统更新（update：经 RAUC 验签，模拟的 A/B 手机，没签名的被拒）并重启进去
+require-usb
+key f4
+setting developer_mode 1
+at sys.idle
+usb-cable on
+wait 信任这台电脑吗？ 30000
+key enter
+at sys.idle
+dev bugreport -> README.txt about.json sku.json apps.txt crashes.json shell.log
+dev syslog -u shell -n 20
+ota sim
+dev !update unsigned -> signature verification failed
+dev update signed -> installed 9.0.0 into slot b
+dev reboot -> restarting into the system update installed
+ota restarts 1 5000
+ota off
+dev reboot bootloader -> restarting into bootloader
+key f4
+usb-cable off
+wait 已停止与电脑共享 10000
+setting developer_mode 0
+
+== 开发者模式：电脑经数据线截屏（kario device screenshot）：另起一个无头渲染器画出屏幕上的那一帧；付款码这样的安全画面整块遮住
+require-gui
+require-usb
+require-app com.phone.wallet
+key f4
+setting developer_mode 1
+at sys.idle
+usb-cable on
+wait 信任这台电脑吗？ 30000
+key enter
+at sys.idle
+dev screenshot 92-dev-screenshot -> PNG
+type /
+type 飞钱
+key enter
+wait 设备可信 10000
+key enter
+wait 自动刷新
+dev screenshot 93-dev-screenshot-masked -> masked: the screen shows secure content
+key esc
+wait 设备可信
+key f4
+usb-cable off
+wait 已停止与电脑共享 10000
+setting developer_mode 0
+
+== 开发者模式在模拟器上：电脑经数据线上真的 SSH（开发镜像的 dropbear，电脑用 dbclient）运行 phone-dev，装应用、重启、看日志、卸载；系统应用不让碰
+require-usb-host
+require-netfw
+require-example karioui-notes
+key f4
+setting developer_mode 1
+at sys.idle
+usb-cable on
+wait 信任这台电脑吗？ 30000
+key enter
+usb-port 22 open
+dev-ssh trust devstore -> trust
+dev-ssh install karioui-notes -> installed com.example.kariouinotes 1.0
+jscache com.example.kariouinotes ready 60000
+dev-ssh restart com.example.kariouinotes -> restarted
+at com.example.kariouinotes/main 20000
+jscache com.example.kariouinotes used
+dev-ssh logs com.example.kariouinotes
+dev-ssh !logs com.phone.calc -> is not an installed app
+dev-ssh uninstall com.example.kariouinotes -> uninstalled
+key f4
+usb-cable off
+wait 已停止与电脑共享 10000
+setting developer_mode 0
+
+== 开发者模式在模拟器上：经数据线上真的 SSH 推送、拉取文件（在命令的输入输出里传，手机上不用 scp、sftp），注入按键，看系统日志；端口转发（dbclient -L）经 22 端口到手机的回环地址；转发的连接还在双向传数据时关掉开发者模式：新的 SSH 连接进不来，开着的会话照样传，电脑关掉转发的连接后 dbclient 当场退出、知道原因，之后 22 对开着的连接也关上
+require-usb-host
+require-netfw
+key f4
+setting developer_mode 1
+at sys.idle
+usb-cable on
+wait 信任这台电脑吗？ 30000
+key enter
+usb-port 22 open
+dev-ssh push hello.txt 来自电脑的文件 -> pushed
+dev-ssh pull hello.txt -> 来自电脑的文件
+dev-rm hello.txt
+dev-ssh type / -> typed 1 characters
+dev-ssh key esc -> pressed 1 keys
+at sys.idle
+dev-ssh syslog -n 5 -> shell:
+dev-forward 7071 7070
+usb-port 22 closed
+key f4
+usb-cable off
+wait 已停止与电脑共享 10000
+setting developer_mode 0
+
+== 设备解锁：系统确认后清除全部应用密钥，设备认证报告「已解锁」，飞钱拒绝付款；重新上锁后恢复；一直在运行的鸿雁收到换钥通知，把新的推送公钥交给服务器，之后的推送照样解得开
+require-app com.phone.wallet
+appstop com.phone.chat
+key f4
+type /
+type 鸿雁
+key enter
+wait 张三
+app-pid com.phone.chat save
+key f4
+setting device_unlocked 1
+wait 解锁设备？
+key enter
+wait 设备已解锁
+appstop com.phone.wallet
+type /
+type 飞钱
+key enter
+wait 设备已解锁，飞钱不在解锁 10000
+key f4
+setting device_unlocked 0
+wait 重新上锁？
+key enter
+wait 设备已重新上锁
+appstop com.phone.wallet
+type /
+type 飞钱
+key enter
+wait 设备可信 10000
+key f4
+type /
+type 鸿雁
+key enter
+wait 张三
+app-pid com.phone.chat same
+type /
+type 张三
+key enter
+key enter
+wait 输入消息
+type 换钥之后
+key enter
+wait 收到：换钥之后 10000
+key f4
+
+== 应用贡献的命令：清单里声明的命令出现在命令面板，直接打开应用的对应位置
+key f4
+type /
+type 最近通话
+wait 电话 · 最近通话
+key enter
+wait 最近通话
+key f4
+
+== Shell 重启：应用进程不重启，新 Shell 接管它们的连接，页面原样恢复；连着重启两次也一样
+require-restart
+key f4
+type /
+type 计算器
+key enter
+wait 小数点
+type 77
+wait 77
+app-pid com.phone.calc save
+shell-restart
+at sys.idle 10000
+app-pid com.phone.calc same
+adopted com.phone.calc
+shell-restart
+at sys.idle 10000
+app-pid com.phone.calc same
+adopted com.phone.calc
+key f4
+type /
+type 计算器
+key enter
+wait 77
+key f4
+
+== 音乐：音乐目录里的 MP3、Opus 和 Vorbis 排在曲库最前面，边解码边播放
+require-audio
+music-import
+appstop com.phone.music
+key f4
+type /
+type 音乐
+key enter
+wait 示例音 440Hz
+wait 示例音 520Hz
+wait 示例音 660Hz
+wait 0:01
+key enter
+at com.phone.music/now 10000
+wait 播放中
+audio media
+key esc
+at com.phone.music/list
+key down
+key enter
+at com.phone.music/now 10000
+wait 示例音 520Hz
+wait 播放中
+audio media
+key esc
+at com.phone.music/list
+key down
+key enter
+at com.phone.music/now 10000
+wait 示例音 660Hz
+wait 播放中
+audio media
+key f4
+
+== 音乐：无损与 DSD——FLAC 24/96 按原采样率送声卡；CUE 整轨专辑分成三首，按专辑浏览，放完一首无缝接下一首；DSF 转成 176.4 kHz PCM 播放；整轨文件不单列
+require-audio
+music-import
+appstop com.phone.music
+key f4
+type /
+type 音乐
+key enter
+wait 示例音 高解析
+wait FLAC 24/96
+wait DSF DSD64
+gone 示例专辑 1000
+type /
+type 示例音 高解析
+key enter
+key enter
+at com.phone.music/now 10000
+wait 示例音 高解析
+wait 播放中
+audio media
+wait-re 96 kHz 原采样率输出|和系统声音一起混音
+key esc
+at com.phone.music/list
+type a
+at com.phone.music/albums
+wait 示例专辑
+type /
+type 示例专辑
+key enter
+key enter
+wait C 音
+wait G 音
+key enter
+at com.phone.music/now 10000
+wait C 音
+wait FLAC 16/44.1
+audio media
+wait E 音 8000
+wait G 音 8000
+key esc
+key esc
+key esc
+at com.phone.music/list
+type /
+type 示例音 DSD64
+key enter
+key enter
+at com.phone.music/now 10000
+wait DSF DSD64
+audio media
+wait-re DSD 转成 PCM · 176\.4 kHz|和系统声音一起混音
+type s
+wait 已停止
+key f4
+
+== 通知：鸿雁的新消息在通知中心里直接回复，应用不用回到前台；设置 › 应用权限里关掉它的通知后，新消息不再进通知中心
+appstop com.phone.chat
+key f4
+type /
+type 鸿雁
+key enter
+wait 张三
+type /
+type 张三
+key enter
+key enter
+wait 输入消息
+type 晚点聊
+key enter
+key f4
+at sys.idle
+key up
+at sys.notifs
+wait 收到：晚点聊 10000
+type r
+at sys.reply
+wait 鸿雁 · 回复
+type 好的
+key enter
+wait 已发送给「鸿雁」
+at sys.notifs
+gone 收到：晚点聊 5000
+wait 收到：好的 10000
+key esc
+at sys.idle
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 应用权限
+key enter
+key enter
+wait 浏览器 · 网络
+type /
+type 鸿雁 · 通知
+key enter
+type d
+perm-state com.phone.chat notifications denied
+key f4
+type /
+type 鸿雁
+key enter
+wait 输入消息
+type 别提醒我
+key enter
+key f4
+at sys.idle
+key up
+at sys.notifs
+sleep 2000
+gone 收到：别提醒我 100
+key esc
+type /
+type 鸿雁
+key enter
+wait 收到：别提醒我 10000
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 应用权限
+key enter
+key enter
+wait 浏览器 · 网络
+type /
+type 鸿雁 · 通知
+key enter
+type a
+perm-state com.phone.chat notifications granted
+key f4
+
+== 屏幕省电：30 秒没有按键就息屏；息屏时来短信不亮屏，通知灯慢闪；按一下键只点亮屏幕；看过通知中心后灯不再闪
+require-tel
+require-light
+key f4
+at sys.idle
+screen-auto on
+timeshift 31
+screen off
+tel sms 13800000005 息屏时的短信
+light blink 200/4800 ms 10000
+screen-key enter
+screen on
+at sys.idle 2000
+light off
+timeshift 31
+screen off
+light blink 200/4800 ms
+screen-key up
+screen on
+key up
+at sys.notifs
+wait 息屏时的短信 10000
+key f4
+at sys.idle
+timeshift 31
+screen off
+light off
+screen-auto off
+screen on
+
+== 后台耗电：应用在后台用掉太多 CPU 时系统点名提醒，在提醒里就能停止它
+key f4
+type /
+type 计算器
+key enter
+wait 小数点
+key f4
+at sys.idle
+timeshift 31
+cpu-charge com.phone.calc 40000
+timeshift 31
+bgcpu com.phone.calc 40000
+key up
+at sys.notifs
+wait 在后台很耗电 10000
+wait 最近 10 分钟用掉一个核的
+type s
+appstate com.phone.calc stopped 10000
+key f4
+
+== 设置 › 电池：按应用列出最近一天的后台、前台 CPU，后台用得多的排前面
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 电池
+key enter
+key enter
+wait 各应用的 CPU
+wait 计算器
+wait 后台 40 秒
+key f4
+
+== 没有通知灯的机型：息屏时来短信就点亮屏幕，之后照常超时息屏
+require-tel
+key f4
+at sys.idle
+no-light on
+screen-auto on
+timeshift 31
+screen off
+tel sms 13800000005 没有灯时的短信
+screen on 10000
+wait 13800000005 10000
+timeshift 31
+screen off
+no-light off
+screen-auto off
+screen on
+
+#part power
+== 挂起：息屏后没事可做就整机挂起，RTC 在下一个闹钟前叫醒它，闹钟照常响
+key f4
+alarm-in 180 guaji
+at sys.idle
+system-sleep on
+screen-auto on
+timeshift 31
+screen off
+timeshift 31
+slept 1 150000
+wait 闹钟响了 20000
+wait guaji
+key enter
+gone 闹钟响了
+system-sleep off
+screen-auto off
+screen on
+type /
+type 闹钟
+key enter
+wait guaji
+type d
+wait 确认删除
+key enter
+wait 没有闹钟
+key f4
+
+== 通知灯：模拟器上是用户态 LED，内核的定时器触发器按 5 秒的周期让它闪
+require-uleds
+require-tel
+key f4
+screen-auto on
+timeshift 31
+screen off
+tel sms 13800000005 又一条
+light blink 200/4800 ms 10000
+light-blinks 2 30000
+screen-key esc
+screen on
+light off
+screen-auto off
+
+== 充电：插上电源时屏幕亮起，提示是不是快充（USB PD）；待机界面在日期下面画出充电的电池，状态栏的电池旁有闪电
+key f4
+screen-auto on
+timeshift 31
+screen off
+power 40 charging fast
+screen on 12000
+wait 正在快速充电 3000
+snap 78-charging
+power 40
+screen-auto off
+
+== USB 连接电脑：先问要不要信任；信任后电脑用手机上显示的密码拷走照片、往「文件」里拷文件；拔掉数据线就停止共享，电脑再也连不上
+require-usb
+key f4
+at sys.idle
+usb-cable on
+wait 信任这台电脑吗？ 30000
+snap 70-usb-trust
+key enter
+at sys.idle
+key up
+at sys.notifs
+wait-re 电脑密码 [0-9]{8} 20000
+usb-get /photos/ 示例：海边
+usb-put /files/from-pc.txt hello from the computer
+usb-get /files/ from-pc.txt
+usb-get /files/from-pc.txt hello from the computer
+key f4
+usb-cable off
+wait 已停止与电脑共享 10000
+usb-refused
+
+== USB 链路的防火墙：信任后电脑只连得上文件共享，开发者模式下才连得上调试终端（SSH）；插着线关掉开发者模式，调试终端当场关上
+require-usb
+require-netfw
+key f4
+setting developer_mode 0
+setting developer_mode 0
+at sys.idle
+usb-cable on
+wait 信任这台电脑吗？ 30000
+key enter
+usb-port 80 open
+usb-port 22 closed
+key f4
+usb-cable off
+wait 已停止与电脑共享 10000
+setting developer_mode 1
+usb-cable on
+wait 信任这台电脑吗？ 30000
+key enter
+usb-port 22 open
+setting developer_mode 0
+usb-port 22 closed
+usb-port 80 open
+key f4
+usb-cable off
+wait 已停止与电脑共享 10000
+setting developer_mode 0
+
+== 音乐：电脑经 USB 看到的文件夹名固定是英文（Photos、Videos、Music、Files，不随手机语言变）；往 Music 里拷进专辑文件夹，文件夹原样保留
+require-usb
+key f4
+at sys.idle
+usb-cable on
+wait 信任这台电脑吗？ 30000
+key enter
+at sys.idle
+usb-get / Music
+usb-get / Photos
+usb-put /Music/电脑拷来的专辑/歌词.lrc [00:00.00]示例歌词
+usb-get /Music/ 电脑拷来的专辑
+usb-get /Music/电脑拷来的专辑/ 歌词.lrc
+usb-get /music/电脑拷来的专辑/歌词.lrc 示例歌词
+key f4
+usb-cable off
+wait 已停止与电脑共享 10000
+
+== USB 文件共享在单独的沙箱进程里：它按路径打不开文件、建不了套接字、运行不了程序；有 cgroup 时它在自己的组里，有内存和进程上限；它越界的请求 Shell 不接；超过文件夹上限的文件拒收（413）；它崩溃了 Shell 重启它，拔线后它也结束
+require-usb
+key f4
+at sys.idle
+usb-cable on
+wait 信任这台电脑吗？ 30000
+key enter
+at sys.idle
+usb-helper confined
+usb-helper limited
+usb-helper refuses
+usb-put-big /Photos/大图.jpg 8389632
+usb-helper crash
+usb-get /photos/ 示例：海边
+usb-put /Music/电脑拷来的专辑/重启以后.lrc [00:00.00]重启以后
+usb-get /Music/电脑拷来的专辑/重启以后.lrc 重启以后
+key f4
+usb-cable off
+wait 已停止与电脑共享 10000
+usb-helper gone
+usb-refused
+
+== USB 文件传输（MTP）：设置 › USB 选「文件传输」；信任后电脑把手机认成 MTP 设备，有 Photos、Videos、Music、Files 四个存储；按 Windows 的方式读属性列表，下载、分段读、上传、在 Music 里建文件夹；删除、改名、往 Photos 里拷文本都被拒绝；助手崩溃后照常；拔线后电脑看不到它；先查内核有 FunctionFS（模拟器上还要有 dummy_hcd）
+usb-mtp kernel
+require-usb
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · USB
+key enter
+wait 网络共享
+sleep 500
+key enter
+at com.phone.settings/usb
+wait 信任的电脑能用
+type /
+type 文件传输
+key enter
+key enter
+key esc
+at com.phone.settings/g.connect
+wait 文件传输（MTP）
+key f4
+at sys.idle
+usb-cable on
+wait 信任这台电脑吗？ 30000
+key enter
+at sys.idle
+key up
+at sys.notifs
+wait 文件传输已开启 20000
+key f4
+usb-mtp storages Photos Videos Music Files
+usb-mtp ls /Photos 示例：海边
+usb-mtp props /Photos
+usb-mtp put /Files/从电脑来.txt hello over MTP
+usb-mtp event StorageInfoChanged
+usb-mtp get /Files/从电脑来.txt hello over MTP
+usb-mtp partial /Files/从电脑来.txt 6 over
+usb-mtp put /Music/MTP拷来的专辑/歌词.lrc [00:00.00]MTP 歌词
+usb-mtp get /Music/MTP拷来的专辑/歌词.lrc MTP 歌词
+usb-mtp props /Music/MTP拷来的专辑
+usb-mtp refused delete /Files/从电脑来.txt
+usb-mtp refused rename /Files/从电脑来.txt 改名.txt
+usb-mtp refused put /Photos/笔记.txt 不是照片
+usb-helper confined
+usb-helper crash
+usb-mtp get /Files/从电脑来.txt hello over MTP
+key f4
+usb-cable off
+wait 已停止与电脑共享 10000
+usb-helper gone
+usb-mtp gone
+usb-refused
+setting usb_mode 0
+
+== USB 文件传输（MTP）在模拟器上：电脑按 Windows 读 MTP OS 描述符（扩展兼容 ID「MTP」），按 libmtp 读接口名「MTP」；文件经 dummy_hcd 真的走过 USB 线；Linux 文件管理器用的 libmtp 自己的工具（mtp-detect、mtp-files、mtp-getfile）也认出它、列出并拷走文件
+require-usb-host
+key f4
+setting usb_mode 1
+at sys.idle
+usb-cable on
+wait 信任这台电脑吗？ 30000
+key enter
+at sys.idle
+usb-mtp windows
+usb-mtp storages Photos Videos Music Files
+usb-mtp put /Files/libmtp-check.txt read by libmtp
+usb-mtp libmtp detect microsoft.com: 1.0
+usb-mtp libmtp files libmtp-check.txt
+usb-mtp libmtp get /Files/libmtp-check.txt read by libmtp
+usb-mtp get /Files/从电脑来.txt hello over MTP
+usb-mtp put /Music/MTP拷来的专辑/经过线.lrc [00:00.00]经过 USB 线
+usb-mtp get /Music/MTP拷来的专辑/经过线.lrc 经过 USB 线
+key f4
+usb-cable off
+wait 已停止与电脑共享 10000
+usb-mtp gone
+setting usb_mode 0
+
+== 语言和地区：设置里换成 Español，系统界面马上变成西班牙语，设置应用以西班牙语重启并回到语言页；SIM 卡来自墨西哥时自动语言是西班牙语、时区是墨西哥城；再换回简体中文
+require-tel
+key f4
+appstop com.phone.settings
+locale zh-Hans Asia/Shanghai
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 语言
+key enter
+key enter
+at language
+wait 应用会以新的语言重新启动
+type /
+type Espa
+key enter
+key enter
+wait Idioma
+wait Las apps se reinician
+snap 92-language-es
+locale es Asia/Shanghai
+appenv com.phone.settings PHONE_LANG es
+gui-env PHONE_LANG es
+key f4
+at sys.idle
+wait OK menú
+wait-re (lunes|martes|miércoles|jueves|viernes|sábado|domingo), [0-9]+ de [a-z]+
+snap 92-idle-es
+key f3
+wait Cambiar de app
+wait Configuración
+key f4
+tel network 334 334 -360
+locale es America/Mexico_City
+type /
+type Configuraci
+key enter
+at language
+type /
+type Autom
+key enter
+key enter
+wait Español, el idioma de
+key esc
+at g.more
+type /
+type Fecha
+key enter
+key enter
+at datetime
+wait Ciudad de México
+wait automática
+snap 92-datetime-es
+key esc
+at g.more
+type /
+type Idioma
+key enter
+key enter
+at language
+type /
+type 简体
+key enter
+key enter
+wait 应用会以新的语言重新启动
+locale zh-Hans America/Mexico_City
+appenv com.phone.settings PHONE_LANG zh-Hans
+appenv com.phone.settings TZ America/Mexico_City
+gui-env PHONE_LANG zh-Hans
+key f4
+at sys.idle
+wait OK 菜单
+tel network 460 460 480
+setting language 0
+locale zh-Hans Asia/Shanghai
+
+== NFC 卡包：卡包是系统应用；读卡模式读实体门禁卡复制进卡包，起名「家」和「公司」；加密的卡、已在卡包里的卡复制不了；设置 › NFC 只剩开关和打开卡包的一行
+require-nfc
+require-app com.phone.cards
+key f4
+at sys.idle
+type /
+type 卡包
+key enter
+at cards
+wait 飞钱交通卡
+nfc card 04A1B2C3
+key tab
+type a
+at name
+wait 门禁卡 1
+fill 家
+key enter
+wait 已把「家」加进卡包
+at cards
+wait 1. 家
+nfc card 04D5E6F7
+key tab
+type a
+at name
+fill 公司
+key enter
+wait 已把「公司」加进卡包
+at cards
+nfc card 04112233 encrypted
+key tab
+type a
+wait 这张卡是加密的
+at cards
+nfc card 04A1B2C3
+key tab
+type a
+wait 名字是「家」
+at cards
+nfc card none
+wait 2. 公司
+wait 门禁卡 · UID …F7
+wait 飞钱付款
+snap 93-nfc-cards
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · NFC
+key enter
+key enter
+at nfc
+wait 卡包
+gone 默认付款应用
+snap 93-nfc-settings
+key down
+key enter
+at cards
+key f4
+
+== NFC 门禁：锁着、息屏、挂起时不按键，门禁卡自己应答，屏幕一直不亮；按使用时间选卡：工作日 9:00 公司大门先拿到卡包里排第一的「家」，不认就换成「公司」，第二次刷开；之后公司的时段先出示「公司」；「公司」排到第一以后，20:00 家门第一次按顺序拿到「公司」，换成「家」刷开，下一个工作日 20:00 先出示「家」；卡包里写着常用时段
+require-nfc
+nfc reader 公司大门 door 04D5E6F7
+nfc reader 家门 door 04A1B2C3
+key f4
+at sys.idle
+freeze-after 500
+nfc clock 09:00 workday
+key tab
+type *
+wait 键盘已锁
+locked on
+system-sleep on
+screen-auto on
+timeshift 31
+screen off
+timeshift 31
+nfc asleep
+nfc tap 公司大门 fail 家
+nfc woken
+screen off 100
+system-sleep off
+nfc tap 公司大门 ok 公司
+screen off 100
+nfc clock 09:40
+nfc tap 公司大门 ok 公司
+nfc clock 09:00 workday
+nfc tap 公司大门 ok 公司
+screen off 100
+screen-auto off
+screen on
+key tab
+type *
+wait 键盘已解锁
+appstop com.phone.cards
+type /
+type 卡包
+key enter
+at cards
+wait 2. 公司
+key down
+type /
+type 上移
+key enter
+wait 1. 公司
+key f4
+at sys.idle
+key tab
+type *
+wait 键盘已锁
+screen-auto on
+timeshift 31
+screen off
+nfc clock 20:00
+nfc tap 家门 fail 公司
+nfc tap 家门 ok 家
+screen off 100
+nfc clock 09:00 workday
+nfc tap 公司大门 ok 公司
+nfc clock 20:00
+nfc tap 家门 ok 家
+screen off 100
+screen-auto off
+screen on
+freeze-after 0
+locked on
+key tab
+type *
+wait 键盘已解锁
+appstop com.phone.cards
+type /
+type 卡包
+key enter
+at cards
+wait 门禁卡 · 工作日 19:00–21:00
+wait 门禁卡 · 工作日 8:00–10:30
+snap 93-nfc-hours
+key f4
+
+== NFC 快速选卡：锁屏上连按两下电源键打开快速选卡（不用解锁），9:00 自动出示的是「公司」，选「家」出示 60 秒，家门第一次就开，之后又按时间出示「公司」；没有电源键的机型在待机界面连按两下挂断键也打开它，从应用里连按挂断键只回待机
+require-nfc
+key f4
+at sys.idle
+nfc clock 09:00 workday
+key tab
+type *
+wait 键盘已锁
+gone 键盘已锁 5000
+key power 2
+wait 公司 · 门禁卡 · 自动
+wait 家 · 门禁卡
+snap 93-nfc-pick
+type 2
+wait 请靠近读卡器
+snap 93-nfc-present
+nfc tap 家门 ok 家
+wait 完成 ✓
+gone 完成 ✓ 3000
+nfc tap 公司大门 ok 公司
+nfc picker on
+key end 2
+wait 公司 · 门禁卡 · 自动
+key esc
+gone 公司 · 门禁卡 · 自动
+locked on
+key tab
+type *
+wait 键盘已解锁
+gone 键盘已解锁 5000
+type /
+type 计算器
+key enter
+wait 小数点
+key end 2
+at sys.idle
+gone 公司 · 门禁卡 · 自动 1000
+nfc picker off
+
+== NFC 交通卡：在卡包里把飞钱的交通卡设成快捷交通卡（息屏可刷）后，锁着、息屏也能过闸机扣费，屏幕不亮（冻结的飞钱由读卡器的场叫醒的系统唤醒来答闸机）
+require-nfc
+key f4
+appstop com.phone.cards
+type /
+type 卡包
+key enter
+at cards
+type /
+type 快捷交通卡
+key enter
+key enter
+at express
+wait 飞钱交通卡
+key down
+key enter
+at cards
+wait 快捷
+wait 飞钱 · 息屏可刷
+key f4
+freeze-after 500
+type /
+type 飞钱
+key enter
+wait 交通卡
+key f4
+appstate com.phone.wallet frozen 8000
+at sys.idle
+key tab
+type *
+wait 键盘已锁
+screen-auto on
+timeshift 31
+screen off
+nfc reader 地铁闸机 gate F0465154524E53 200
+nfc tap 地铁闸机 ok 飞钱交通卡
+screen off 100
+screen-auto off
+screen on
+key tab
+type *
+wait 键盘已解锁
+freeze-after 0
+type /
+type 飞钱
+key enter
+wait 余额 ¥18.00 · 1 次
+key f4
+
+== NFC 付款：在卡包里选飞钱为默认付款应用；锁着、息屏时收银台刷不了（付款卡从不在锁着时应答，亮屏提示先解锁），解锁后由飞钱付款（飞钱不在运行，在后台启动）
+require-nfc
+key f4
+appstop com.phone.cards
+type /
+type 卡包
+key enter
+at cards
+type /
+type 默认付款应用
+key enter
+key enter
+at pay
+wait 飞钱
+key enter
+at cards
+wait 默认
+key f4
+appstop com.phone.wallet
+nfc reader 收银台 pay F0465150415901 1500
+key tab
+type *
+wait 键盘已锁
+screen-auto on
+timeshift 31
+screen off
+nfc tap 收银台 fail
+screen on
+wait 解锁手机后才能用「飞钱付款」
+appstate com.phone.wallet stopped 100
+screen-auto off
+key tab
+type *
+wait 键盘已解锁
+nfc tap 收银台 ok 飞钱付款
+type /
+type 飞钱
+key enter
+wait 1 笔
+key down 3
+key enter
+wait 感应付款
+key f4
+
+== NFC 取消读卡：卡包里进「添加门禁卡」后马上退出，读卡当场停止（不等满 20 秒），接着再读卡马上就能读到
+require-nfc
+require-app com.phone.cards
+key f4
+appstop com.phone.cards
+nfc card none
+type /
+type 卡包
+key enter
+at cards
+key tab
+type a
+wait 把卡贴在手机背面
+key esc
+at cards
+nfc card 04A1B2C3
+key tab
+type a
+wait 名字是「家」
+at cards
+nfc card none
+key f4
+
+== NFC 读卡模式：飞钱读实体交通卡的余额：先问一次读 NFC 卡的权限，系统弹出读卡界面，读到 CPU 卡后经 APDU 会话读余额，读完界面自己关掉；只认 UID 的卡没有会话；读卡时按返回停止；过闸机后飞钱收到「读卡器离开」（nfc.deactivated）
+require-nfc
+key f4
+appstop com.phone.wallet
+nfc card none
+type /
+type 飞钱
+key enter
+wait 交通卡
+type /
+type 交通卡
+key enter
+key enter
+at transit
+key tab
+type r
+wait 请求使用
+wait 读取 NFC 卡
+key enter
+wait 把卡贴在手机背面
+wait 为「飞钱」读卡
+snap 93-nfc-reader
+nfc card 04C0FFEE transit F0465154524E53 1234
+wait 卡上余额 ¥12.34
+gone 把卡贴在手机背面
+nfc card 04A1B2C3
+key tab
+type r
+wait 不是飞钱能读的交通卡
+nfc card none
+key tab
+type r
+wait 把卡贴在手机背面
+key esc
+wait 已停止读卡
+gone 把卡贴在手机背面
+nfc reader 地铁闸机 gate F0465154524E53 200
+nfc tap 地铁闸机 ok 飞钱交通卡
+nfc deactivated com.phone.wallet transit link_loss
+key f4
+
+== NFC 节假日：按使用时间选门禁卡时认地区的节假日日历（更新服务器签名的系统数据；这里是测试用的日历，不是官方的）：锁着、息屏时，调休上班的周六 20:00 家门第一次就出示「家」；放假的周三 20:00 算休息日，休息日还没有记录，按卡包里的顺序先出示「公司」，换成「家」刷开；卡包拿到的常用时段里「家」有了休息日的 19:00–21:00
+require-nfc
+nfc reader 家门 door 04A1B2C3
+key f4
+at sys.idle
+nfc holidays fixture
+key tab
+type *
+wait 键盘已锁
+screen-auto on
+timeshift 31
+screen off
+nfc clock 20:00 makeup
+nfc tap 家门 ok 家
+nfc clock 20:00 holiday
+nfc tap 家门 fail 公司
+nfc tap 家门 ok 家
+screen off 100
+screen-auto off
+screen on
+key tab
+type *
+wait 键盘已解锁
+nfc usual 家 dayoff 19:00-21:00
+nfc usual 家 workday 19:00-21:00
+key f4
+nfc holidays none
+
+== 系统更新：模拟的 A/B 手机上经设置安装，设置里显示进度；下载断了，过一会儿自己再试（显示第几次、几点再试），接着装好（真的 A/B 槽、RAUC 和增量包的断点续装由 yocto/qemu-ota.sh、qemu-ota-delta.sh 测）
+setting auto_system_update 0
+power 82
+ota sim slow
+ota cut 1
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 系统更新
+key enter
+key enter
+wait 正在运行
+wait 自动更新
+type c
+wait 可安装：9.0.0 10000
+type /
+type 可安装
+key enter
+wait 安装这个系统更新
+key enter
+wait-re 已完成 \d+% 10000
+wait-re 下载中断，.*再试（第 1/3 次） 20000
+timeshift 31
+wait-re 已完成 \d+% 10000
+wait 安装完成，重启后生效 30000
+wait 下次启动
+key f4
+ota off
+
+== 系统更新：自动更新——打开后每天检查一次，只在 Wi-Fi 上、电量过半或在充电、不在通话时在后台下载安装，装好后通知「现在重启」或「今晚」；选了今晚，夜里息屏、不在通话、一小时内没有闹钟时才重启（模拟的 A/B 手机）
+power 82
+ota sim
+ota net mobile
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 系统更新
+key enter
+key enter
+wait-re 自动更新 +关
+type a
+wait-re 自动更新 +开
+ota auto not on Wi-Fi
+key f4
+at sys.idle
+ota net wifi
+power 30
+timeshift 3601
+ota auto the battery is at 30%
+power 82
+timeshift 3601
+ota installed 30000
+ota auto installed 9.0.0
+key up
+at sys.notifs
+wait 系统更新已安装 10000
+wait 9.0.0 已经装好
+type t
+wait 今晚手机没人用时重启
+key f4
+at sys.idle
+ota clock 03:00
+sleep 1500
+ota restarts 0 100
+screen-auto on
+timeshift 31
+screen off
+ota restarts 1 10000
+screen-auto off
+screen on
+setting auto_system_update 0
+ota off
+
+== 系统更新：自动更新装到一半条件没了就停下——拔了充电器、电量不到一半时停在原处，设置里写明已暂停；插上充电器后过一会儿自己接着装好（模拟的 A/B 手机，下载经 Shell 的代理，停下就是断了它）
+power 82
+ota sim slow
+ota net wifi
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 系统更新
+key enter
+key enter
+wait-re 自动更新 +关
+type a
+wait-re 自动更新 +开
+ota auto installing 9.0.0
+power 30
+ota auto paused (the battery is at 30%
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 系统更新
+key enter
+key enter
+wait 自动更新已暂停：电量低，充电时继续
+power 30 charging
+timeshift 61
+ota installed 30000
+ota auto installed 9.0.0
+setting auto_system_update 0
+key f4
+at sys.idle
+power 82
+ota off
+
+== Wi-Fi 计费网络：模拟的手机热点在 DHCP 里带 ANDROID_METERED，连上后「设置 › Wi-Fi」写明按流量计费；自动更新在计费网络上不下载；在这个网络上按 m 把「按流量计费」从自动检测换成「是」再换成「否」，后台就下载安装了；再按 m 回到自动检测，忘记这个网络后也不再记着（模拟的 A/B 手机）
+require-metered-ap
+power 82
+wifi-ap Pixel-Hotspot pixel1234 metered
+wifi-join Pixel-Hotspot pixel1234
+ota sim
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type Wi-Fi
+key enter
+key enter
+wait 按流量计费：手机热点
+setting auto_system_update 1
+ota auto on a metered network (Pixel-Hotspot)
+type /
+type Pixel-Hotspot
+key enter
+type m
+wait 按流量计费（你的设置）
+type m
+wait 不按流量计费（你的设置）
+timeshift 3601
+ota installed 30000
+ota auto installed 9.0.0
+type m
+wait 按流量计费：手机热点
+type d
+wait 确认忘记网络
+key enter
+gone 按流量计费 5000
+wifi-join Kario-Office kario1234
+key f4
+setting auto_system_update 0
+ota off
+
+== 内存：Shell 和它启动的服务、应用的 PSS（只报告，不判定）
+mem-report
+
+== 日历：月视图（周一在前、今天有标记、地区的节假日和调休，这里是测试用的日历），按键换日、换月：宫格里的方向键由系统移动，到了边上 ← → 接到上个月、下个月，* # 换月，0 回到今天
+clock-reset
+nfc holidays fixture
+appstop com.phone.calendar
+key f4
+type /
+type 日历
+key enter
+at com.phone.calendar/month 10000
+wait 今天
+wait 二
+snap 60-calendar-month
+key right
+key enter
+at com.phone.calendar/day
+wait 明天
+key esc
+at com.phone.calendar/month
+key left
+key enter
+wait 今天
+key esc
+type #
+key enter
+wait-re [0-9]+ 天后
+key esc
+type 0
+key enter
+wait 今天
+wait 农历
+snap 61-calendar-day
+key esc
+type *
+type *
+key enter
+wait-re [0-9]+ 天前
+key esc
+type 0
+key up 6
+key left 7
+key enter
+wait-re [0-9]+ 天前
+key esc
+type 0
+key enter
+wait 今天
+key esc
+key f4
+
+== 日历：新建带提醒的日程，提醒是系统的定时通知：应用在后台、冻结时到点由系统发通知，打开通知回到这个日程
+key f4
+type /
+type 日历
+key enter
+at com.phone.calendar/month 10000
+type 1
+at com.phone.calendar/edit
+wait 提前 10 分钟
+fill zuhui
+key f2
+wait 已保存
+scheduled com.phone.calendar 1
+key f4
+at sys.idle
+appstate com.phone.calendar frozen 15000
+timeshift 4900
+wait zuhui 8000
+appstate com.phone.calendar frozen
+key up
+at sys.notifs
+wait zuhui
+key enter
+at com.phone.calendar/event 8000
+wait zuhui
+wait 提醒：提前 10 分钟
+type d
+wait 删除「zuhui」？
+key enter
+at com.phone.calendar/month
+scheduled com.phone.calendar 0
+key f4
+
+== 日历：每周重复的日程：只改其中一次、只删其中一次，近期日程跟着变
+key f4
+type /
+type 日历
+key enter
+at com.phone.calendar/month 10000
+type 1
+at com.phone.calendar/edit
+fill zhoubao
+key down 6
+key enter
+at com.phone.calendar/choose
+key down 2
+key enter
+at com.phone.calendar/edit
+wait 每周
+key f2
+wait 已保存
+type 2
+at com.phone.calendar/agenda
+wait 5 个日程 · 接下来 30 天
+key down
+key enter
+at com.phone.calendar/event
+wait 每周星期
+type 1
+at com.phone.calendar/edit
+wait 只编辑这一次
+fill zhoubao-gai
+key f2
+at com.phone.calendar/agenda 5000
+wait zhoubao-gai
+wait 5 个日程
+key down 2
+key enter
+at com.phone.calendar/event
+type d
+wait 只删除这一次？
+key enter
+at com.phone.calendar/agenda
+wait 4 个日程
+key esc
+at com.phone.calendar/month
+key f4
+
+== 日历：从「文件」导入 .ics（IANA 时区、每周重复、提醒）先看摘要再导入，能搜到；系统的导入入口（换机用它）静默导入、通知里报数，撤销只拿掉这一次导入的
+file-put kaihui.ics BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nUID:selftest-1@kario\nDTSTART;TZID=Asia/Shanghai:20301015T090000\nDTEND;TZID=Asia/Shanghai:20301015T100000\nSUMMARY:kaihui\nRRULE:FREQ=WEEKLY;COUNT=3\nBEGIN:VALARM\nACTION:DISPLAY\nTRIGGER:-PT30M\nEND:VALARM\nEND:VEVENT\nEND:VCALENDAR
+key f4
+type /
+type 日历
+key enter
+at com.phone.calendar/month 10000
+type 4
+wait kaihui.ics
+key enter
+at com.phone.calendar/import 8000
+wait 1 个新日程
+wait kaihui
+key f2
+wait 导入了 1 个日程
+type 3
+at com.phone.calendar/search
+fill kai
+key enter
+wait kaihui 5000
+wait 2030-10-15 09:00–10:00
+key down
+key enter
+at com.phone.calendar/event
+wait 每周星期二，共 3 次
+wait 提前 30 分钟
+key esc
+key esc
+at com.phone.calendar/month
+key f4
+file-put banjia.ics BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nUID:selftest-2@kario\nDTSTART;VALUE=DATE:20301020\nSUMMARY:banjia\nEND:VEVENT\nEND:VCALENDAR
+calendar-import banjia.ics
+wait 导入了 1 个日程（来自「banjia.ics」） 10000
+calendar-undo banjia.ics
+sleep 1000
+type /
+type 日历
+key enter
+at com.phone.calendar/month 10000
+type 3
+at com.phone.calendar/search
+fill banjia
+key enter
+wait 没有找到日程 5000
+fill kaihui
+key enter
+wait 2030-10-15 5000
+key f4
+nfc holidays none
+
+== 日历同步（CalDAV）：设置 › 账号里登录 Kario 账号（模拟的账号服务器同时是 CalDAV 服务器），打开「日历」：服务器上的「yunduan-huiyi」进了日历，日历里新建的「shouji-richeng」传到服务器；服务器上改了名字，「立即同步」后日历里跟着变；退出登录并删除它的联系人和日程：服务器来的日程从日历里消失，手机上建的留着（最后删掉）
+carddav-server alice@kario.test wxyz-abcd-efgh-ijkl
+caldav-event yunhui.ics BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nUID:selftest-cal-1@kario\nDTSTART;TZID=Asia/Shanghai:20301105T100000\nDTEND;TZID=Asia/Shanghai:20301105T110000\nSUMMARY:yunduan-huiyi\nX-WEB:kept\nEND:VEVENT\nEND:VCALENDAR
+key f4
+appstop com.phone.settings
+appstop com.phone.calendar
+type /
+type 设置 · 账号
+key enter
+at root
+key enter
+at com.phone.settings/accounts
+wait 其他 CardDAV 账号
+key enter
+at com.phone.settings/acctadd:kario
+wait 应用专用密码
+fill alice@kario.test
+key down
+fill wxyz-abcd-efgh-ijkl
+key down
+key enter
+at com.phone.settings/accounts 8000
+wait 前已同步 15000
+key first
+key enter
+wait-re 日历 +关
+key last
+key up
+key up
+key up
+key enter
+wait-re 日历 +开 15000
+wait-re Calendar，[0-9]+ 个日程 15000
+snap accounts-calendar
+key f4
+type /
+type 日历
+key enter
+at com.phone.calendar/month 10000
+type 3
+at com.phone.calendar/search
+fill yunduan
+key enter
+wait yunduan-huiyi 10000
+key esc
+at com.phone.calendar/month
+type 1
+at com.phone.calendar/edit
+fill shouji-richeng
+key f2
+wait 已保存
+caldav-has SUMMARY:shouji-richeng present 30000
+caldav-has X-WEB:kept present
+caldav-event yunhui.ics BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nUID:selftest-cal-1@kario\nDTSTART;TZID=Asia/Shanghai:20301105T100000\nDTEND;TZID=Asia/Shanghai:20301105T110000\nSUMMARY:yunduan-gaiming\nEND:VEVENT\nEND:VCALENDAR
+key f4
+type /
+type 设置 · 账号
+key enter
+at root
+key enter
+at com.phone.settings/accounts
+key first
+key enter
+wait-re 日历 +开
+type s
+key f4
+type /
+type 日历
+key enter
+at com.phone.calendar/month 10000
+type 3
+at com.phone.calendar/search
+fill yunduan
+key enter
+wait yunduan-gaiming 15000
+key esc
+at com.phone.calendar/month
+key f4
+type /
+type 设置 · 账号
+key enter
+at root
+key enter
+at com.phone.settings/accounts
+key first
+key enter
+wait-re 日历 +开
+type r
+wait 新建的留着
+key enter
+wait 添加账号 8000
+key f4
+type /
+type 日历
+key enter
+at com.phone.calendar/month 10000
+type 3
+at com.phone.calendar/search
+fill yunduan
+key enter
+wait 没有找到日程 10000
+fill shouji
+key enter
+wait shouji-richeng 5000
+key down
+key enter
+at com.phone.calendar/event
+type d
+wait 删除「shouji-richeng」？
+key enter
+at com.phone.calendar/search
+carddav-server off
+key f4
+
+== 日历：每小时重复和 RDATE、自己组织的日程邀请参与者：系统导入每周一每 4 小时一次、另有两个 RDATE 的日程，搜到它下一次的时间，详情写着「每 4 小时，星期一」和 RDATE 的那两次；新建的日程里邀请两位参与者（先填自己的邮箱），移出一位；发送邀请（METHOD:REQUEST 的 .ics 系统确认后存到「文件」，再交给系统的分享），给移出的人发取消通知，删除日程时也生成取消通知；最后撤销导入、拿走这些文件
+file-put meiri.ics BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nUID:selftest-hourly@kario\nDTSTART;TZID=Asia/Shanghai:20301104T080000\nDTEND;TZID=Asia/Shanghai:20301104T083000\nSUMMARY:xunjian\nRRULE:FREQ=HOURLY;INTERVAL=4;BYDAY=MO;UNTIL=20301111T155900Z\nRDATE;TZID=Asia/Shanghai:20301106T150000,20301108T150000\nEND:VEVENT\nEND:VCALENDAR
+calendar-import meiri.ics
+wait 导入了 1 个日程（来自「meiri.ics」） 10000
+key f4
+appstop com.phone.calendar
+type /
+type 日历
+key enter
+at com.phone.calendar/month 10000
+type 3
+at com.phone.calendar/search
+fill xunjian
+key enter
+wait 2030-11-04 08:00–08:30 10000
+key down
+key enter
+at com.phone.calendar/event
+wait 每 4 小时，星期一
+wait 另外：2030-11-06 15:00
+key esc
+key esc
+at com.phone.calendar/month
+type 1
+at com.phone.calendar/edit
+fill yaoqing-huiyi
+key f2
+wait 已保存
+type 3
+at com.phone.calendar/search
+fill yaoqing
+key enter
+wait yaoqing-huiyi 5000
+key down
+key enter
+at com.phone.calendar/event
+type 7
+at com.phone.calendar/attendees
+fill me@kario.test
+key down
+fill lilei@kario.test
+key enter
+wait 已加入 lilei@kario.test
+wait 你以 me@kario.test 组织这个日程
+fill meimei@kario.test
+key enter
+wait 已加入 meimei@kario.test
+key down
+key down
+wait-re meimei@kario\.test
+key down
+key enter
+wait 把「meimei@kario.test」从日程里
+key enter
+wait 已移出
+key f2
+wait 邀请 yaoqing-huiyi.ics
+key enter
+wait 分享到 10000
+key esc
+files 邀请 yaoqing-huiyi present
+key tab
+wait 给移出的人发取消通知
+type 3
+wait 取消通知 yaoqing-huiyi.ics
+key enter
+wait 分享到 10000
+key esc
+files 取消通知 yaoqing-huiyi present
+key esc
+at com.phone.calendar/event
+wait 组织者：你
+type d
+wait 删除「yaoqing-huiyi」？
+key enter
+wait 取消通知 yaoqing-huiyi.ics 8000
+key enter
+wait 分享到 10000
+key esc
+calendar-undo meiri.ics
+files-drop meiri.ics
+files-drop yaoqing-huiyi
+files yaoqing-huiyi absent
+key f4
+
+#part keys
+== 屏幕使用时间：设置 › 健康使用手机 › 屏幕使用时间里给计算器设每天 15 分钟；还剩 5 分钟时提醒，用完后计算器打不开、系统界面说明原因，「再用 15 分钟」后又能打开；现在开始停用时间后贪吃蛇打不开、电话照常，「结束这次停用时间」后恢复；最后取消限额
+key f4
+appstop com.phone.settings
+type /
+type 设置 · 屏幕使用时间
+key enter
+at g.wellbeing
+key enter
+at screentime
+wait 今天的应用
+type /
+type 计算器
+key enter
+key enter
+at stl:com.phone.calc
+type /
+type 每天 15 分钟
+key enter
+key enter
+key esc
+at screentime
+wait-re 本周 .* · 每天 15 分钟
+snap 94-screen-time
+key f4
+at sys.idle
+type /
+type 计算器
+key enter
+wait ÷
+screen-use com.phone.calc 11
+wait 今天还剩
+screen-use com.phone.calc 5
+at sys.held
+wait 今天的限额已用完
+wait 再用 15 分钟
+snap 94-time-limit
+key down
+key enter
+wait ÷
+key f4
+at sys.idle
+type /
+type 设置 · 屏幕使用时间
+key enter
+at g.wellbeing
+key enter
+at screentime
+type /
+type 停用时间
+key enter
+key enter
+at downtime
+wait 现在开始停用时间
+type /
+type 现在开始停用时间
+key enter
+key enter
+wait 现在结束停用时间
+key f4
+at sys.idle
+type /
+type 贪吃蛇
+key enter
+at sys.held
+wait 停用时间到
+key f4
+at sys.idle
+type /
+type 电话
+key enter
+at com.phone.dialer/main
+key f4
+at sys.idle
+type /
+type 贪吃蛇
+key enter
+at sys.held
+wait 结束这次停用时间
+key last
+key enter
+at com.phone.snake/board
+key f4
+at sys.idle
+type /
+type 设置 · 屏幕使用时间
+key enter
+at g.wellbeing
+key enter
+at screentime
+type /
+type 计算器
+key enter
+key enter
+at stl:com.phone.calc
+type /
+type 不限
+key enter
+key enter
+key esc
+at screentime
+wait-re 本周 .* · 不限
+key f4
+
+== 未成年人模式：设置 › 健康使用手机 › 未成年人模式里设家长 PIN 码就打开（在系统界面输入：全键盘输一次、九键再输一次）；只允许「妈妈」：别的号码来电不响、短信不通知、打不出去，妈妈来电照常；贪吃蛇不在命令面板里；开发者模式要家长 PIN 码；家长 PIN 码输错有提示，输对后关闭，贪吃蛇又能打开
+require-tel
+require-sms
+key f4
+appstop com.phone.settings
+type /
+type 设置 · 未成年人模式
+key enter
+at g.wellbeing
+key enter
+at minor
+key enter
+wait 设置家长 PIN 码
+type 1357
+key enter
+wait 再输一次新的 PIN 码
+keypad t9
+type 1357
+key enter
+keypad qwerty
+wait 修改家长 PIN 码
+snap 95-minor-mode
+type /
+type 允许的联系人
+key enter
+key enter
+at minor-contacts
+wait 妈妈
+type /
+type 妈妈
+key enter
+key enter
+wait 已允许（1）
+key f4
+at sys.idle
+tel ring 13700000088
+sleep 1500
+gone 来电 100
+tel ring 13900001111
+wait 来电
+key end
+gone 来电
+tel sms 13700000088 未成年人模式下陌生人的短信
+sleep 1000
+gone 未成年人模式下陌生人的短信 100
+key up
+at sys.notifs
+gone 未成年人模式下陌生人的短信 100
+key f4
+at sys.idle
+type 13700000088
+at com.phone.dialer/main
+key enter
+wait 无法拨打：tel.dial: 未成年人模式
+gone 出 13700000088 100
+wait 已拦截
+key f4
+at sys.idle
+type /
+type 贪吃蛇
+wait （无匹配）
+key esc
+type /
+type 设置 · 开发者模式
+key enter
+at g.more
+key enter
+wait 切换开发者模式
+key enter
+wait 这项设置要家长
+key esc
+wait-re 开发者模式 +关
+key f4
+at sys.idle
+type /
+type 设置 · 未成年人模式
+key enter
+at g.wellbeing
+key enter
+at minor
+key enter
+wait 关闭未成年人模式
+type 2468
+key enter
+wait PIN 码不对，再错 4 次就要等待
+type 1357
+key enter
+wait 未成年人模式已关闭
+wait-re 未成年人模式 +关
+key f4
+at sys.idle
+type /
+type 贪吃蛇
+key enter
+at com.phone.snake/board
+key f4
+
+== 家长远程管理：未成年人模式里「家长远程管理」先写明家长能看到什么；「关联家长的账号」显示配对码和二维码（安全界面），家长（Shell 里模拟的账号服务器）输入配对码后手机问要不要允许，允许后写着由谁管理；家长保存的规则签名后经推送网关通知手机，手机取来验签后生效（天气不再允许、时钟每天 30 分钟）；家长要今天的使用情况、问手机在哪里，手机各回答一次，通知中心里写明位置已发送；家长再存一版去掉限额，然后解除关联，手机上又可以重新关联；最后关闭未成年人模式
+require-push
+key f4
+parent-server on
+appstop com.phone.settings
+type /
+type 设置 · 未成年人模式
+key enter
+at g.wellbeing
+key enter
+at minor
+key enter
+wait 设置家长 PIN 码
+type 2580
+key enter
+wait 再输一次新的 PIN 码
+type 2580
+key enter
+wait 修改家长 PIN 码
+type /
+type 家长远程管理
+key enter
+key enter
+at minor-remote
+wait 家长能看到什么
+wait 关联家长的账号
+key enter
+wait 正在等家长
+wait-re [0-9]{4} [0-9]{4}
+masked
+snap 96-parent-code
+parent-bind mum@kario.test
+wait 输入了配对码
+key first
+key enter
+wait 管理人 15000
+wait mum@kario.test
+parent-bound yes
+parent-policy {"contacts":[{"name":"妈妈","number":"13900001111"}],"apps":["com.phone.calc","com.phone.clock"],"limits":{"com.phone.clock":30},"downtime":{"on":false,"start":1320,"end":420,"apps":["com.phone.messages","com.phone.contacts","com.phone.clock"]}}
+wait-re 第 1 版，\S+ 生效 8000
+snap 96-parent-managed
+key f4
+at sys.idle
+type /
+type 天气
+wait （无匹配）
+key esc
+parent-report "limits":{"com.phone.clock":30} 15000
+location at 31.23040 121.47370
+parent-locate 31.2304 15000
+key up
+at sys.notifs
+wait 已发送这台手机的位置
+key f4
+at sys.idle
+parent-policy {"contacts":[{"name":"妈妈","number":"13900001111"}],"apps":["com.phone.calc","com.phone.clock"],"limits":{},"downtime":{"on":false,"start":1320,"end":420,"apps":["com.phone.messages","com.phone.contacts","com.phone.clock"]}}
+parent-report "version":2,"apps": 15000
+parent-report "limits":{} 15000
+parent-unbind
+key up
+at sys.notifs
+wait 未成年人模式不再远程管理 8000
+key f4
+at sys.idle
+type /
+type 设置 · 未成年人模式
+key enter
+at g.wellbeing
+key enter
+at minor
+type /
+type 家长远程管理
+key enter
+key enter
+at minor-remote
+wait 关联家长的账号
+key esc
+at minor
+key first
+key enter
+wait 关闭未成年人模式
+type 2580
+key enter
+wait 未成年人模式已关闭
+wait-re 未成年人模式 +关
+key f4
+parent-server off
+
+== 问家长要时间：关联家长后家长的规则给计算器每天 15 分钟；用完后系统界面上「问家长」，留言并选 30 分钟，家长（Shell 里模拟的账号服务器）只同意 20 分钟，签名的授权经推送网关到手机，手机验签后计算器又打开，通知中心里有「家长多给了时间」；再用完又问 15 分钟，家长拒绝，通知中心里有「家长没有同意多给时间」；家长解除关联后「问家长」写着没有关联家长的账号；最后关闭未成年人模式、改回不限
+require-push
+key f4
+parent-server on
+appstop com.phone.settings
+type /
+type 设置 · 未成年人模式
+key enter
+at g.wellbeing
+key enter
+at minor
+key enter
+wait 设置家长 PIN 码
+type 2580
+key enter
+wait 再输一次新的 PIN 码
+type 2580
+key enter
+wait 修改家长 PIN 码
+type /
+type 家长远程管理
+key enter
+key enter
+at minor-remote
+wait 关联家长的账号
+key enter
+wait 正在等家长
+wait-re [0-9]{4} [0-9]{4}
+parent-bind mum@kario.test
+wait 输入了配对码
+key first
+key enter
+wait 管理人 15000
+parent-bound yes
+parent-policy {"contacts":[],"apps":["com.phone.calc","com.phone.clock"],"limits":{"com.phone.calc":15},"downtime":{"on":false,"start":1320,"end":420,"apps":["com.phone.messages","com.phone.contacts","com.phone.clock"]}}
+wait-re 第 1 版，\S+ 生效 8000
+key f4
+at sys.idle
+screen-use com.phone.calc 60
+type /
+type 计算器
+key enter
+at sys.held
+wait 今天的限额已用完
+wait mum@kario.test 在自己的手机上回答
+key down
+key enter
+at sys.ask
+fill 作业写完了
+key enter
+key down
+key enter
+at sys.held
+wait 正在等回答
+parent-asked "note":"作业写完了" 8000
+parent-answer 20
+wait ÷ 8000
+key f4
+at sys.idle
+key up
+at sys.notifs
+wait 家长多给了时间
+key f4
+at sys.idle
+screen-use com.phone.calc 25
+type /
+type 计算器
+key enter
+at sys.held
+wait mum@kario.test 在自己的手机上回答
+key down
+key enter
+at sys.ask
+key enter
+key enter
+at sys.held
+parent-asked "minutes":15
+parent-answer no
+key f4
+at sys.idle
+key up
+at sys.notifs
+wait 家长没有同意多给时间 8000
+key f4
+at sys.idle
+parent-unbind
+key up
+at sys.notifs
+wait mum@kario.test 不再管理这台手机 8000
+key f4
+at sys.idle
+type /
+type 计算器
+key enter
+at sys.held
+wait 没有关联家长的账号，没人可问
+key f4
+at sys.idle
+type /
+type 设置 · 未成年人模式
+key enter
+at g.wellbeing
+key enter
+at minor
+key first
+key enter
+wait 关闭未成年人模式
+type 2580
+key enter
+wait 未成年人模式已关闭
+wait-re 未成年人模式 +关
+key f4
+at sys.idle
+type /
+type 设置 · 屏幕使用时间
+key enter
+at g.wellbeing
+key enter
+at screentime
+type /
+type 计算器
+key enter
+key enter
+at stl:com.phone.calc
+type /
+type 不限
+key enter
+key enter
+key esc
+at screentime
+wait-re 本周 .* · 不限
+key f4
+parent-server off
+
+== 忘记家长 PIN 码：关联家长后未成年人模式里「忘记家长 PIN 码」向家长申请重设；家长（Shell 里模拟的账号服务器，重新登录过）确认后，签名的重设经推送网关到手机，手机验签后在系统界面上设新的家长 PIN 码（输两遍），提示已重设，服务器记下已完成；旧的 PIN 码关不掉未成年人模式，新的能关，关掉时一起解除关联
+require-push
+key f4
+parent-server on
+appstop com.phone.settings
+type /
+type 设置 · 未成年人模式
+key enter
+at g.wellbeing
+key enter
+at minor
+key enter
+wait 设置家长 PIN 码
+type 2580
+key enter
+wait 再输一次新的 PIN 码
+type 2580
+key enter
+wait 修改家长 PIN 码
+type /
+type 家长远程管理
+key enter
+key enter
+at minor-remote
+wait 关联家长的账号
+key enter
+wait 正在等家长
+wait-re [0-9]{4} [0-9]{4}
+parent-bind mum@kario.test
+wait 输入了配对码
+key first
+key enter
+wait 管理人 15000
+parent-bound yes
+key esc
+at minor
+wait-re mum@kario\.test 在家长网页上确认后
+type /
+type 忘记家长 PIN 码
+key enter
+key enter
+wait-re 已申请，正在等 mum@kario
+parent-reset confirm
+wait-re 请在 [0-9:]+ 前设置：mum@kario 8000
+snap 97-parent-pin-reset
+type /
+type 设置新的家长 PIN 码
+key enter
+key enter
+wait 重设家长 PIN 码
+type 1470
+key enter
+wait 再输一次新的 PIN 码
+type 1470
+key enter
+wait 家长 PIN 码已重设
+parent-reset done 8000
+key first
+key enter
+wait 关闭未成年人模式
+type 2580
+key enter
+wait PIN 码不对
+type 1470
+key enter
+wait 不再由 mum@kario.test 管理
+wait-re 未成年人模式 +关
+parent-bound no 8000
+key f4
+parent-server off
+
+#part reset
+== 恢复出厂设置（设备）：镜像里装着 data-wipe 和 phone-wipe.service（排在 sysinit.target 之前、开机时启用）；在临时目录里搭一个 /var/lib 和持久区，留下清除请求后运行镜像里的 data-wipe：设备密钥和出厂证书原样留下、写了新的数据盐，Shell 的数据、Wi-Fi 网络清空，请求随之删掉（需 root，设备上执行；数据分区重新格式化的那条路在 initramfs 里，这里测不到）
+require-sandbox
+require-device
+device-wipe
+
+== 恢复出厂设置：设置 › 更多设置 › 恢复出厂设置的页面写明清除什么、保留什么；登录 Kario 账号后手机绑定到账号（防盗锁开着）；输入锁屏 PIN 码、在系统自己的最后确认里选「清除全部数据」后手机重启，开机时服务启动前清除数据（开发机上是 phone-shell 清除自测的状态目录）：账号、锁屏 PIN 码没了，设备的出厂身份（设备号、密钥、根证书）没变；用 PIN 码从设置清除时防盗锁随之解除：开机后不锁，账号服务器上的绑定也没了
+require-reboot
+device-id save
+carddav-server reset@kario.test abcd-efgh-ijkl-mnop
+theft-server on reset@kario.test abcd-efgh-ijkl-mnop
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 指纹与密码
+key enter
+key enter
+wait 屏幕锁定
+key enter
+wait 设置锁屏 PIN 码
+type 2468
+key enter
+wait 再输一次新的 PIN 码
+type 2468
+key enter
+wait 已设置锁屏 PIN 码
+key f4
+appstop com.phone.settings
+type /
+type 设置 · 账号
+key enter
+at root
+key enter
+at com.phone.settings/accounts
+wait 其他 CardDAV 账号
+key enter
+at com.phone.settings/acctadd:kario
+wait 应用专用密码
+fill reset@kario.test
+key down
+fill abcd-efgh-ijkl-mnop
+key down
+key enter
+at com.phone.settings/accounts 8000
+wait reset@kario.test
+theft-bound yes 15000
+state-file shell/accounts.json present
+key f4
+appstop com.phone.settings
+type /
+type 设置 · 恢复出厂设置
+key enter
+at com.phone.settings/g.more
+key enter
+at com.phone.settings/reset
+wait 会清除
+wait 设备证书
+wait-re 关：恢复出厂设置后不要求登录 r\*\*\*t
+key last
+wait 要输入锁屏 PIN 码，再最后确认一次
+snap 98-factory-reset
+key enter
+wait 输入锁屏 PIN 码，清除这台手机上的
+type 2468
+key enter
+wait 清除这台手机上的全部数据？
+wait 防盗锁随之解除
+key enter
+rebooted 30000
+at sys.idle 15000
+device-id same
+state-file shell/accounts.json absent
+state-file keystore/lock.json absent
+state-file factory/root.pub present
+locked off
+theft-server on reset@kario.test abcd-efgh-ijkl-mnop
+theft-bound no 8000
+appstop com.phone.settings
+type /
+type 设置 · 账号
+key enter
+at root
+key enter
+at com.phone.settings/accounts
+wait 其他 CardDAV 账号
+gone reset@kario.test
+key f4
+theft-server off
+
+== 防盗锁：登录着 Kario 账号时，锁屏上连续输错 5 次 PIN 码后可以按 # 不用 PIN 码清除手机；重启清除后手机停在防盗锁的系统界面上（挂断键离不开它）；按 OK 检查时服务器说仍绑定着这个账号；按左软键向账号的邮箱要验证码（自测里从模拟的账号服务器读出来），输错不放行，输对后服务器签发只给这台手机、这一次的解除，手机验签后可以重新设置，服务器上的绑定也没了
+require-reboot
+carddav-server lost@kario.test qrst-uvwx-yzab-cdef
+theft-server on lost@kario.test qrst-uvwx-yzab-cdef
+key f4
+appstop com.phone.settings
+type /
+type 设置
+key enter
+at root
+type /
+type 设置 · 指纹与密码
+key enter
+key enter
+wait 屏幕锁定
+key enter
+wait 设置锁屏 PIN 码
+type 1357
+key enter
+wait 再输一次新的 PIN 码
+type 1357
+key enter
+wait 已设置锁屏 PIN 码
+key f4
+appstop com.phone.settings
+type /
+type 设置 · 账号
+key enter
+at root
+key enter
+at com.phone.settings/accounts
+wait 其他 CardDAV 账号
+key enter
+at com.phone.settings/acctadd:kario
+wait 应用专用密码
+fill lost@kario.test
+key down
+fill qrst-uvwx-yzab-cdef
+key down
+key enter
+at com.phone.settings/accounts 8000
+wait lost@kario.test
+theft-bound yes 15000
+key f4
+at sys.idle
+key tab
+type *
+wait 已锁定
+locked on
+key enter
+wait 输入 PIN 码
+type 1111
+key enter
+wait PIN 码不对，再错 4 次就要等待
+type 1111
+key enter
+wait PIN 码不对，再错 3 次就要等待
+type 1111
+key enter
+wait PIN 码不对，再错 2 次就要等待
+type 1111
+key enter
+wait PIN 码不对，再错 1 次就要等待
+type 1111
+key enter
+wait PIN 码错误次数过多
+wait 忘了 PIN 码？按 #
+type #
+wait 不用 PIN 码清除这台手机？
+wait-re l\*\*\*t@kario\.test
+key enter
+rebooted 30000
+wait 这台手机是在没有机主 15000
+state-file shell/accounts.json absent
+theft-server on lost@kario.test qrst-uvwx-yzab-cdef
+key f4
+wait 防盗锁
+key enter
+wait 仍然锁在 l***t@kario.test
+snap 99-anti-theft
+key tab
+wait 验证码已发到 l***t@kario.test
+theft-code wrong
+key enter
+wait 验证码不对或已过期
+theft-code
+key enter
+wait 防盗锁已解除
+theft-bound no 8000
+gone 防盗锁
+key enter
+at sys.menu
+key f4
+theft-server off

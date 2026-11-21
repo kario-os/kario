@@ -1,0 +1,618 @@
+{
+  "id": "com.phone.settings",
+  "name": "设置",
+  "icon": "设",
+  "icon_image": "icon.png",
+  "description": "网络 · 显示 · 隐私 · 系统更新",
+  "exec": "phone-app-settings",
+  "order": 80,
+  "permissions": [
+    "system"
+  ],
+  "commands": [
+    {
+      "id": "g.device",
+      "label": "我的设备",
+      "arg": "g.device"
+    },
+    {
+      "id": "about",
+      "label": "关于本机",
+      "arg": "about"
+    },
+    {
+      "id": "update",
+      "label": "系统更新",
+      "arg": "update"
+    },
+    {
+      "id": "switch",
+      "label": "从旧手机迁移",
+      "arg": "switch"
+    },
+    {
+      "id": "accounts",
+      "label": "账号",
+      "arg": "accounts"
+    },
+    {
+      "id": "wifi",
+      "label": "Wi-Fi",
+      "arg": "wifi"
+    },
+    {
+      "id": "bt",
+      "label": "蓝牙",
+      "arg": "bt"
+    },
+    {
+      "id": "g.mobile",
+      "label": "移动网络",
+      "arg": "g.mobile"
+    },
+    {
+      "id": "airplane",
+      "label": "飞行模式",
+      "arg": "airplane"
+    },
+    {
+      "id": "mobiledata",
+      "label": "移动数据",
+      "arg": "mobiledata"
+    },
+    {
+      "id": "roaming",
+      "label": "数据漫游",
+      "arg": "roaming"
+    },
+    {
+      "id": "apn",
+      "label": "接入点名称",
+      "arg": "apn"
+    },
+    {
+      "id": "simlock",
+      "label": "SIM 卡锁",
+      "arg": "simlock"
+    },
+    {
+      "id": "traffic",
+      "label": "流量",
+      "arg": "traffic"
+    },
+    {
+      "id": "hotspot",
+      "label": "个人热点",
+      "arg": "hotspot"
+    },
+    {
+      "id": "vpn",
+      "label": "VPN",
+      "arg": "vpn"
+    },
+    {
+      "id": "g.connect",
+      "label": "更多连接",
+      "arg": "g.connect"
+    },
+    {
+      "id": "nfc",
+      "label": "NFC",
+      "arg": "nfc"
+    },
+    {
+      "id": "usb",
+      "label": "USB",
+      "arg": "usb"
+    },
+    {
+      "id": "wallpaper",
+      "label": "壁纸",
+      "arg": "wallpaper"
+    },
+    {
+      "id": "lock",
+      "label": "键盘锁",
+      "arg": "lock"
+    },
+    {
+      "id": "g.status",
+      "label": "通知与状态栏",
+      "arg": "g.status"
+    },
+    {
+      "id": "net_speed",
+      "label": "显示实时网速",
+      "arg": "net_speed"
+    },
+    {
+      "id": "battery_percent",
+      "label": "显示电量百分比",
+      "arg": "battery_percent"
+    },
+    {
+      "id": "alerts",
+      "label": "紧急警报",
+      "arg": "alerts"
+    },
+    {
+      "id": "g.display",
+      "label": "显示与亮度",
+      "arg": "g.display"
+    },
+    {
+      "id": "brightness",
+      "label": "亮度",
+      "arg": "brightness"
+    },
+    {
+      "id": "auto_brightness",
+      "label": "自动亮度",
+      "arg": "auto_brightness"
+    },
+    {
+      "id": "refresh_rate",
+      "label": "刷新率",
+      "arg": "refresh_rate"
+    },
+    {
+      "id": "motion",
+      "label": "动画效果",
+      "arg": "motion"
+    },
+    {
+      "id": "theme",
+      "label": "主题",
+      "arg": "theme"
+    },
+    {
+      "id": "large_text",
+      "label": "大字号",
+      "arg": "large_text"
+    },
+    {
+      "id": "sound",
+      "label": "声音与振动",
+      "arg": "sound"
+    },
+    {
+      "id": "silent",
+      "label": "静音模式",
+      "arg": "silent"
+    },
+    {
+      "id": "security",
+      "label": "指纹与密码",
+      "arg": "security"
+    },
+    {
+      "id": "g.privacy",
+      "label": "隐私与安全",
+      "arg": "g.privacy"
+    },
+    {
+      "id": "perms",
+      "label": "应用权限",
+      "arg": "perms"
+    },
+    {
+      "id": "location",
+      "label": "位置",
+      "arg": "location"
+    },
+    {
+      "id": "blocking",
+      "label": "号码拦截",
+      "arg": "blocking"
+    },
+    {
+      "id": "probe",
+      "label": "沙箱自检",
+      "arg": "probe"
+    },
+    {
+      "id": "g.apps",
+      "label": "应用",
+      "arg": "g.apps"
+    },
+    {
+      "id": "apps",
+      "label": "应用设置",
+      "arg": "apps"
+    },
+    {
+      "id": "defaults",
+      "label": "默认应用",
+      "arg": "defaults"
+    },
+    {
+      "id": "battery",
+      "label": "电池",
+      "arg": "battery"
+    },
+    {
+      "id": "g.wellbeing",
+      "label": "健康使用手机",
+      "arg": "g.wellbeing"
+    },
+    {
+      "id": "screentime",
+      "label": "屏幕使用时间",
+      "arg": "screentime"
+    },
+    {
+      "id": "minor",
+      "label": "未成年人模式",
+      "arg": "minor"
+    },
+    {
+      "id": "g.a11y",
+      "label": "辅助功能",
+      "arg": "g.a11y"
+    },
+    {
+      "id": "screen_reader",
+      "label": "屏幕阅读器",
+      "arg": "screen_reader"
+    },
+    {
+      "id": "screen_reader_on_demand",
+      "label": "朗读方式",
+      "arg": "screen_reader_on_demand"
+    },
+    {
+      "id": "high_contrast_text",
+      "label": "高对比度文字",
+      "arg": "high_contrast_text"
+    },
+    {
+      "id": "bold_text",
+      "label": "粗体文字",
+      "arg": "bold_text"
+    },
+    {
+      "id": "color_inversion",
+      "label": "颜色反转",
+      "arg": "color_inversion"
+    },
+    {
+      "id": "color_correction",
+      "label": "颜色校正",
+      "arg": "color_correction"
+    },
+    {
+      "id": "magnification",
+      "label": "放大",
+      "arg": "magnification"
+    },
+    {
+      "id": "key_repeat_delay",
+      "label": "按键重复延迟",
+      "arg": "key_repeat_delay"
+    },
+    {
+      "id": "key_repeat_rate",
+      "label": "按键重复速率",
+      "arg": "key_repeat_rate"
+    },
+    {
+      "id": "long_press",
+      "label": "长按时间",
+      "arg": "long_press"
+    },
+    {
+      "id": "slow_keys",
+      "label": "慢速键",
+      "arg": "slow_keys"
+    },
+    {
+      "id": "sticky_keys",
+      "label": "粘滞键",
+      "arg": "sticky_keys"
+    },
+    {
+      "id": "key_feedback",
+      "label": "按键反馈",
+      "arg": "key_feedback"
+    },
+    {
+      "id": "mono_audio",
+      "label": "单声道音频",
+      "arg": "mono_audio"
+    },
+    {
+      "id": "audio_balance",
+      "label": "左右声道平衡",
+      "arg": "audio_balance"
+    },
+    {
+      "id": "a11y_shortcut",
+      "label": "辅助功能快捷方式",
+      "arg": "a11y_shortcut"
+    },
+    {
+      "id": "g.more",
+      "label": "更多设置",
+      "arg": "g.more"
+    },
+    {
+      "id": "language",
+      "label": "语言",
+      "arg": "language"
+    },
+    {
+      "id": "region",
+      "label": "地区",
+      "arg": "region"
+    },
+    {
+      "id": "datetime",
+      "label": "日期和时间",
+      "arg": "datetime"
+    },
+    {
+      "id": "ime_fuzzy",
+      "label": "模糊音",
+      "arg": "ime_fuzzy"
+    },
+    {
+      "id": "devmode",
+      "label": "开发者模式",
+      "arg": "devmode"
+    },
+    {
+      "id": "unlock",
+      "label": "解锁设备",
+      "arg": "unlock"
+    },
+    {
+      "id": "reset",
+      "label": "恢复出厂设置",
+      "arg": "reset"
+    },
+    {
+      "id": "crashes",
+      "label": "应用崩溃记录",
+      "arg": "crashes"
+    }
+  ],
+  "locales": {
+    "zh-Hant": {
+      "name": "設定",
+      "description": "網路 · 顯示 · 隱私 · 系統更新",
+      "commands": {
+        "g.device": "我的裝置",
+        "about": "關於本機",
+        "update": "系統更新",
+        "switch": "從舊手機移轉",
+        "accounts": "帳號",
+        "wifi": "Wi-Fi",
+        "bt": "藍牙",
+        "g.mobile": "行動網路",
+        "airplane": "飛航模式",
+        "mobiledata": "行動數據",
+        "roaming": "數據漫遊",
+        "apn": "存取點名稱",
+        "simlock": "SIM 卡鎖",
+        "traffic": "數據用量",
+        "hotspot": "個人熱點",
+        "vpn": "VPN",
+        "g.connect": "更多連線",
+        "nfc": "NFC",
+        "usb": "USB",
+        "wallpaper": "桌布",
+        "lock": "鍵盤鎖",
+        "g.status": "通知與狀態列",
+        "net_speed": "顯示即時網速",
+        "battery_percent": "顯示電量百分比",
+        "alerts": "緊急警報",
+        "g.display": "顯示與亮度",
+        "brightness": "亮度",
+        "auto_brightness": "自動亮度",
+        "refresh_rate": "螢幕更新率",
+        "motion": "動畫效果",
+        "theme": "主題",
+        "large_text": "大字體",
+        "sound": "音效與震動",
+        "silent": "靜音模式",
+        "security": "指紋與密碼",
+        "g.privacy": "隱私權與安全性",
+        "perms": "應用程式權限",
+        "location": "位置",
+        "blocking": "號碼封鎖",
+        "probe": "沙箱自我檢查",
+        "g.apps": "應用程式",
+        "apps": "應用程式設定",
+        "defaults": "預設應用程式",
+        "battery": "電池",
+        "g.wellbeing": "數位健康",
+        "screentime": "螢幕使用時間",
+        "minor": "未成年人模式",
+        "g.a11y": "輔助使用",
+        "screen_reader": "螢幕閱讀器",
+        "screen_reader_on_demand": "朗讀方式",
+        "high_contrast_text": "高對比文字",
+        "bold_text": "粗體文字",
+        "color_inversion": "色彩反轉",
+        "color_correction": "色彩校正",
+        "magnification": "放大",
+        "key_repeat_delay": "按鍵重複延遲",
+        "key_repeat_rate": "按鍵重複速率",
+        "long_press": "長按時間",
+        "slow_keys": "慢速鍵",
+        "sticky_keys": "相黏鍵",
+        "key_feedback": "按鍵回饋",
+        "mono_audio": "單聲道音訊",
+        "audio_balance": "左右聲道平衡",
+        "a11y_shortcut": "輔助使用捷徑",
+        "g.more": "更多設定",
+        "language": "語言",
+        "region": "地區",
+        "datetime": "日期與時間",
+        "ime_fuzzy": "模糊音",
+        "devmode": "開發人員模式",
+        "unlock": "解鎖裝置",
+        "reset": "恢復原廠設定",
+        "crashes": "應用程式當機記錄"
+      }
+    },
+    "en": {
+      "name": "Settings",
+      "description": "Network · display · privacy · system update",
+      "commands": {
+        "g.device": "My device",
+        "about": "About phone",
+        "update": "System update",
+        "switch": "Move from an old phone",
+        "accounts": "Accounts",
+        "wifi": "Wi-Fi",
+        "bt": "Bluetooth",
+        "g.mobile": "Mobile network",
+        "airplane": "Airplane mode",
+        "mobiledata": "Mobile data",
+        "roaming": "Data roaming",
+        "apn": "Access point names",
+        "simlock": "SIM lock",
+        "traffic": "Data usage",
+        "hotspot": "Personal hotspot",
+        "vpn": "VPN",
+        "g.connect": "More connections",
+        "nfc": "NFC",
+        "usb": "USB",
+        "wallpaper": "Wallpaper",
+        "lock": "Keypad lock",
+        "g.status": "Notifications and status bar",
+        "net_speed": "Show network speed",
+        "battery_percent": "Show battery percentage",
+        "alerts": "Emergency alerts",
+        "g.display": "Display and brightness",
+        "brightness": "Brightness",
+        "auto_brightness": "Auto brightness",
+        "refresh_rate": "Refresh rate",
+        "motion": "Animations",
+        "theme": "Theme",
+        "large_text": "Large text",
+        "sound": "Sound and vibration",
+        "silent": "Silent mode",
+        "security": "Fingerprints and PIN",
+        "g.privacy": "Privacy and security",
+        "perms": "App permissions",
+        "location": "Location",
+        "blocking": "Blocked numbers",
+        "probe": "Sandbox check",
+        "g.apps": "Apps",
+        "apps": "App settings",
+        "defaults": "Default apps",
+        "battery": "Battery",
+        "g.wellbeing": "Digital wellbeing",
+        "screentime": "Screen time",
+        "minor": "Minor mode",
+        "g.a11y": "Accessibility",
+        "screen_reader": "Screen reader",
+        "screen_reader_on_demand": "Reading",
+        "high_contrast_text": "High-contrast text",
+        "bold_text": "Bold text",
+        "color_inversion": "Colour inversion",
+        "color_correction": "Colour correction",
+        "magnification": "Magnification",
+        "key_repeat_delay": "Key repeat delay",
+        "key_repeat_rate": "Key repeat rate",
+        "long_press": "Long press",
+        "slow_keys": "Slow keys",
+        "sticky_keys": "Sticky keys",
+        "key_feedback": "Key feedback",
+        "mono_audio": "Mono audio",
+        "audio_balance": "Left/right balance",
+        "a11y_shortcut": "Accessibility shortcut",
+        "g.more": "More settings",
+        "language": "Language",
+        "region": "Region",
+        "datetime": "Date and time",
+        "ime_fuzzy": "Fuzzy pinyin",
+        "devmode": "Developer mode",
+        "unlock": "Unlock device",
+        "reset": "Factory reset",
+        "crashes": "App crashes"
+      }
+    },
+    "es": {
+      "name": "Configuración",
+      "description": "Red · pantalla · privacidad · actualización",
+      "commands": {
+        "g.device": "Mi dispositivo",
+        "about": "Acerca del teléfono",
+        "update": "Actualización del sistema",
+        "switch": "Traer del teléfono anterior",
+        "accounts": "Cuentas",
+        "wifi": "Wi-Fi",
+        "bt": "Bluetooth",
+        "g.mobile": "Red móvil",
+        "airplane": "Modo avión",
+        "mobiledata": "Datos móviles",
+        "roaming": "Itinerancia de datos",
+        "apn": "Nombres de puntos de acceso",
+        "simlock": "Bloqueo de SIM",
+        "traffic": "Uso de datos",
+        "hotspot": "Punto de acceso personal",
+        "vpn": "VPN",
+        "g.connect": "Más conexiones",
+        "nfc": "NFC",
+        "usb": "USB",
+        "wallpaper": "Fondo de pantalla",
+        "lock": "Bloqueo del teclado",
+        "g.status": "Notificaciones y barra de estado",
+        "net_speed": "Mostrar velocidad de red",
+        "battery_percent": "Mostrar porcentaje de batería",
+        "alerts": "Alertas de emergencia",
+        "g.display": "Pantalla y brillo",
+        "brightness": "Brillo",
+        "auto_brightness": "Brillo automático",
+        "refresh_rate": "Frecuencia de actualización",
+        "motion": "Animaciones",
+        "theme": "Tema",
+        "large_text": "Texto grande",
+        "sound": "Sonido y vibración",
+        "silent": "Modo silencio",
+        "security": "Huellas y PIN",
+        "g.privacy": "Privacidad y seguridad",
+        "perms": "Permisos de apps",
+        "location": "Ubicación",
+        "blocking": "Números bloqueados",
+        "probe": "Prueba de aislamiento",
+        "g.apps": "Apps",
+        "apps": "Ajustes de apps",
+        "defaults": "Apps predeterminadas",
+        "battery": "Batería",
+        "g.wellbeing": "Bienestar digital",
+        "screentime": "Tiempo de uso",
+        "minor": "Modo menores",
+        "g.a11y": "Accesibilidad",
+        "screen_reader": "Lector de pantalla",
+        "screen_reader_on_demand": "Lectura",
+        "high_contrast_text": "Texto de alto contraste",
+        "bold_text": "Texto en negrita",
+        "color_inversion": "Inversión de colores",
+        "color_correction": "Corrección de color",
+        "magnification": "Ampliación",
+        "key_repeat_delay": "Retraso de repetición",
+        "key_repeat_rate": "Velocidad de repetición",
+        "long_press": "Pulsación larga",
+        "slow_keys": "Teclas lentas",
+        "sticky_keys": "Teclas persistentes",
+        "key_feedback": "Respuesta de las teclas",
+        "mono_audio": "Audio mono",
+        "audio_balance": "Balance izquierda/derecha",
+        "a11y_shortcut": "Acceso directo de accesibilidad",
+        "g.more": "Más ajustes",
+        "language": "Idioma",
+        "region": "Región",
+        "datetime": "Fecha y hora",
+        "ime_fuzzy": "Pinyin aproximado",
+        "devmode": "Modo de desarrollador",
+        "unlock": "Desbloquear dispositivo",
+        "reset": "Restablecer datos de fábrica",
+        "crashes": "Fallos de apps"
+      }
+    }
+  }
+}

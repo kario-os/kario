@@ -1,0 +1,10 @@
+# The emulator as a 9-key phone with 1 GB, the smallest memory tier: the
+# low-memory stress run boots it with the web view (make yocto-stress).
+id = "qemu-t9-1g"
+board = "qemuarm64"
+display = "qemu-480x640"
+keypad = "qemu-kbd"
+device = "bar-t9"
+memory = "1g"
+region = "cn"
+product = "kario-std"

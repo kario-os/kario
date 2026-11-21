@@ -1,0 +1,11 @@
+{
+  "name": "公告板",
+  "icon": "告",
+  "description": "系统渲染的 Markdown 文档",
+  "permissions": [],
+  "locales": {
+    "zh-Hant": {"name": "公告板", "description": "系統繪製的 Markdown 文件"},
+    "en": {"name": "Notice board", "description": "Markdown documents the system draws"},
+    "es": {"name": "Tablón de anuncios", "description": "Documentos Markdown que dibuja el sistema"}
+  }
+}

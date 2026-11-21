@@ -1,0 +1,100 @@
+# Code scanning with CodeQL (docs/38-contributing.md): Go, JavaScript and
+# TypeScript, and the workflows themselves, for a pull request that touches
+# them (scripts/ci-plan.py picks the languages), and all of them by hand (on
+# main, which is what the Security tab's alerts are about). C and C++
+# (telephonyd, the C SDK, kario-jsrt's own sources) need a traced build of
+# all three, so they run by hand only; their parsers of
+# untrusted input already have fuzz harnesses (make fuzz). Alerts go to the
+# Security tab and the pull request; pr-ok does not wait for this workflow.
+name: codeql
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      languages: ${{ steps.plan.outputs.codeql }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: The languages the change touches (scripts/ci-plan.py)
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+        run: python3 scripts/ci-plan.py --event "$EVENT" --base HEAD^1 --head HEAD --github-output "$GITHUB_OUTPUT"
+
+  analyze:
+    needs: plan
+    if: needs.plan.outputs.languages != '[]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ${{ fromJSON(needs.plan.outputs.languages) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        if: matrix.language == 'go'
+        with:
+          go-version-file: go.mod
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.language == 'go' && 'manual' || 'none' }}
+          config-file: ./.github/codeql/codeql-config.yml
+      - name: Build the Go module
+        if: matrix.language == 'go'
+        run: go build ./...
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:${{ matrix.language }}
+
+  analyze-cpp:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      security-events: write
+    env:
+      CXX23: g++-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain (C++23; sd-bus for telephonyd's ModemManager backend; libcurl for kario-jsrt)
+        run: sudo apt-get update && sudo apt-get install -y g++-14 cmake ninja-build pkg-config libsystemd-dev libcurl4-openssl-dev
+      # QuickJS-ng (third-party) is built before CodeQL traces the build, so
+      # only this repository's C and C++ are extracted.
+      - name: QuickJS-ng, untraced
+        run: make jsrt
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: c-cpp
+          build-mode: manual
+          config-file: ./.github/codeql/codeql-config.yml
+      - name: Build telephonyd, the C SDK and kario-jsrt's own sources
+        run: |
+          touch jsrt/src/*.c
+          make telephonyd capi jsrt
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:c-cpp

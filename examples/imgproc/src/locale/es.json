@@ -1,0 +1,19 @@
+{
+  "Blur in TypeScript": "Desenfocar en TypeScript",
+  "Blur on a worker thread": "Desenfocar en un hilo de trabajo",
+  "Blur with native code": "Desenfocar con código nativo",
+  "Blurred %d×%d (radius %d) with %s in %s ms": "Desenfocado %d×%d (radio %d) con %s en %s ms",
+  "Blurred on a worker thread in %s ms": "Desenfocado en un hilo de trabajo en %s ms",
+  "Blurring on a worker thread…": "Desenfocando en un hilo de trabajo…",
+  "Checksum %s": "Suma de control %s",
+  "Compare": "Comparar",
+  "Image filters": "Filtros de imagen",
+  "Loading the native module…": "Cargando el módulo nativo…",
+  "Native %s ms, TypeScript %s ms: %s× faster": "Nativo %s ms, TypeScript %s ms: %s× más rápido",
+  "Native code: %s": "Código nativo: %s",
+  "Same pixels both ways": "Los mismos píxeles en ambos casos",
+  "The two results differ": "Los dos resultados difieren",
+  "TypeScript": "TypeScript",
+  "TypeScript only: %s": "Solo TypeScript: %s",
+  "native code": "código nativo"
+}

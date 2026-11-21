@@ -1,0 +1,469 @@
+# CI for the platform repository (docs/38-contributing.md). It runs for pull
+# requests and by hand only: scripts/ci-plan.py maps a pull request's changed
+# files to the jobs that must run; a run by hand runs them all (after
+# publishing to main: gh workflow run platform). The cheap checks run
+# first, the builds and tests after them. Branch protection requires one
+# check, pr-ok: it passes only if every job passed or was left out by the
+# plan. Every pull request must also be signed off (DCO).
+name: platform
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: platform-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CXX23: g++-14
+  GOFLAGS: -mod=vendor
+  ACTIONLINT_VERSION: 1.7.12
+  ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      all: ${{ steps.plan.outputs.all }}
+      go: ${{ steps.plan.outputs.go }}
+      go_packages: ${{ steps.plan.outputs.go_packages }}
+      go_make: ${{ steps.plan.outputs.go_make }}
+      go_files: ${{ steps.plan.outputs.go_files }}
+      selftest: ${{ steps.plan.outputs.selftest }}
+      cts: ${{ steps.plan.outputs.cts }}
+      pixel: ${{ steps.plan.outputs.pixel }}
+      telephonyd: ${{ steps.plan.outputs.telephonyd }}
+      mm: ${{ steps.plan.outputs.mm }}
+      capi: ${{ steps.plan.outputs.capi }}
+      jsrt: ${{ steps.plan.outputs.jsrt }}
+      paint: ${{ steps.plan.outputs.paint }}
+      gui: ${{ steps.plan.outputs.gui }}
+      ts: ${{ steps.plan.outputs.ts }}
+      sku: ${{ steps.plan.outputs.sku }}
+      yocto: ${{ steps.plan.outputs.yocto }}
+      docs: ${{ steps.plan.outputs.docs }}
+      workflows: ${{ steps.plan.outputs.workflows }}
+      shell_scripts: ${{ steps.plan.outputs.shell_scripts }}
+      shell_scripts_new: ${{ steps.plan.outputs.shell_scripts_new }}
+      jobs: ${{ steps.plan.outputs.jobs }}
+    steps:
+      # A pull request's checkout is its merge commit: HEAD^1 is the base it
+      # merges into.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: What this change needs (scripts/ci-plan.py)
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+        run: python3 scripts/ci-plan.py --event "$EVENT" --base HEAD^1 --head HEAD --github-output "$GITHUB_OUTPUT" --summary "$GITHUB_STEP_SUMMARY"
+
+  checks:
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Go modules (vendor/ is not in git)
+        run: go mod vendor
+      - name: phone-paint's crates for all platforms (license-check reads their licences)
+        run: cd paint && cargo fetch --locked
+      - name: Repository conventions (make test runs them too)
+        run: |
+          rc=0
+          check() { echo "::group::$*"; "$@" || rc=1; echo "::endgroup::"; }
+          check python3 scripts/no-chinese.py
+          check python3 scripts/i18n-check.py
+          check python3 scripts/const-check.py
+          check python3 scripts/license-check.py
+          check python3 scripts/docs-links.py docs
+          check python3 scripts/docs-en-check.py
+          check python3 tools/gomodinc.py --check yocto/meta-phone/recipes-phone/phone-fw phone-fw
+          exit $rc
+      - name: The CI scripts' tests
+        run: python3 -m unittest scripts/ci_plan_test.py scripts/ai_review_test.py scripts/yocto_check_test.py
+      - name: gofmt (changed Go files)
+        if: needs.plan.outputs.go_files != ''
+        env:
+          FILES: ${{ needs.plan.outputs.go_files }}
+        run: |
+          rc=0
+          while IFS= read -r f; do
+            [ -f "$f" ] || continue
+            if [ -n "$(gofmt -l -- "$f")" ]; then echo "::error file=$f::not formatted: gofmt -w $f"; rc=1; fi
+          done <<< "$FILES"
+          exit $rc
+      - name: go vet (the packages the plan tests)
+        if: needs.plan.outputs.go == 'true'
+        env:
+          PKGS: ${{ needs.plan.outputs.go_packages }}
+        run: |
+          read -ra pkgs <<< "$PKGS"
+          go vet -composites=false "${pkgs[@]}"
+      - name: shellcheck (changed scripts; errors fail, and warnings too in a new script)
+        if: needs.plan.outputs.shell_scripts != ''
+        env:
+          FILES: ${{ needs.plan.outputs.shell_scripts }}
+          NEW: ${{ needs.plan.outputs.shell_scripts_new }}
+        run: |
+          rc=0
+          while IFS= read -r f; do
+            [ -f "$f" ] || continue
+            opts=(--format=gcc)
+            head -c2 -- "$f" | grep -q '^#!' || opts+=(--shell=sh)
+            sev=error
+            if grep -qxF -- "$f" <<< "$NEW"; then sev=warning; fi
+            shellcheck "${opts[@]}" --severity=warning -- "$f" | sed -E 's/^(.+):([0-9]+):([0-9]+): [a-z]+: /::warning file=\1,line=\2,col=\3::/' || true
+            shellcheck "${opts[@]}" --severity="$sev" -- "$f" > /dev/null || { echo "::error file=$f::shellcheck --severity=$sev fails"; rc=1; }
+          done <<< "$FILES"
+          exit $rc
+      - name: actionlint (workflows)
+        if: needs.plan.outputs.workflows == 'true'
+        run: |
+          curl -fsSL -o /tmp/actionlint.tar.gz "https://github.com/rhysd/actionlint/releases/download/v$ACTIONLINT_VERSION/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "$ACTIONLINT_SHA256  /tmp/actionlint.tar.gz" | sha256sum -c --quiet
+          tar -xzf /tmp/actionlint.tar.gz -C /tmp actionlint
+          /tmp/actionlint -color
+      # paint/ and gui/ are not rustfmt-formatted yet: a crate's formatting is
+      # enforced once it has a rustfmt.toml (its style, after one cargo fmt).
+      - name: rustfmt (paint/, gui/)
+        if: needs.plan.outputs.paint == 'true' || needs.plan.outputs.gui == 'true'
+        env:
+          PAINT: ${{ needs.plan.outputs.paint }}
+          GUI: ${{ needs.plan.outputs.gui }}
+        run: |
+          rc=0
+          for c in paint gui; do
+            if [ "$c" = paint ] && [ "$PAINT" != true ]; then continue; fi
+            if [ "$c" = gui ] && [ "$GUI" != true ]; then continue; fi
+            if out=$(cd "$c" && cargo fmt --check 2>&1); then
+              echo "$c: formatted"
+            elif [ -f "$c/rustfmt.toml" ] || [ -f "$c/.rustfmt.toml" ]; then
+              printf '%s\n' "$out"
+              echo "::error::$c: cargo fmt --check fails (cd $c && cargo fmt)"
+              rc=1
+            else
+              n=$(grep -c '^Diff in' <<< "$out" || true)
+              echo "::warning::$c: rustfmt would change $n places; not enforced until $c/ has a rustfmt.toml"
+            fi
+          done
+          exit $rc
+
+  dco:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Every commit signed off (git commit -s)
+        env:
+          BASE: ${{ github.base_ref }}
+        run: sh scripts/check-dco.sh "origin/$BASE..HEAD"
+
+  go:
+    needs: [plan, checks]
+    if: needs.plan.outputs.go == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      KARIO_JSRT_REQUIRED: ${{ contains(needs.plan.outputs.go_make, 'jsrt') && '1' || '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Toolchain for telephonyd, the C SDK and kario-jsrt; ffmpeg for the media tests
+        run: sudo apt-get update && sudo apt-get install -y g++-14 cmake ninja-build pkg-config libsystemd-dev libcurl4-openssl-dev ffmpeg
+      - name: Go modules (vendor/ is not in git)
+        run: go mod vendor
+      - name: What the tests run, built and unit-tested as make test does
+        if: needs.plan.outputs.go_make != ''
+        env:
+          TARGETS: ${{ needs.plan.outputs.go_make }}
+        run: |
+          read -ra targets <<< "$TARGETS"
+          make "${targets[@]}"
+      - name: Go tests of the changed packages and of those that depend on them
+        env:
+          PKGS: ${{ needs.plan.outputs.go_packages }}
+        run: |
+          read -ra pkgs <<< "$PKGS"
+          # The shell's scenario runs its parts at once, each a stack of
+          # processes: beside it the other packages' timed tests starve on
+          # the runner's few cores, so it runs after them.
+          mapfile -t all < <(go list "${pkgs[@]}")
+          rest=() shell=()
+          for p in "${all[@]}"; do
+            if [ "$p" = github.com/kario-os/kario/shell ]; then shell+=("$p"); else rest+=("$p"); fi
+          done
+          [ ${#rest[@]} -eq 0 ] || go test -count=1 -timeout 30m "${rest[@]}"
+          [ ${#shell[@]} -eq 0 ] || go test -count=1 -timeout 30m "${shell[@]}"
+
+  telephonyd:
+    needs: [plan, checks]
+    if: needs.plan.outputs.telephonyd == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain (C++23; sd-bus for the ModemManager backend)
+        run: sudo apt-get update && sudo apt-get install -y g++-14 cmake ninja-build pkg-config libsystemd-dev
+      - name: telephonyd builds and its unit test passes
+        run: make telephonyd
+
+  mm:
+    needs: [plan, checks]
+    if: needs.plan.outputs.mm == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: The ModemManager backend against mock_mm.py over D-Bus (Podman)
+        run: make mm-selftest
+
+  capi:
+    needs: [plan, checks]
+    if: needs.plan.outputs.capi == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: sudo apt-get update && sudo apt-get install -y g++-14 cmake ninja-build
+      - name: The C SDK and its C++ sample app build, its test passes
+        run: make capi
+
+  sku:
+    needs: [plan, checks]
+    if: needs.plan.outputs.sku == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Every SKU checks out
+        run: make sku-check
+
+  paint:
+    needs: [plan, checks]
+    if: needs.plan.outputs.paint == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            paint/target
+          key: cargo-paint-${{ runner.os }}-${{ hashFiles('paint/Cargo.lock') }}
+          restore-keys: cargo-paint-${{ runner.os }}-
+      - name: clippy (its default levels; an error fails)
+        working-directory: paint
+        run: cargo clippy --locked --all-targets
+      - name: phone-paint's tests
+        working-directory: paint
+        run: cargo test --release --locked
+
+  gui:
+    needs: [plan, checks]
+    if: needs.plan.outputs.gui == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            gui/target
+          key: cargo-gui-${{ runner.os }}-${{ hashFiles('gui/Cargo.lock') }}
+          restore-keys: cargo-gui-${{ runner.os }}-
+      - name: clippy (its default levels; an error fails)
+        working-directory: gui
+        run: cargo clippy --locked --all-targets
+      - name: phone-gui builds and its tests pass
+        working-directory: gui
+        run: cargo build --release --locked && cargo test --release --locked
+
+  ts:
+    needs: [plan, checks]
+    if: needs.plan.outputs.ts == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ide/vscode/package-lock.json
+      - name: Kario Studio builds and its tests pass
+        working-directory: ide/vscode
+        run: npm ci && npm test
+      # cmd/kario/template is a project kario new writes; cmd/kario's tests
+      # check what it writes.
+      - name: The TypeScript projects type-check (tsc of ide/vscode's lockfile)
+        run: |
+          rc=0
+          while IFS= read -r -d '' c; do
+            d=$(dirname -- "$c")
+            case "$d" in ide/vscode|cmd/kario/template) continue;; esac
+            echo "tsc -p $d"
+            ide/vscode/node_modules/.bin/tsc -p "$d" || rc=1
+          done < <(git ls-files -z -- '*tsconfig.json')
+          exit $rc
+
+  selftest:
+    needs: [plan, checks]
+    if: needs.plan.outputs.selftest == 'true' || needs.plan.outputs.cts == 'true'
+    runs-on: ubuntu-24.04
+    # The tests' own limits are on their steps: a slow package mirror (apt
+    # once took 41 minutes) must not cut a test short.
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Toolchain for telephonyd (C++23, sd-bus for its ModemManager backend); ffmpeg for the video case
+        run: sudo apt-get update && sudo apt-get install -y g++-14 cmake ninja-build pkg-config libsystemd-dev libcurl4-openssl-dev ffmpeg
+      - name: Go modules (vendor/ is not in git)
+        run: go mod vendor
+      - name: Built-in selftest (text renderer)
+        if: needs.plan.outputs.selftest == 'true'
+        timeout-minutes: 25
+        run: make selftest
+      - name: Compatibility run, signed report verified
+        if: needs.plan.outputs.cts == 'true'
+        timeout-minutes: 25
+        run: make cts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cts-report
+          path: build/cts-report.json*
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: selftest-junit
+          path: build/selftest-junit.xml
+
+  pixel:
+    needs: [plan, checks]
+    if: needs.plan.outputs.pixel == 'true'
+    runs-on: ubuntu-24.04
+    # As the selftest job's: the limit that matters is the test step's.
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            paint/target
+          key: cargo-pixel-${{ runner.os }}-${{ hashFiles('paint/Cargo.lock') }}
+          restore-keys: cargo-pixel-${{ runner.os }}-
+      - name: Toolchain; the CJK font the renderers draw with
+        run: sudo apt-get update && sudo apt-get install -y g++-14 cmake ninja-build pkg-config libsystemd-dev libcurl4-openssl-dev ffmpeg fonts-noto-cjk
+      - name: Go modules (vendor/ is not in git)
+        run: go mod vendor
+      - name: The selftest drawn by phone-paint on the three form factors
+        timeout-minutes: 45
+        run: make pixel-selftest
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pixel-snapshots
+          path: build/pixel/
+
+  yocto:
+    needs: [plan, checks]
+    if: needs.plan.outputs.yocto == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: The layer without an image build (scripts/yocto-check.py)
+        run: python3 scripts/yocto-check.py
+      - name: phone-abslot on disk images (yocto/abslot-test.py)
+        run: python3 yocto/abslot-test.py
+      - name: The OnePlus 6T's flashing, backup and restore against a simulated phone (yocto/fajita-flash-test.py)
+        run: python3 yocto/fajita-flash-test.py
+      - name: btvirt with the layer's BlueZ patches under AddressSanitizer (yocto/btvirt-test.py)
+        run: python3 yocto/btvirt-test.py
+
+  # The one check branch protection requires. A job the plan left out is
+  # skipped, which GitHub would also report for a job skipped because one
+  # it needs failed: so every job is listed here, none may have failed or
+  # been cancelled, and each the plan asked for must have succeeded.
+  pr-ok:
+    if: always()
+    needs: [plan, checks, dco, go, telephonyd, mm, capi, sku, paint, gui, ts, selftest, pixel, yocto]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Every job passed or was left out by the plan
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+          REQUIRED: ${{ needs.plan.outputs.jobs }}
+        run: |
+          {
+            echo "### pr-ok"
+            echo
+            echo "| Job | Result | The plan needs it |"
+            echo "|-----|--------|-------------------|"
+            jq -r --argjson r "${REQUIRED:-[]}" 'to_entries[] | .key as $k | "| \($k) | \(.value.result) | \(if ($r | any(. == $k)) then "yes" else "" end) |"' <<< "$NEEDS"
+          } >> "$GITHUB_STEP_SUMMARY"
+          bad=$(jq -r --argjson r "${REQUIRED:-[]}" '
+            . as $n
+            | [ (to_entries[] | select(.value.result != "success" and .value.result != "skipped") | "\(.key): \(.value.result)"),
+                ($r[] | select(($n[.].result // "missing") != "success") | "\(.): the plan needs it, but it is \($n[.].result // "not in this workflow")"),
+                (if $n.plan.result != "success" then "plan: \($n.plan.result)" else empty end),
+                (if $n.checks.result != "success" then "checks: \($n.checks.result)" else empty end) ]
+            | unique | .[]' <<< "$NEEDS")
+          if [ -n "$bad" ]; then
+            printf 'pr-ok: FAIL\n%s\n' "$bad"
+            exit 1
+          fi
+          echo "pr-ok: every job passed or was left out by the plan"
+
+  # The run history: only the newest 3 runs of each workflow stay, with
+  # their logs and artifacts (scripts/ci-prune.sh). A pull request from a
+  # fork has no token that may delete runs.
+  prune:
+    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    needs: [pr-ok]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Delete the runs past the newest 3 of each workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: sh scripts/ci-prune.sh "$GITHUB_REPOSITORY" 3

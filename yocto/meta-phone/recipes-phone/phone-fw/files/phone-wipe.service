@@ -1,0 +1,19 @@
+[Unit]
+Description=Factory reset: empty the phone's data before its services start (only after the Shell asked for one)
+# The request is on the persistent area, which the wipe leaves. On an A/B
+# disk the initramfs has made the data partition anew already and removed
+# the request; this is for the boards whose data shares the root file
+# system, and the fallback when the initramfs could not.
+ConditionPathExists=/var/lib/slots/wipe/request
+DefaultDependencies=no
+RequiresMountsFor=/var/lib
+After=local-fs.target
+Before=sysinit.target systemd-tmpfiles-setup.service iwd.service bluetooth.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/phone/data-wipe empty /var/lib /var/lib/slots
+StandardOutput=journal+console
+
+[Install]
+WantedBy=sysinit.target

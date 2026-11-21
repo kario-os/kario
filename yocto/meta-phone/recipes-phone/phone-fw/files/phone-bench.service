@@ -1,0 +1,14 @@
+[Unit]
+Description=Phone semantic-vs-web comparison (only with phone.bench=1 on the kernel command line)
+ConditionKernelCommandLine=phone.bench=1
+After=basic.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/phone/bench-boot.sh
+StandardOutput=journal+console
+StandardError=journal+console
+TimeoutStartSec=1800
+
+[Install]
+WantedBy=multi-user.target

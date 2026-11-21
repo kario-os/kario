@@ -1,0 +1,33 @@
+# The update test's automatic update with the real RAUC (ota-test
+# install-auto): on Wi-Fi (the emulator's simulated access point) the user
+# marked metered nothing downloads; marked not metered, the shell installs
+# in the background and posts its notification.
+
+== 系统更新：自动更新（真的 RAUC）：计费的 Wi-Fi 上不下载，改成不计费后在后台装好并通知
+power 82
+wifi-ap Kario-Test kario-5678
+wifi-join Kario-Test kario-5678 60000
+type /
+type 设置
+key enter
+at root 30000
+type /
+type Wi-Fi
+key enter
+key enter
+wait 已连接 · 30000
+type /
+type Kario-Test
+key enter
+type m
+wait 按流量计费（你的设置） 10000
+setting auto_system_update 1
+sleep 20000
+type m
+wait 不按流量计费（你的设置） 10000
+timeshift 3601
+key f4
+key up
+at sys.notifs
+wait 系统更新已安装 900000
+setting auto_system_update 0

@@ -1,0 +1,128 @@
+[
+  {
+    "id": "kario-qwerty-sd662-4g",
+    "form": "qwerty",
+    "width": 640,
+    "height": 480,
+    "emulator": false,
+    "shell": {
+      "board": "sm6115-fxtec-pro1x",
+      "device": "bar-qwerty",
+      "display": "dmt028",
+      "keypad": "qwerty-v1",
+      "memory_mb": 4096,
+      "region": "cn",
+      "product": "kario-pro",
+      "fn": {
+        "a": "*",
+        "b": "!",
+        "c": "9",
+        "d": "5",
+        ".": "0",
+        "e": "2",
+        "f": "6",
+        "g": "/",
+        "h": ":",
+        "i": "-",
+        "j": ";",
+        "k": "'",
+        "l": "\"",
+        "m": "%",
+        "n": "&",
+        "o": "+",
+        "p": "@",
+        "q": "#",
+        "r": "3",
+        "s": "4",
+        "t": "(",
+        "u": "_",
+        "v": "?",
+        "w": "1",
+        "x": "8",
+        "y": ")",
+        "z": "7"
+      },
+      "ctrl": "fn+sym"
+    }
+  },
+  {
+    "id": "kario-t9-sd460-2g",
+    "form": "t9",
+    "width": 480,
+    "height": 640,
+    "emulator": false,
+    "shell": {
+      "board": "sm4250-oneplus-billie2",
+      "device": "bar-t9",
+      "display": "dmt028",
+      "keypad": "t9-v1",
+      "memory_mb": 2048,
+      "region": "cn",
+      "product": "kario-std"
+    }
+  },
+  {
+    "id": "kario-t9-sd662-2g",
+    "form": "t9",
+    "width": 480,
+    "height": 640,
+    "emulator": false,
+    "shell": {
+      "board": "sm6115-fxtec-pro1x",
+      "device": "bar-t9",
+      "display": "dmt028",
+      "keypad": "t9-v1",
+      "memory_mb": 2048,
+      "region": "cn",
+      "product": "kario-std"
+    }
+  },
+  {
+    "id": "qemu-qwerty",
+    "form": "qwerty",
+    "width": 640,
+    "height": 480,
+    "emulator": true,
+    "shell": {
+      "board": "qemuarm64",
+      "device": "bar-qwerty",
+      "display": "qemu-640x480",
+      "keypad": "qemu-kbd",
+      "memory_mb": 4096,
+      "region": "cn",
+      "product": "kario-pro"
+    }
+  },
+  {
+    "id": "qemu-t9",
+    "form": "t9",
+    "width": 480,
+    "height": 640,
+    "emulator": true,
+    "shell": {
+      "board": "qemuarm64",
+      "device": "bar-t9",
+      "display": "qemu-480x640",
+      "keypad": "qemu-kbd",
+      "memory_mb": 2048,
+      "region": "cn",
+      "product": "kario-std"
+    }
+  },
+  {
+    "id": "qemu-t9-1g",
+    "form": "t9",
+    "width": 480,
+    "height": 640,
+    "emulator": true,
+    "shell": {
+      "board": "qemuarm64",
+      "device": "bar-t9",
+      "display": "qemu-480x640",
+      "keypad": "qemu-kbd",
+      "memory_mb": 1024,
+      "region": "cn",
+      "product": "kario-std"
+    }
+  }
+]

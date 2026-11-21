@@ -1,0 +1,55 @@
+# The OnePlus 6T (machine oneplus-fajita, 39-oneplus-6t.md): the QEMU
+# image's distribution and packages on the phone, plus meta-qcom for the
+# Qualcomm modem services. Built with the phone's SKU, whose generated
+# overlay names this machine too:
+#   make yocto-build WORK=$HOME/yocto/fajita-work KASFILE=yocto/kas/phone-fajita.yml SKU=oneplus-fajita-t9
+header:
+  version: 14
+  includes:
+    - yocto/kas/phone-qemuarm64.yml
+
+machine: oneplus-fajita
+
+repos:
+  # The upstream layers at phone-qemuarm64.yml's commits, the tested ones.
+
+  # qrtr, rmtfs and tqftpserv (BSD-3-Clause). Its qbootctl and hexagonrpc
+  # are GPL-3.0 and stay out of the image (phone-qcom marks the boot slot).
+  meta-qcom:
+    url: https://github.com/qualcomm-linux/meta-qcom
+    branch: wrynose
+    commit: c791f2b7d050745ad83077e40a362c9b6c15fade
+
+  # meta-qcom depends on this layer; its newer linux-firmware is not
+  # preferred, so oe-core's is used.
+  meta-lts-mixins:
+    url: https://git.yoctoproject.org/meta-lts-mixins
+    branch: wrynose/linux-firmware
+    commit: d0fd372d1da9cacca04585f7a1b088fdfb32b77e
+
+local_conf_header:
+  # No A/B system slots yet: the phone's root is one ext4 on userdata,
+  # mounted by the kernel (no initramfs), so no RAUC, verity or wic disk.
+  ota: |
+    SKIP_META_RAUC_FEATURE_CHECK = "1"
+  phone-fajita: |
+    # The modem over QRTR (no USB): ModemManager's and libqmi's QRTR
+    # transport (libqrtr-glib, LGPL-2.1).
+    PACKAGECONFIG:append:pn-modemmanager = " qrtr"
+    PACKAGECONFIG:append:pn-libqmi = " qrtr"
+    # The previous boots' kernel logs out of pstore into
+    # /var/lib/systemd/pstore at each boot (phone-bringup), and the journal
+    # on userdata, so that a boot that went wrong can be read after the next.
+    PACKAGECONFIG:append:pn-systemd = " pstore"
+    FILESYSTEM_PERMS_TABLES:remove = "files/fs-perms-volatile-log.txt"
+    # linux-firmware's licence packages without a LICENSE of their own take
+    # the recipe's, which lists GPL-3.0-only, so INCOMPATIBLE_LICENSE leaves
+    # them out, and the firmware packages that need them (none the phone
+    # uses) fail the build-deps check.
+    ERROR_QA:remove:pn-linux-firmware = "build-deps"
+    WARN_QA:append:pn-linux-firmware = " build-deps"
+  shared-host: |
+    BB_NUMBER_THREADS = "16"
+    PARALLEL_MAKE = "-j 16"
+    BB_HASHSERVE_DB_DIR = "${SSTATE_DIR}"
+  qemu: ""

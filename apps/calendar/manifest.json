@@ -1,0 +1,44 @@
+{
+  "id": "com.phone.calendar",
+  "lang": "en",
+  "name": "Calendar",
+  "icon": "历",
+  "icon_image": "icon.png",
+  "description": "Month, events, reminders",
+  "runtime": "js",
+  "main": "main.js",
+  "order": 42,
+  "folder": "tools",
+  "permissions": ["notifications"],
+  "share": ["file"],
+  "commands": [
+    {"id": "new", "label": "New event", "arg": "new"},
+    {"id": "search", "label": "Search events", "arg": "search"},
+    {"id": "agenda", "label": "Upcoming", "arg": "agenda"},
+    {"id": "today", "label": "Today", "arg": "today"}
+  ],
+  "settings": [
+    {"key": "lunar", "title": "Chinese lunar calendar", "type": "choice", "choices": ["With the language", "Show", "Hide"], "default": "With the language"},
+    {"key": "birthdays", "title": "Birthdays from Contacts", "type": "choice", "choices": ["Show", "Hide"], "default": "Show"}
+  ],
+  "locales": {
+    "zh-Hans": {
+      "name": "日历",
+      "description": "月历、日程、提醒",
+      "commands": {"new": "新建日程", "search": "搜索日程", "agenda": "近期日程", "today": "今天"},
+      "settings": {"lunar": {"title": "农历和节气", "choices": ["跟随语言", "显示", "不显示"]}, "birthdays": {"title": "通讯录里的生日和纪念日", "choices": ["显示", "不显示"]}}
+    },
+    "zh-Hant": {
+      "name": "日曆",
+      "description": "月曆、日程、提醒",
+      "commands": {"new": "新增日程", "search": "搜尋日程", "agenda": "近期日程", "today": "今天"},
+      "settings": {"lunar": {"title": "農曆和節氣", "choices": ["跟隨語言", "顯示", "不顯示"]}, "birthdays": {"title": "通訊錄裡的生日和紀念日", "choices": ["顯示", "不顯示"]}}
+    },
+    "es": {
+      "name": "Calendario",
+      "description": "Mes, eventos, recordatorios",
+      "commands": {"new": "Nuevo evento", "search": "Buscar eventos", "agenda": "Próximos", "today": "Hoy"},
+      "settings": {"lunar": {"title": "Calendario lunar chino", "choices": ["Según el idioma", "Mostrar", "Ocultar"]}, "birthdays": {"title": "Cumpleaños de Contactos", "choices": ["Mostrar", "Ocultar"]}}
+    }
+  }
+}

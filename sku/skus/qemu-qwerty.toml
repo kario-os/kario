@@ -1,0 +1,9 @@
+# QEMU as a full-keyboard bar phone (landscape).
+id = "qemu-qwerty"
+board = "qemuarm64"
+display = "qemu-640x480"
+keypad = "qemu-kbd"
+device = "bar-qwerty"
+memory = "4g"
+region = "cn"
+product = "kario-pro"

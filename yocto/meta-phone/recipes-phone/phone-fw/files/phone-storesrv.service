@@ -1,0 +1,14 @@
+[Unit]
+Description=Simulated store backend (catalogue, review, downloads, crash reports; stands in for the store's servers)
+# Only while the product layer names no cloud store (phone-services).
+ConditionPathExists=!/usr/share/phone/services/store
+
+[Service]
+# Small Go heaps: no transparent huge pages (see phone-shell DisableHugePages).
+Environment=GODEBUG=disablethp=1
+# --root-out stands in for the factory putting the store's root on the device.
+ExecStart=/usr/bin/phone-storesrv --listen 127.0.0.1:8793 --data /var/lib/phone-storesrv --root-out /var/lib/phone/factory/stores/store.pub
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

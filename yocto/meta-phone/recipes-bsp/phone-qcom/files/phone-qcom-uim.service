@@ -1,0 +1,14 @@
+[Unit]
+Description=Open the SIM's provisioning session on the Qualcomm modem
+# The modem boots once rmtfs serves its file systems.
+Wants=rmtfs.service tqftpserv.service
+After=rmtfs.service tqftpserv.service
+Before=ModemManager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/phone-qcom/uim-select qrtr://0
+TimeoutStartSec=90
+
+[Install]
+WantedBy=multi-user.target

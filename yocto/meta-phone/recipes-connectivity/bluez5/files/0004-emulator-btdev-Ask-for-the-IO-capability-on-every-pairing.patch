@@ -1,0 +1,61 @@
+From: The Kario authors
+Subject: [PATCH] emulator: btdev: Ask for the IO capability on every pairing
+
+cmd_io_cap_reply() decides whether the remote has answered its IO
+Capability Request by its io_cap, which stays set after a pairing, so
+when two controllers pair a second time the responder's host gets no IO
+Capability Request (and the initiator's no IO Capability Response), yet
+both get the User Confirmation Request and Simple Pairing Complete.
+
+The kernel holds the connection at the IO Capability Request and drops
+it at Simple Pairing Complete, so the responder's reference count ends
+one below what is held: once the connection is idle, hci_conn_timeout()
+warns that it is below zero and the link is dropped. The initiator never
+learns the responder's IO capability and authentication requirements.
+
+Keep whether each side has replied in this pairing, cleared when the
+authentication completes.
+
+Upstream-Status: Pending
+---
+ emulator/btdev.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+--- a/emulator/btdev.c
++++ b/emulator/btdev.c
+@@ -157,6 +157,7 @@
+ 	uint8_t pin_len;
+ 	uint8_t io_cap;
+ 	uint8_t auth_req;
++	bool io_cap_replied;
+ 	bool ssp_auth_complete;
+ 	uint8_t ssp_status;
+ 
+@@ -1680,8 +1681,10 @@
+ 
+ 	conn->dev->ssp_status = 0;
+ 	conn->dev->ssp_auth_complete = false;
++	conn->dev->io_cap_replied = false;
+ 	conn->link->dev->ssp_status = 0;
+ 	conn->link->dev->ssp_auth_complete = false;
++	conn->link->dev->io_cap_replied = false;
+ }
+ 
+ static int cmd_link_key_reply_complete(struct btdev *dev, const void *data,
+@@ -3216,6 +3219,7 @@
+ 
+ 	dev->io_cap = cmd->capability;
+ 	dev->auth_req = cmd->authentication;
++	dev->io_cap_replied = true;
+ 
+ 	memcpy(ev.bdaddr, dev->bdaddr, 6);
+ 	ev.capability = cmd->capability;
+@@ -3225,7 +3229,7 @@
+ 	send_event(conn->link->dev, BT_HCI_EVT_IO_CAPABILITY_RESPONSE, &ev,
+ 					sizeof(ev));
+ 
+-	if (conn->link->dev->io_cap) {
++	if (conn->link->dev->io_cap_replied) {
+ 		struct bt_hci_evt_user_confirm_request cfm;
+ 
+ 		memcpy(cfm.bdaddr, dev->bdaddr, 6);

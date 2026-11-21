@@ -1,0 +1,41 @@
+header:
+  version: 14
+
+# Overlay with WPE WebKit: phone-webview (web nodes, 14 §5) and, for the
+# semantic-vs-web comparison, cog (headless and DRM platforms).
+# Usage: phone-qemuarm64.yml:web.yml
+repos:
+  meta-openembedded:
+    url: https://git.openembedded.org/meta-openembedded
+    branch: wrynose
+    layers:
+      meta-oe:
+
+  meta-webkit:
+    url: https://github.com/Igalia/meta-webkit
+    branch: wrynose
+
+local_conf_header:
+  zz-web: |
+    PREFERRED_PROVIDER_virtual/wpebackend = "wpebackend-fdo"
+    # Only what a chat page needs plus video: WPE 2.52 image decoders include
+    # GStreamer headers unconditionally, and "video" is what pulls GStreamer in.
+    # Accessibility, WebRTC, inspector and speech stay off.
+    PACKAGECONFIG:pn-wpewebkit = "dfg-jit gbm jit unified-builds video woff2 wpe-legacy-api"
+    PACKAGECONFIG:pn-cog = "drm headless"
+    # PulseAudio would pull in bash (GPLv3, kept out of the image): pages play
+    # sound through the ALSA sink, and of GStreamer's good and bad plugins only
+    # those wpewebkit itself depends on are installed, not every plugin.
+    PACKAGECONFIG:remove:pn-gstreamer1.0-plugins-good = "pulseaudio"
+    PACKAGECONFIG:remove:pn-mpg123 = "pulseaudio"
+    # DejaVu Sans comes from meta-phone (the renderers' fallback face); meta-oe's
+    # full DejaVu recipe ships a package of the same name, so its mono and serif
+    # faces stay out (pages fall back to Noto CJK).
+    PREFERRED_RPROVIDER_ttf-dejavu-sans = "ttf-dejavu-sans"
+    RRECOMMENDS:wpewebkit:remove = "gstreamer1.0-plugins-good-meta gstreamer1.0-plugins-bad-meta ttf-dejavu-sans-mono ttf-dejavu-serif"
+    # WebKit unified sources need up to ~5.5 GB per compiler and the build user's
+    # cgroup is capped at 48 GB; 24 jobs got OOM-killed.
+    PARALLEL_MAKE:pn-wpewebkit = "-j 8"
+    PHONE_IMAGE_PACKAGES:append = " cog python3 phone-webview"
+    IMAGE_ROOTFS_EXTRA_SPACE = "262144"
+    QB_MEM = "-m 2048"

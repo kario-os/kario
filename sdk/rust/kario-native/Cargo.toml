@@ -1,0 +1,16 @@
+[package]
+name = "kario-native"
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.70"
+license = "Apache-2.0"
+description = "Native modules of Kario's TypeScript apps in Rust (kario_native.h, 22-developer-api.md 9.3)"
+publish = false
+
+# No dependencies: the crate is the interface and nothing else, so a
+# module brings no code but its own and the standard library.
+[dependencies]
+
+[[example]]
+name = "probe"
+crate-type = ["cdylib"]

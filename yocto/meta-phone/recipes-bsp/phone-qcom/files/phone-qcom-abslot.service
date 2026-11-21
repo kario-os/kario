@@ -1,0 +1,14 @@
+[Unit]
+Description=Mark the Android boot slot this system started from as successful
+# As soon as the root file system is up: from here on the USB console can
+# fix the rest, and a fallback to the other slot (Android, which would not
+# take this userdata) helps nothing.
+After=local-fs.target
+ConditionPathExists=/dev/disk/by-partlabel/boot_a
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/phone-abslot mark-good
+
+[Install]
+WantedBy=multi-user.target

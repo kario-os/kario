@@ -1,0 +1,46 @@
+{
+  "id": "com.phone.store",
+  "name": "应用商店",
+  "icon": "商",
+  "icon_image": "icon.png",
+  "description": "从商店目录安装、更新应用；卸载",
+  "exec": "phone-app-store",
+  "order": 48,
+  "permissions": [
+    "install",
+    "net",
+    "notifications"
+  ],
+  "settings": [
+    {"key": "auto_update", "title": "自动更新应用（充电时）", "type": "toggle", "default": true}
+  ],
+  "locales": {
+    "zh-Hant": {
+      "name": "應用程式商店",
+      "description": "從商店目錄安裝、更新應用程式；解除安裝",
+      "settings": {
+        "auto_update": {
+          "title": "自動更新應用程式（充電時）"
+        }
+      }
+    },
+    "en": {
+      "name": "App store",
+      "description": "Install and update apps from the store's catalogue; uninstall",
+      "settings": {
+        "auto_update": {
+          "title": "Auto-update apps while charging"
+        }
+      }
+    },
+    "es": {
+      "name": "Tienda",
+      "description": "Instala y actualiza apps del catálogo de la tienda; desinstala",
+      "settings": {
+        "auto_update": {
+          "title": "Actualizar apps al cargar"
+        }
+      }
+    }
+  }
+}

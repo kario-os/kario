@@ -1,0 +1,42 @@
+id = "xiaomi-mido"
+name = "红米 Note 4X 高通版（整机测试机，骁龙 625）"
+soc = "骁龙 625（MSM8953）"
+# A whole phone: the low-end reference, eight Cortex-A53 like the small
+# cores of the Snapdragon 460 / 662.
+class = "phone"
+compatible = "xiaomi,mido"
+# Nura's generic MSM8953 image (its kernel is the msm8953-mainline branch:
+# panel drivers, IPA 2 for mobile data).
+nura = "qcom-msm8953"
+modem = "modemmanager"
+gnss = "modemmanager"
+gpu = true          # Adreno 506
+power_key = true    # pm8941_pwrkey
+# Found by themselves where Nura's kernel has them: the backlight (PMI8950
+# WLED; mainline 6.18 has none for this phone, only the boot loader's
+# framebuffer), the battery (no fuel gauge in mainline 6.18; Nura reports it
+# unreliably), Wi-Fi and Bluetooth (WCN3660B). No vibrator, light sensor or
+# NFC in the mainline device tree.
+unverified = ["gnss", "leds.notify", "display.width_mm", "display.height_mm", "display.touchscreen", "input.buttons"]
+
+# The AW2013's three LEDs (red, green, blue:indicator); it blinks them itself.
+[leds]
+notify = "green:indicator"
+
+# 5.5" 1080x1920 IPS LCD from one of five vendors (Nura's kernel has a driver
+# for each; which one a phone has shows in its boot log). No notch, square
+# corners: no inset.
+[display]
+id = "mido-fhd"
+name = "5.5 寸 1080×1920 IPS LCD"
+width = 1080
+height = 1920
+width_mm = 68
+height_mm = 122
+scale = 4.5
+# FocalTech in the mainline device tree; some phones have a Goodix GT917D.
+touchscreen = "edt,edt-ft5406"
+
+# Power and volume down are the PMIC's, volume up a GPIO.
+[input]
+buttons = ["pm8941_pwrkey", "pm8941_resin", "gpio-keys"]
