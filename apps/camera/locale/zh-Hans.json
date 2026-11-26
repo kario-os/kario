@@ -1,0 +1,7 @@
+{
+  "Camera": "相机",
+  "Cannot take a photo: %s": "无法拍照：%s",
+  "Press OK to open the system viewfinder; photos are saved to Gallery": "按 OK 打开系统取景框；照片保存到「图片」",
+  "Saved to Gallery (photo %d this time)": "已保存到图片（本次第 %d 张）",
+  "Take photo": "拍照"
+}

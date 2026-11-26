@@ -1,0 +1,183 @@
+#!/bin/sh
+# One step of the system update tests (yocto/qemu-ota.sh, qemu-ota-delta.sh), chosen by
+# phone.ota-test=<step> on the kernel command line; then the machine powers
+# off. The bundles come from the host, which QEMU's user network shows as
+# 10.0.2.2.
+step=$(tr ' ' '\n' < /proc/cmdline | sed -n 's/^phone.ota-test=//p')
+srv=http://10.0.2.2:8789
+say() { echo "PHONE-OTA: $*" > /dev/console; }
+# failed <what> <log>: a script's failure and the screen it left.
+failed() {
+	say "FAIL: $1: $(grep -a -m3 -e FAIL -e 'line ' "$2" | tr '\n' ' ')"
+	sed -n '/^  screen:/,/^  processes:/p' "$2" | head -n 32 | while IFS= read -r l; do say "  $l"; done
+}
+. /usr/lib/phone/slot-choose
+report() {
+	state /var/lib/slots/boot
+	root=$(awk '$2 == "/" { split($4, o, ","); r = $1 ":" o[1] } END { print r }' /proc/mounts)
+	health=$(cat /run/phone/healthy 2>/dev/null | tr ' ' ',')
+	say "booted=$booted primary=$slot good=$good tries=$tries root=$root health=${health:-none}"
+}
+# held <dir>: 设置 › 系统更新 against a server whose latest.json holds the
+# version back from this phone (a staged rollout at 0 %, a paused one).
+held() {
+	if PHONE_UPDATE_URL=$srv/$1 phone-shell --services system --script /usr/share/phone/ota-held.script --timeout-scale 4 \
+		> /tmp/held.log 2>&1; then
+		say "held ($1): $(grep -a -o 'held: .*' /run/phone/shell.log | tail -n 1)"
+	else
+		failed "$1" /tmp/held.log
+	fi
+}
+# delta_log <what>: what an incremental bundle's hook did (delta-hook), if
+# one ran: the applier, where it resumed from a checkpoint, and its time and
+# memory, or why it stopped.
+delta_log() {
+	[ -f /run/phone-ota-delta.log ] || return 0
+	say "delta $1: $(grep -a -m1 'applying payload' /run/phone-ota-delta.log) $(grep -a -m1 -o 'resumed at operation .*' /run/phone-ota-delta.log) $(tail -n 2 /run/phone-ota-delta.log | tr '\n' ' ')"
+	rm -f /run/phone-ota-delta.log
+}
+# install_ui: 设置 › 系统更新 installs what the server offers (the shell runs
+# rauc install), and the priority rauc.service installs at (its drop-in).
+install_ui() {
+	if PHONE_UPDATE_URL=$srv phone-shell --services system --script /usr/share/phone/ota.script --timeout-scale 4 \
+		> /tmp/install.log 2>&1; then
+		say "installed"
+	else
+		failed "install" /tmp/install.log
+	fi
+	say "rauc priority: $(for p in Nice CPUWeight IOSchedulingClass IOSchedulingPriority IOWeight; do printf '%s=%s ' $p "$(systemctl show -p $p --value rauc.service)"; done)"
+}
+# The good-marking runs once the system is up (the health check waits up
+# to 120 s for the shell); wait for its verdict.
+for i in $(seq 1 180); do
+	systemctl is-active -q phone-ota-good.service || systemctl is-failed -q phone-ota-good.service && break
+	sleep 1
+done
+report
+# The root the update server checks this phone's signed reports against
+# (the phone's own until the factory provisions one).
+systemctl start phone-keystored.service
+[ -r /var/lib/phone/factory/root.pub ] && say "device root: $(tr '\n' ' ' < /var/lib/phone/factory/root.pub)"
+case "$step" in
+install)
+	if rauc install "$srv/untrusted.raucb" > /tmp/untrusted.log 2>&1; then
+		say "FAIL: a bundle signed by an untrusted key was installed"
+	elif why=$(grep -a -i -e fail -e error /tmp/untrusted.log | grep -a -i -m1 -e signature -e certificate -e verif); then
+		say "untrusted bundle refused: $why"
+	else
+		say "FAIL: the untrusted bundle failed for another reason: $(tail -n 3 /tmp/untrusted.log | tr '\n' ' ')"
+	fi
+	delta_log refused
+	if grep -qw phone.ota-held /proc/cmdline; then
+		held staged
+		held paused
+	fi
+	# The real one through 设置 › 系统更新.
+	install_ui
+	delta_log installed
+	report
+	;;
+install-resume)
+	# The install after a power cut: an incremental bundle's applier
+	# resumes at its checkpoint. Then the running slot is made the one to
+	# start again, for the steps that follow from it.
+	install_ui
+	delta_log resumed
+	if rauc status mark-active booted > /tmp/mark.log 2>&1; then
+		say "slot $booted kept for the next start"
+	else
+		say "FAIL: rauc status mark-active booted: $(tail -n 2 /tmp/mark.log | tr '\n' ' ')"
+	fi
+	report
+	;;
+install-auto)
+	# Automatic updates with the real RAUC (ota-auto.script): nothing on
+	# Wi-Fi the user marked metered, then the background install once it is
+	# not; what the shell's automatic updates said on the way.
+	if PHONE_UPDATE_URL=$srv phone-shell --services system --script /usr/share/phone/ota-auto.script --timeout-scale 4 \
+		> /tmp/auto.log 2>&1; then
+		say "installed (automatic)"
+	else
+		failed "automatic install" /tmp/auto.log
+	fi
+	say "automatic: $(grep -a -o 'automatic update: .*' /run/phone/shell.log | tr '\n' ';')"
+	delta_log installed
+	report
+	;;
+install-stop)
+	# An automatic install whose conditions went away, stopped as the shell
+	# stops it (updateauto.go): the stop file, once phone.ota-cut=<MiB>
+	# (default 64) of the other slot are written by the incremental bundle
+	# phone.ota-bundle=<name>. Its applier stops at a checkpoint, RAUC
+	# fails the install, and the slot is neither primary nor openable (no
+	# descriptor). Then installed again through Settings, it resumes there.
+	cut=$(tr ' ' '\n' < /proc/cmdline | sed -n 's/^phone.ota-cut=//p')
+	bundle=$(tr ' ' '\n' < /proc/cmdline | sed -n 's/^phone.ota-bundle=//p')
+	other=a
+	[ "$booted" = a ] && other=b
+	dev=$(readlink -f /dev/disk/by-partlabel/rootfs_$other)
+	stat=/sys/class/block/${dev##*/}/stat
+	before=$(awk '{ print $7 }' "$stat")
+	rm -f /run/phone-ota-delta.stop /run/phone-ota-delta.log
+	rauc install "$srv/$bundle" > /tmp/stop.log 2>&1 &
+	pid=$!
+	while kill -0 $pid 2>/dev/null; do
+		written=$(( ($(awk '{ print $7 }' "$stat") - before) / 2048 ))
+		if [ "$written" -ge "${cut:-64}" ] && [ ! -e /run/phone-ota-delta.stop ]; then
+			say "stop file after $written MB written to slot $other"
+			: > /run/phone-ota-delta.stop
+		fi
+		sleep 1
+	done
+	if wait $pid; then
+		say "FAIL: the install went on after the stop file"
+	fi
+	state /var/lib/slots/boot
+	say "after the stop: primary=$slot good=$good descriptor of $other: $([ -f /var/lib/slots/rootfs_$other.verity ] && echo present || echo none) checkpoint at operation $(sed -n 's/^next_operation=//p' /var/lib/slots/rootfs_$other.progress 2>/dev/null)"
+	delta_log stopped
+	rm -f /run/phone-ota-delta.stop
+	install_ui
+	delta_log resumed
+	if rauc status mark-active booted > /tmp/mark.log 2>&1; then
+		say "slot $booted kept for the next start"
+	else
+		say "FAIL: rauc status mark-active booted: $(tail -n 2 /tmp/mark.log | tr '\n' ' ')"
+	fi
+	report
+	;;
+install-cut)
+	# The install through Settings, and the power gone once
+	# phone.ota-cut=<MiB> (default 64) of the other slot are written: no
+	# sync, as when the battery comes out.
+	cut=$(tr ' ' '\n' < /proc/cmdline | sed -n 's/^phone.ota-cut=//p')
+	other=a
+	[ "$booted" = a ] && other=b
+	dev=$(readlink -f /dev/disk/by-partlabel/rootfs_$other)
+	stat=/sys/class/block/${dev##*/}/stat
+	before=$(awk '{ print $7 }' "$stat")
+	PHONE_UPDATE_URL=$srv phone-shell --services system --script /usr/share/phone/ota.script --timeout-scale 4 \
+		> /tmp/install.log 2>&1 &
+	shell=$!
+	while kill -0 $shell 2>/dev/null; do
+		written=$(( ($(awk '{ print $7 }' "$stat") - before) / 2048 ))
+		if [ "$written" -ge "${cut:-64}" ]; then
+			say "power cut after $written MB written to slot $other"
+			echo o > /proc/sysrq-trigger
+			sleep 10
+		fi
+		sleep 1
+	done
+	say "FAIL: the install ended before the power cut: $(grep -a -m3 -e FAIL -e 'line ' -e PASS /tmp/install.log | tr '\n' ' ')"
+	;;
+esac
+# The shell that installed an update reports how it went once the slot is
+# marked good (updatereport.go); with the display service it runs here. A
+# slot that did not come up healthy is not marked good: nothing to wait for.
+if grep -qw phone.gui=1 /proc/cmdline && [ -e /var/lib/phone/shell/update-report.json ] && ! systemctl is-failed -q phone-ota-good.service; then
+	for i in $(seq 1 60); do [ -e /var/lib/phone/shell/update-report.json ] || break; sleep 1; done
+	say "update report: $([ -e /var/lib/phone/shell/update-report.json ] && echo pending || echo sent)"
+fi
+# What the shell decided on the way (a retry, the full bundle after the
+# incremental one, the report sent): the tests check some of it.
+say "shell: $(grep -a -o 'system update.*' /run/phone/shell.log 2>/dev/null | tail -n 8 | tr '\n' ';')"
+systemctl poweroff

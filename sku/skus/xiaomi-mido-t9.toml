@@ -1,0 +1,7 @@
+# The Redmi Note 4X as a 9-key bar phone: the low-end performance reference.
+id = "xiaomi-mido-t9"
+board = "xiaomi-mido"
+device = "bar-t9"
+memory = "2g"
+region = "cn"
+product = "kario-std"

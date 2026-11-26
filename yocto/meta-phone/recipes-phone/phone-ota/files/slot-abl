@@ -1,0 +1,145 @@
+# Sourced by phone-initramfs' /init (slot-init): the board's partitions by
+# role, where the kernel has them, what a data partition holds, and the
+# userdata layout's root file system (43-phone-partitions.md).
+# PHONE_SYSFS and PHONE_DEV stand for /sys and /dev in the tests.
+
+# parts_conf <file>: slots (who keeps the A/B slot: abl, the bootloader in
+# the GPT attributes of boot_a and boot_b; state, this initramfs in the
+# state partition), root_part (the root pair without its slot suffix),
+# data_part and state_part ("" for none) from the board's partitions.conf,
+# which tools/sku.py writes; without the file, the emulator's A/B disk.
+# Parsed, never run: a name is letters, digits and _.
+# shellcheck disable=SC2034 # slot-init, which sources this, reads them
+parts_conf() {
+	slots=state root_part=rootfs data_part=data state_part=state
+	[ -f "$1" ] || return 0
+	slots=$(sed -n 's/^slots=abl$/abl/p; s/^slots=state$/state/p' "$1" | head -n 1)
+	root_part=$(conf_name root "$1")
+	data_part=$(conf_name data "$1")
+	state_part=$(conf_name state "$1")
+	: "${slots:=state}" "${root_part:=rootfs}" "${data_part:=data}"
+}
+
+conf_name() {
+	sed -n "s/^$1=\([A-Za-z][A-Za-z0-9_]\{0,33\}\)\$/\1/p" "$2" | head -n 1
+}
+
+# boot_layout <file>: the layout the boot image was made for, as its
+# ramdisk names it (/etc/phone/layout, layout=userdata: phone-bootimg);
+# nothing without one (the A/B boot image, phone-abboot, carries the
+# root's verity descriptor instead). Parsed, never run.
+boot_layout() {
+	sed -n 's/^layout=userdata$/userdata/p' "$1" 2> /dev/null | head -n 1
+}
+
+# part <name>: the block device of the GPT partition named <name>, by the
+# names the kernel gives sysfs (the initramfs has no udev).
+part() {
+	[ -n "$1" ] || return 0
+	for u in "${PHONE_SYSFS:-/sys}"/class/block/*/uevent; do
+		if grep -qx "PARTNAME=$1" "$u" 2> /dev/null; then
+			echo "${PHONE_DEV:-/dev}/$(sed -n 's/^DEVNAME=//p' "$u")"
+			return
+		fi
+	done
+}
+
+# wait_part <name> <seconds>: whether the kernel has found the partition,
+# waiting at most <seconds> for it (a UFS brings its units up one after
+# the other); waited is the seconds it took.
+wait_part() {
+	waited=0
+	until [ -n "$(part "$1")" ]; do
+		[ "$waited" -lt "$2" ] || return 1
+		sleep 1
+		waited=$((waited + 1))
+	done
+}
+
+# log_cmdline <file>: the kernel command line into the log, in pieces of
+# whole words: /dev/kmsg refuses a line over 1024 bytes, and a
+# bootloader's additions can make the command line longer.
+log_cmdline() {
+	set -f
+	# shellcheck disable=SC2046 # the words, split
+	set -- $(cat "$1")
+	set +f
+	what="command line:" line=
+	for w; do
+		if [ -n "$line" ] && [ $((${#line} + ${#w})) -ge 800 ]; then
+			log "$what$line"
+			what="command line, continued:" line=
+		fi
+		line="$line $w"
+	done
+	log "$what$line"
+}
+
+# root_words <file>: the words of the kernel command line that choose the
+# root file system for a kernel that mounts it itself, a bootloader's
+# included (root=, init=, ro, skip_initramfs...): reported, never used.
+root_words() {
+	tr ' ' '\n' < "$1" | grep -E '^(root|rootfstype|rootflags|init|rdinit)=|^(ro|rw|rootwait|skip_initramfs)$' | tr '\n' ' '
+}
+
+# userdata_root <dir>: the userdata layout's root file system, all of the
+# data partition, mounted read-write on <dir> once the kernel has found
+# the partition by its name. Never made anew: a partition without ext4
+# holds another system's data, and one without /sbin/init is not Kario's.
+userdata_root() {
+	if ! wait_part "$data_part" 30; then
+		log "no partition $data_part after 30 s; block devices: $(cd "${PHONE_SYSFS:-/sys}/class/block" && echo *)"
+		return 1
+	fi
+	dev=$(part "$data_part")
+	log "the root file system: $dev, the partition $data_part (found after $waited s)"
+	if [ "$(fs_kind "$dev")" != ext4 ]; then
+		log "$data_part: no ext4 on $dev (Android's or another system's data?): Kario's root file system is not there"
+		return 1
+	fi
+	if ! mount -t ext4 -o rw "$dev" "$1"; then
+		log "$data_part: $dev does not mount"
+		return 1
+	fi
+	if [ ! -e "$1/sbin/init" ] && [ ! -L "$1/sbin/init" ]; then
+		log "$data_part: $dev has no /sbin/init: not Kario's root file system"
+		umount "$1"
+		return 1
+	fi
+}
+
+# magic <device> <offset> <count>: the bytes there in octal, as od prints
+# them with -b (busybox's od takes no -A, -t, -j or -N without
+# CONFIG_DESKTOP).
+magic() {
+	dd if="$1" bs=1 skip="$2" count="$3" 2> /dev/null | od -b | sed -n '1{s/^[0-9]*//;s/  */ /g;s/^ //;s/ $//;p;}'
+}
+
+# fs_kind <device>: ext4 (or ext2, ext3), f2fs or none, by the magic of its
+# superblock.
+fs_kind() {
+	if [ "$(magic "$1" 1080 2)" = "123 357" ]; then
+		echo ext4
+	elif [ "$(magic "$1" 1024 4)" = "020 040 365 362" ]; then
+		echo f2fs
+	else
+		echo none
+	fi
+}
+
+# data_ready <device> <label>: an ext4 there, made anew on a partition with
+# no file system (a flash erased it, or fastboot -w). Another file system
+# (Android's data) is left alone.
+data_ready() {
+	case $(fs_kind "$1") in
+	ext4) return 0 ;;
+	none)
+		log "$2: no file system on $1, making it anew"
+		mkfs.ext4 -F -q -L "$2" "$1"
+		;;
+	*)
+		log "$2: $1 holds another file system (Android's data?): left alone"
+		return 1
+		;;
+	esac
+}

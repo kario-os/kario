@@ -1,0 +1,6 @@
+# RAUC streams an update bundle over a network block device: every read of
+# it is a download (25-system-update.md §5.5). When it connects, udev's
+# blkid would probe it for file systems and RAID signatures, about a
+# megabyte of buffered reads across the bundle, which the install then
+# downloads again through dm-verity; nothing on the phone uses its links.
+SUBSYSTEM=="block", KERNEL=="nbd*", ENV{UDEV_DISABLE_PERSISTENT_STORAGE_RULES_FLAG}="1"

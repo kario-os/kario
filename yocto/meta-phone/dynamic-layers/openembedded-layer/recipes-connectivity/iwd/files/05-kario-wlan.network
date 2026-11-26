@@ -1,0 +1,10 @@
+# iwd configures the Wi-Fi interfaces itself: DHCP as a station, its own
+# address and DHCP server as an access point. A catch-all .network (QEMU's
+# ip=dhcp makes systemd-network-generator write one for every interface)
+# would have networkd drop iwd's addresses as foreign whenever the link
+# changes, and the hotspot's clients could no longer reach the phone.
+[Match]
+Type=wlan
+
+[Link]
+Unmanaged=yes

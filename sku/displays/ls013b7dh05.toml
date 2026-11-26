@@ -1,0 +1,19 @@
+id = "ls013b7dh05"
+name = "1.26 寸 144×168 黑白记忆屏（Sharp LS013B7DH05）"
+# The flip's outer display (24-sku-framework.md §9.10): a reflective
+# memory LCD, which holds its picture at microwatts and lights nothing (it
+# is read by the light around it). The mainline tiny DRM driver takes
+# XRGB8888 and sends one bit a pixel over SPI (at most 2 MHz, chip select
+# active high); its DRM driver's name is what the renderer opens it by.
+compatible = ["sharp,ls013b7dh05"]
+kconfig = "CONFIG_TINYDRM_SHARP_MEMORY"
+bus = "spi"
+kind = "memory-lcd"
+color = "mono"
+drm_driver = "sharp_memory_display"
+width = 144
+height = 168
+width_mm = 20
+height_mm = 24
+spi_max_hz = 1000000
+spi_cs_high = true

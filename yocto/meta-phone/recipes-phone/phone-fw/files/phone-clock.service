@@ -1,0 +1,29 @@
+[Unit]
+Description=Phone clock: the time from the RTC and the offset kept where the board's RTC is read-only (sku.json rtc)
+# A board whose RTC cannot be set (the OnePlus 6T's on mainline) boots at
+# the RTC's own count, 1970 and some days: the Shell keeps the system
+# time's offset from it in the persistent area, and this sets the clock
+# from both. As a clock source it comes before time-set.target and
+# systemd-timesyncd; before sysinit.target, so every service with the
+# default dependencies (the Shell, telephonyd) starts with the time set.
+# The RTC's driver may be a module (rtc-pm8xxx in the 6T's kernel), whose
+# registration sets the clock from the RTC's count: after udev's coldplug,
+# and phone-clock waits for the RTC. At shutdown it keeps the offset again
+# while NTP keeps the clock (on a settable RTC: writes it, as hwclock does).
+ConditionPathExists=/usr/share/phone/sku.json
+DefaultDependencies=no
+RequiresMountsFor=/var/lib/slots
+After=local-fs.target systemd-udev-trigger.service
+Before=time-set.target sysinit.target systemd-timesyncd.service shutdown.target
+Wants=time-set.target
+Conflicts=shutdown.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/phone-clock restore
+ExecStop=/usr/bin/phone-clock save --if-synced
+StandardOutput=journal+console
+
+[Install]
+WantedBy=sysinit.target

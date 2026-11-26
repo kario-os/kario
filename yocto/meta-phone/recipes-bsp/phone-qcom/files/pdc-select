@@ -1,0 +1,182 @@
+#!/bin/sh
+# Activates the modem's software configuration (MCFG) for the SIM's carrier,
+# as Android's vendor stack does on a Qualcomm phone: it carries the
+# carrier's settings, IMS (VoLTE) among them. Only a configuration the modem
+# holds already is activated, and only once for a carrier (the MCC and MNC
+# of the SIM's home network): whatever is active after that, chosen here or
+# by hand, is left alone at later boots. Loading a configuration into the
+# modem (qmicli --pdc-load-config) writes its flash and is left to the user
+# (39-oneplus-6t.md §11.1). Activating one restarts the modem, which then
+# needs the SIM's session opened again (uim-select, beside this script).
+#
+#   pdc-select [--dry-run] [--carriers <file>] [--state <dir>] [qrtr://<node>]
+set -u
+dev=qrtr://0
+carriers=/usr/share/phone-qcom/pdc-carriers
+state=/var/lib/phone-qcom
+dry=
+while [ $# -gt 0 ]; do
+	case $1 in
+	--dry-run) dry=1 ;;
+	--carriers) carriers=$2; shift ;;
+	--state) state=$2; shift ;;
+	*) dev=$1 ;;
+	esac
+	shift
+done
+here=$(dirname "$0")
+
+tries=0
+mcc=
+until home=$(qmicli -d "$dev" --nas-get-home-network 2>/dev/null) &&
+	mcc=$(printf '%s\n' "$home" | sed -n "s/^[[:space:]]*MCC: '\([0-9]*\)'.*/\1/p" | head -n 1) &&
+	[ -n "$mcc" ] && [ "$mcc" != 0 ]; do
+	tries=$((tries + 1))
+	if [ "$tries" -ge 10 ]; then
+		echo "pdc-select: the modem reports no home network of a SIM on $dev: nothing to do"
+		exit 0
+	fi
+	sleep 2
+done
+mnc=$(printf '%s\n' "$home" | sed -n "s/^[[:space:]]*MNC: '\([0-9]*\)'.*/\1/p" | head -n 1)
+carrier="MCC $mcc MNC $mnc"
+
+names=$(awk -v mcc="$mcc" -v mnc="$mnc" '
+	/^[[:space:]]*(#|$)/ { next }
+	$1 == mcc {
+		n = split($2, m, ",")
+		for (i = 1; i <= n; i++)
+			if (m[i] + 0 == mnc + 0) {
+				for (j = 3; j <= NF; j++)
+					printf "%s%s", $j, (j < NF ? " " : "\n")
+				exit
+			}
+	}' "$carriers")
+if [ -z "$names" ]; then
+	echo "pdc-select: the SIM's carrier ($carrier) is not in $carriers: nothing to do"
+	exit 0
+fi
+
+key="$state/pdc-$mcc-$mnc"
+if [ -e "$key" ]; then
+	echo "pdc-select: $carrier was dealt with at an earlier boot ($(cat "$key")): left as it is"
+	exit 0
+fi
+
+if ! list=$(qmicli -d "$dev" --pdc-list-configs=software 2>&1); then
+	echo "pdc-select: the modem does not list its configurations: $list" >&2
+	exit 1
+fi
+printf '%s\n' "$list" | awk '
+	/^[[:space:]]*Description:/ { sub(/^[[:space:]]*Description:[[:space:]]*/, ""); d = $0 }
+	/^[[:space:]]*Status:/ { print "pdc-select: the modem holds " d " (" $2 ")" }'
+
+# The configurations that name the carrier and are no lab or test build;
+# of those, one for VoLTE before one without, a commercial one, one for
+# phones sold unlocked (OpenMkt); then the newest version, then the first.
+pick=$(printf '%s\n' "$list" | awk -v names="$names" '
+	function consider(   n, t, i, named, volte, commercial, open, score, v) {
+		if (desc == "" || id == "")
+			return
+		n = split(tolower(desc), t, /[^a-z0-9]+/)
+		named = volte = commercial = open = 0
+		for (i = 1; i <= n; i++) {
+			if (t[i] in carrier)
+				named = 1
+			else if (t[i] in lab)
+				return
+			else if (t[i] == "volte" || t[i] == "hvolte")
+				volte = 4
+			else if (t[i] == "commercial")
+				commercial = 2
+			else if (t[i] == "openmkt")
+				open = 1
+		}
+		if (!named)
+			return
+		score = volte + commercial + open
+		v = substr(ver, 3)
+		while (length(v) < 8)
+			v = "0" v
+		if (score > best || (score == best && (v "") > (bestv ""))) {
+			best = score; bestv = v; pick = status " " id " " desc
+		}
+	}
+	BEGIN {
+		n = split(tolower(names), w, " ")
+		for (i = 1; i <= n; i++)
+			carrier[w[i]] = 1
+		lab["lab"] = lab["test"] = lab["cta"] = lab["ptcrb"] = 1
+		best = -1
+	}
+	/^Configuration [0-9]+:/ { consider(); desc = id = status = ver = ""; next }
+	/^[[:space:]]*Description:/ { sub(/^[[:space:]]*Description:[[:space:]]*/, ""); desc = $0; next }
+	/^[[:space:]]*Status:/ { status = $2; next }
+	/^[[:space:]]*Version:/ { ver = $2; next }
+	/^[[:space:]]*ID:/ { id = $2; next }
+	END { consider(); if (best >= 0) print pick }')
+if [ -z "$pick" ]; then
+	echo "pdc-select: the modem holds no configuration for $carrier (named $names): nothing to do"
+	exit 0
+fi
+read -r status id desc <<EOF
+$pick
+EOF
+
+record() {
+	mkdir -p "$state" && printf '%s %s %s\n' "$1" "$id" "$desc" > "$key"
+}
+
+case $status in
+Active | Pending)
+	echo "pdc-select: $desc, the configuration for $carrier, is $status already"
+	[ -n "$dry" ] || record kept
+	exit 0
+	;;
+esac
+if [ -n "$dry" ]; then
+	echo "pdc-select: would activate $desc for $carrier (dry run)"
+	exit 0
+fi
+
+# Recorded before it is tried: a configuration that does not take is not
+# tried again at every boot, each time restarting the modem.
+echo "pdc-select: activating $desc for $carrier"
+record activated
+# qmicli waits for the modem's answer, which a restarting modem may never
+# send: at most 60 s (the image's busybox has no timeout).
+qmicli -d "$dev" --pdc-activate-config="software,$id" &
+pid=$!
+waited=0
+while kill -0 "$pid" 2>/dev/null && [ "$waited" -lt 60 ]; do
+	sleep 1
+	waited=$((waited + 1))
+done
+if kill -0 "$pid" 2>/dev/null; then
+	kill "$pid" 2>/dev/null
+	wait "$pid"
+	echo "pdc-select: no answer to the activation in 60 s (the modem restarting?)"
+elif ! wait "$pid"; then
+	echo "pdc-select: the modem refuses $desc" >&2
+	exit 1
+fi
+
+# The modem applies the configuration as it restarts: until then it lists
+# it as pending, and the SIM's session is still the old modem's.
+sleep 5
+now=
+tries=0
+while [ "$tries" -lt 30 ]; do
+	now=$(qmicli -d "$dev" --pdc-list-configs=software 2>/dev/null | awk -v id="$id" '
+		/^[[:space:]]*Status:/ { s = $2 }
+		/^[[:space:]]*ID:/ && $2 == id { print s; exit }')
+	[ "$now" = Active ] && break
+	tries=$((tries + 1))
+	sleep 2
+done
+case $now in
+Active) echo "pdc-select: $desc is active" ;;
+Pending) echo "pdc-select: $desc is pending: the modem applies it when it next starts" ;;
+*) echo "pdc-select: the modem has not come back with $desc listed" >&2 ;;
+esac
+"$here/uim-select" "$dev"

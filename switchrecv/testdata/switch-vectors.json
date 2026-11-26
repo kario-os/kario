@@ -1,0 +1,253 @@
+{
+  "protocol": "kario-switch/1",
+  "notes": [
+    "All binary values are lowercase hex unless the field name says b64url (RFC 4648 §5, no padding).",
+    "envelope = nonce (12 bytes) || AES-256-GCM ciphertext || tag (16 bytes); nonce = direction (4 bytes BE) || counter (8 bytes BE).",
+    "aad is the UTF-8 of the HTTP method, one space and the request target as sent: the path and, if any, the query.",
+    "A reply uses the downstream key and the aad of the request it answers.",
+    "hkdf salt is the 32 token bytes (not their base64url text); info is the UTF-8 of kario-switch/1.",
+    "The pairing URL query is form-encoded (Go's url.Values.Encode): + is a space.",
+    "The hello reply is what the receiver sends when its random source gives the receiver's private key, the token and 8 zero bytes (the session id)."
+  ],
+  "app": {
+    "private_key_hex": "77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a",
+    "public_key_hex": "8520f0098930a754748b7ddcb43ef75a0dbf3a0d26381af4eba4a98eaa9b4e6a",
+    "public_key_b64url": "hSDwCYkwp1R0i33ctD73Wg2_Og0mOBr066SpjqqbTmo"
+  },
+  "receiver": {
+    "private_key_hex": "5dab087e624a8a4b79e17f8b83800ee66f3bb1292618b6fd1c2f8b27ff88e0eb",
+    "public_key_hex": "de9edb7d7b7dc1b4d35b61c2ece435373f8343c85b78674dadfc7e146f882b4f",
+    "public_key_b64url": "3p7bfXt9wbTTW2HC7OQ1Nz-DQ8hbeGdNrfx-FG-IK08"
+  },
+  "token_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+  "token_b64url": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+  "pairing_url": "kario-switch://pair?v=1&host=192.168.43.1&port=47800&ssid=Kario-3F2A&psk=correct+horse+battery&token=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&key=3p7bfXt9wbTTW2HC7OQ1Nz-DQ8hbeGdNrfx-FG-IK08&name=%E6%88%91%E7%9A%84+Kario",
+  "pairing": {
+    "host": "192.168.43.1",
+    "port": 47800,
+    "ssid": "Kario-3F2A",
+    "psk": "correct horse battery",
+    "name": "我的 Kario"
+  },
+  "shared_secret_hex": "4a5d9d5ba4ce2de1728e3bf480350f25e07e21c947d19e3376f09b3c1e161742",
+  "hkdf": {
+    "hash": "SHA-256",
+    "ikm": "shared_secret",
+    "salt": "token",
+    "info": "kario-switch/1",
+    "length": 64,
+    "okm_hex": "ad6b385a15ece306ca5f55a23fb698b46aa26ef398809af3b1bb5f5889198bfe9221ddf4c9f8e58f97ecc0e31330c9f6d309ee9e33df38443ecc1d1deaa13b9a"
+  },
+  "upstream_key_hex": "ad6b385a15ece306ca5f55a23fb698b46aa26ef398809af3b1bb5f5889198bfe",
+  "downstream_key_hex": "9221ddf4c9f8e58f97ecc0e31330c9f6d309ee9e33df38443ecc1d1deaa13b9a",
+  "envelopes": [
+    {
+      "name": "hello",
+      "key": "upstream",
+      "direction": 1,
+      "counter": 0,
+      "method": "POST",
+      "target": "/v1/hello",
+      "aad": "POST /v1/hello",
+      "headers": {
+        "X-Kario-Key": "hSDwCYkwp1R0i33ctD73Wg2_Og0mOBr066SpjqqbTmo",
+        "Content-Type": "application/octet-stream"
+      },
+      "plaintext_utf8": "{\"app\":\"kario-switch\",\"version\":\"1.0.0\",\"device\":{\"brand\":\"Xiaomi\",\"model\":\"Redmi Note 12\",\"os\":\"android\",\"os_version\":\"14\"},\"counts\":{\"contacts\":812,\"call_log\":2000,\"sms\":5231,\"calendar\":40,\"photos\":3120,\"videos\":88}}",
+      "plaintext_hex": "7b22617070223a226b6172696f2d737769746368222c2276657273696f6e223a22312e302e30222c22646576696365223a7b226272616e64223a225869616f6d69222c226d6f64656c223a225265646d69204e6f7465203132222c226f73223a22616e64726f6964222c226f735f76657273696f6e223a223134227d2c22636f756e7473223a7b22636f6e7461637473223a3831322c2263616c6c5f6c6f67223a323030302c22736d73223a353233312c2263616c656e646172223a34302c2270686f746f73223a333132302c22766964656f73223a38387d7d",
+      "nonce_hex": "000000010000000000000000",
+      "envelope_hex": "000000010000000000000000a44ebd1de01e7faf2ec4554f8b9e28ebc14548572836c0890b5da77b70b0be176882cbf55c6703d345cb1fac1365ae4689b9038e0c72431bca4940215d5860f576705ccf49f96498f79e30b95d66870bb7bf53ffa9a026da0df28534170b77544c05f4f204f8111465c1cf7cfd2cd825ba27256b91b9e641d4cf44a369cd58010975717076c1c629ca1f401f7207da3131ca25338681cca0da193042c61c7b1e0b4e3bff86e9abe51157333226cc553e3db14020db81055f76baafffa60ccc814fec28ffc8e8913f2853cf57b6de48c12dc37be586be4dd2b17270bd0f634cd217fe03f42183cacaeca3"
+    },
+    {
+      "name": "hello reply",
+      "key": "downstream",
+      "direction": 2,
+      "counter": 0,
+      "method": "POST",
+      "target": "/v1/hello",
+      "aad": "POST /v1/hello",
+      "status": 200,
+      "plaintext_utf8": "{\"session\":\"0000000000000000\",\"accept\":[\"contacts\",\"call_log\",\"sms\",\"calendar\",\"photos\",\"videos\"],\"max_batch\":500,\"chunk\":1048576,\"max_body\":4194304}",
+      "plaintext_hex": "7b2273657373696f6e223a2230303030303030303030303030303030222c22616363657074223a5b22636f6e7461637473222c2263616c6c5f6c6f67222c22736d73222c2263616c656e646172222c2270686f746f73222c22766964656f73225d2c226d61785f6261746368223a3530302c226368756e6b223a313034383537362c226d61785f626f6479223a343139343330347d",
+      "nonce_hex": "000000020000000000000000",
+      "envelope_hex": "0000000200000000000000009fe0f9e78160702381c521867f3c60d60b07ff97daae129352e0075c1f7c9864ca2a078d43d38fecce08f0f6d541281c4267eee65716a4bb6a4352cf9fc1a2d367422388a6e4de9e45e7914a1394b59f3932272795d6c2c7bb67530f7ae673f5a8a1fc34856e8fe31945826c85b7a315c953d8834366f51236b997ffed79be6f1d9c003ff61b8713259fd1317fd66fee9df8e11c27ec299822983fad36381a47d73f7b3e5b"
+    },
+    {
+      "name": "items batch",
+      "key": "upstream",
+      "direction": 1,
+      "counter": 1,
+      "method": "POST",
+      "target": "/v1/items/contacts",
+      "aad": "POST /v1/items/contacts",
+      "plaintext_utf8": "{\"items\":[{\"vcard\":\"BEGIN:VCARD\\r\\nVERSION:3.0\\r\\nN:张;三;;;\\r\\nFN:张三\\r\\nTEL;TYPE=CELL:+86 138 0013 8000\\r\\nEND:VCARD\\r\\n\"}],\"last\":true}",
+      "plaintext_hex": "7b226974656d73223a5b7b227663617264223a22424547494e3a56434152445c725c6e56455253494f4e3a332e305c725c6e4e3ae5bca03be4b8893b3b3b5c725c6e464e3ae5bca0e4b8895c725c6e54454c3b545950453d43454c4c3a2b383620313338203030313320383030305c725c6e454e443a56434152445c725c6e227d5d2c226c617374223a747275657d",
+      "nonce_hex": "000000010000000000000001",
+      "envelope_hex": "000000010000000000000001b6b6b294e19a453c27fa4fe7a0d1f2f82379428081af9c80c502a766e0c920680d7e5841dcd97e035bc6147eee6f2d8c39a7a32f66345fc08568d899e9ede5204260a293550ac5287391174f1cff9e58285019b9d67d3dfbecdaf5513e9904ca4be94f52468cdaa0913fd3870170cf32b3e5209ded194d91d56e0f8ef8e4ede4e86d2b47da4e48bfbaf4eb7cc6a9585ee2235329779acc176fc4d97fc75d75"
+    },
+    {
+      "name": "items reply",
+      "key": "downstream",
+      "direction": 2,
+      "counter": 1,
+      "method": "POST",
+      "target": "/v1/items/contacts",
+      "aad": "POST /v1/items/contacts",
+      "status": 200,
+      "plaintext_utf8": "{\"stored\":1,\"skipped\":0}",
+      "plaintext_hex": "7b2273746f726564223a312c22736b6970706564223a307d",
+      "nonce_hex": "000000020000000000000001",
+      "envelope_hex": "0000000200000000000000018cc3920f2ce84f546fd9848dee80f55e0a55556459f143387bb472a646744ea9ac7ceb79a513552a"
+    },
+    {
+      "name": "file offer",
+      "key": "upstream",
+      "direction": 1,
+      "counter": 2,
+      "method": "POST",
+      "target": "/v1/files",
+      "aad": "POST /v1/files",
+      "plaintext_utf8": "{\"id\":\"7f3c2a9e01b84d55a6c3e0f1d2b4a697\",\"kind\":\"photo\",\"name\":\"IMG_0001.JPG\",\"size\":40,\"mime\":\"image/jpeg\",\"taken_at\":1763251200,\"sha256\":\"b1b728380b8511d870266f0da2312dfac5529f07e58e8b033c3ae51bdef56a53\"}",
+      "plaintext_hex": "7b226964223a223766336332613965303162383464353561366333653066316432623461363937222c226b696e64223a2270686f746f222c226e616d65223a22494d475f303030312e4a5047222c2273697a65223a34302c226d696d65223a22696d6167652f6a706567222c2274616b656e5f6174223a313736333235313230302c22736861323536223a2262316237323833383062383531316438373032363666306461323331326466616335353239663037653538653862303333633361653531626465663536613533227d",
+      "nonce_hex": "000000010000000000000002",
+      "envelope_hex": "000000010000000000000002142407ddda9e5ab52a0d74d15dd1d7a1388fb4e938931cb6d3d00b37cbefd1f3b93b76caeb00f85b36ccdb82a280a0bbf84e9e6646ae41361c6e5223e42f09eed9dbe88b9248c645feccc672e3f692164f2e5369a8a3aa131bb0229b42627654c5643a07305da3c85fe1b2dc914b07f2d1ba04920ac8fdf5a76f19f89f5280f9a78ae2381733f960444f29e84b0dde8b2cc1df93ae74f92b749da6f4f9419be5223a2c8a59b10ea4e3c70baaf8ae9f711f2e8e1b429b878f525b9e845e3116c5baae22c35ce719c7959b653038336e06098b2e9adcdf2e8b61e193592a06"
+    },
+    {
+      "name": "file offer reply",
+      "key": "downstream",
+      "direction": 2,
+      "counter": 2,
+      "method": "POST",
+      "target": "/v1/files",
+      "aad": "POST /v1/files",
+      "status": 200,
+      "plaintext_utf8": "{\"offset\":0}",
+      "plaintext_hex": "7b226f6666736574223a307d",
+      "nonce_hex": "000000020000000000000002",
+      "envelope_hex": "00000002000000000000000260d87f56f630e1edff3836c9387ebccea3e272b61c4651538896a2e2"
+    },
+    {
+      "name": "file chunk",
+      "key": "upstream",
+      "direction": 1,
+      "counter": 3,
+      "method": "PUT",
+      "target": "/v1/files/7f3c2a9e01b84d55a6c3e0f1d2b4a697?offset=0",
+      "aad": "PUT /v1/files/7f3c2a9e01b84d55a6c3e0f1d2b4a697?offset=0",
+      "plaintext_hex": "ffd8ffe000104a46494600010100000100010000ffd9000000000000000000000000000000000000",
+      "nonce_hex": "000000010000000000000003",
+      "envelope_hex": "000000010000000000000003809888333d82874e26904345f01e39786ce5280cc353b6c4952ea8ba1a0e300115ab9ce4705503f1e2458f19f7ca8fc5346eac50290fc8f4"
+    },
+    {
+      "name": "file chunk reply",
+      "key": "downstream",
+      "direction": 2,
+      "counter": 3,
+      "method": "PUT",
+      "target": "/v1/files/7f3c2a9e01b84d55a6c3e0f1d2b4a697?offset=0",
+      "aad": "PUT /v1/files/7f3c2a9e01b84d55a6c3e0f1d2b4a697?offset=0",
+      "status": 200,
+      "plaintext_utf8": "{\"offset\":40}",
+      "plaintext_hex": "7b226f6666736574223a34307d",
+      "nonce_hex": "000000020000000000000003",
+      "envelope_hex": "000000020000000000000003e2456bbb450e50624690e8449f6eeff62a8da0864ab51b96294fa6172a"
+    },
+    {
+      "name": "replay error reply",
+      "key": "downstream",
+      "direction": 2,
+      "counter": 4,
+      "method": "POST",
+      "target": "/v1/items/contacts",
+      "aad": "POST /v1/items/contacts",
+      "status": 409,
+      "plaintext_utf8": "{\"error\":\"envelope counter not above the last one\",\"code\":\"replay\"}",
+      "plaintext_hex": "7b226572726f72223a22656e76656c6f706520636f756e746572206e6f742061626f766520746865206c617374206f6e65222c22636f6465223a227265706c6179227d",
+      "nonce_hex": "000000020000000000000004",
+      "envelope_hex": "000000020000000000000004744170df7e460f4bb9d5271bcb10cf07469429ade7bcd3dc0ce97e4083658d2962ed84802e46c53c0b9ab80a6a1f45dda520d021a5e82a0d5ba47b37a07dfdfb739add71c57f12ffc2c224cd344c211aa7d763"
+    },
+    {
+      "name": "done",
+      "key": "upstream",
+      "direction": 1,
+      "counter": 4,
+      "method": "POST",
+      "target": "/v1/done",
+      "aad": "POST /v1/done",
+      "plaintext_utf8": "{}",
+      "plaintext_hex": "7b7d",
+      "nonce_hex": "000000010000000000000004",
+      "envelope_hex": "0000000100000000000000048201deb3492d146e8a84978cecf4b506fa99"
+    },
+    {
+      "name": "done reply",
+      "key": "downstream",
+      "direction": 2,
+      "counter": 5,
+      "method": "POST",
+      "target": "/v1/done",
+      "aad": "POST /v1/done",
+      "status": 200,
+      "plaintext_utf8": "{\"contacts\":1,\"call_log\":0,\"sms\":0,\"calendar\":0,\"photos\":1,\"videos\":0,\"failed\":[]}",
+      "plaintext_hex": "7b22636f6e7461637473223a312c2263616c6c5f6c6f67223a302c22736d73223a302c2263616c656e646172223a302c2270686f746f73223a312c22766964656f73223a302c226661696c6564223a5b5d7d",
+      "nonce_hex": "000000020000000000000005",
+      "envelope_hex": "0000000200000000000000055ebda7700f550ba43d9b0f9ee8167bd1e399a0fd7ec90e2ee873ddb515bcef8891df88a9274ba02370fde703cf8841c98e9597dd9c1a0abe22603711086a8ab5394c92ec02280143fb002ad29b6c2470c0405db55f955289a537362f9bc3aa0a9cfb"
+    },
+    {
+      "name": "counter above 2^32",
+      "key": "upstream",
+      "direction": 1,
+      "counter": 4294967301,
+      "method": "POST",
+      "target": "/v1/items/sms",
+      "aad": "POST /v1/items/sms",
+      "plaintext_utf8": "{\"items\":[],\"last\":true}",
+      "plaintext_hex": "7b226974656d73223a5b5d2c226c617374223a747275657d",
+      "nonce_hex": "000000010000000100000005",
+      "envelope_hex": "00000001000000010000000516b6123cd1251c189b3a71506f877cce509bf43da3386f9e1ad6e830a074866ef3f5d0e971ad7383"
+    }
+  ],
+  "invalid": [
+    {
+      "name": "tag flipped",
+      "key": "upstream",
+      "aad": "PUT /v1/files/7f3c2a9e01b84d55a6c3e0f1d2b4a697?offset=0",
+      "envelope_hex": "000000010000000000000003809888333d82874e26904345f01e39786ce5280cc353b6c4952ea8ba1a0e300115ab9ce4705503f1e2458f19f7ca8fc5346eac50290fc8f5"
+    },
+    {
+      "name": "ciphertext flipped",
+      "key": "upstream",
+      "aad": "PUT /v1/files/7f3c2a9e01b84d55a6c3e0f1d2b4a697?offset=0",
+      "envelope_hex": "000000010000000000000003819888333d82874e26904345f01e39786ce5280cc353b6c4952ea8ba1a0e300115ab9ce4705503f1e2458f19f7ca8fc5346eac50290fc8f4"
+    },
+    {
+      "name": "nonce flipped",
+      "key": "upstream",
+      "aad": "PUT /v1/files/7f3c2a9e01b84d55a6c3e0f1d2b4a697?offset=0",
+      "envelope_hex": "000000010000000000000002809888333d82874e26904345f01e39786ce5280cc353b6c4952ea8ba1a0e300115ab9ce4705503f1e2458f19f7ca8fc5346eac50290fc8f4"
+    },
+    {
+      "name": "query left out of the aad",
+      "key": "upstream",
+      "aad": "PUT /v1/files/7f3c2a9e01b84d55a6c3e0f1d2b4a697",
+      "envelope_hex": "000000010000000000000003809888333d82874e26904345f01e39786ce5280cc353b6c4952ea8ba1a0e300115ab9ce4705503f1e2458f19f7ca8fc5346eac50290fc8f4"
+    },
+    {
+      "name": "downstream key on an upstream envelope",
+      "key": "downstream",
+      "aad": "PUT /v1/files/7f3c2a9e01b84d55a6c3e0f1d2b4a697?offset=0",
+      "envelope_hex": "000000010000000000000003809888333d82874e26904345f01e39786ce5280cc353b6c4952ea8ba1a0e300115ab9ce4705503f1e2458f19f7ca8fc5346eac50290fc8f4"
+    },
+    {
+      "name": "shorter than nonce and tag",
+      "key": "upstream",
+      "aad": "PUT /v1/files/7f3c2a9e01b84d55a6c3e0f1d2b4a697?offset=0",
+      "envelope_hex": "000000010000000000000003809888333d82874e26904345f01e39"
+    }
+  ],
+  "unauthorized": {
+    "status": 401,
+    "content_type": "application/json",
+    "body": "{\"error\":\"the envelope does not open\",\"code\":\"bad_key\"}"
+  }
+}

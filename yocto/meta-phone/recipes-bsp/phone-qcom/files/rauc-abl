@@ -1,0 +1,38 @@
+#!/bin/sh
+# RAUC's boot loader backend (bootloader=custom in system.conf) where the
+# bootloader keeps the A/B slot: Qualcomm's ABL, in the GPT attributes of
+# boot_a and boot_b (phone-abslot), 43-phone-partitions.md. phone-initramfs
+# wrote the slots as phone-ota's boot state (/var/lib/slots/boot) at boot,
+# the slot it started among them; each change here writes them again, so
+# that the Shell and the delta hook read the slots where they do on the
+# emulator's disk. The slot running is the one written at boot: once
+# set-primary moved the active flag, the GPT no longer tells it.
+#   get-primary | set-primary <slot> | get-state <slot> | set-state <slot> good|bad | get-current
+f=${PHONE_SLOTS:-/var/lib/slots}/boot
+# PHONE_ABSLOT may carry options (the tests name a disk image with --disk).
+abslot=${PHONE_ABSLOT:-phone-abslot}
+booted=$(sed -n 's/^booted=\([ab]\)$/\1/p' "$f" 2> /dev/null)
+
+slots() {
+	# shellcheck disable=SC2086
+	$abslot ${booted:+--booted "$booted"} slots
+}
+
+# shellcheck disable=SC2086
+case "$1" in
+get-primary) slots | sed -n 's/^slot=//p' ;;
+set-primary) $abslot set-active "$2" > /dev/null && slots > "$f.new" && mv "$f.new" "$f" && sync ;;
+get-state) $abslot get-state "$2" ;;
+set-state)
+	case "$3" in
+	good) $abslot mark-good "$2" > /dev/null ;;
+	bad) $abslot mark-unbootable "$2" > /dev/null ;;
+	*) exit 1 ;;
+	esac && slots > "$f.new" && mv "$f.new" "$f" && sync
+	;;
+get-current) if [ -n "$booted" ]; then echo "$booted"; else $abslot booted; fi ;;
+*)
+	echo "usage: $0 get-primary | set-primary <slot> | get-state <slot> | set-state <slot> good|bad | get-current" >&2
+	exit 1
+	;;
+esac

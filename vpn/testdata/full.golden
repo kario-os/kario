@@ -1,0 +1,47 @@
+== kario-vpn.key (secret)
+yAnz5TF+lXXJte14tji3zlMNq+hd2rYUIgJBgB3fBmk=
+== kario-vpn-1.psk (secret)
+FpCyhws9cxwWoV4xELtfJvjJN+zQVRPISllRWgeopVE=
+== 50-kario-vpn.netdev
+[NetDev]
+Name=kario-vpn
+Kind=wireguard
+MTUBytes=1380
+
+[WireGuard]
+PrivateKeyFile=/run/systemd/network/kario-vpn.key
+FirewallMark=51820
+RouteTable=51820
+
+[WireGuardPeer]
+PublicKey=xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=
+PresharedKeyFile=/run/systemd/network/kario-vpn-1.psk
+Endpoint=198.51.100.20:51820
+AllowedIPs=0.0.0.0/0
+== 50-kario-vpn.network
+[Match]
+Name=kario-vpn
+
+[Link]
+RequiredForOnline=no
+
+[Network]
+Address=10.64.12.7/32
+DNS=10.64.0.1
+Domains=~.
+DNSDefaultRoute=yes
+LinkLocalAddressing=no
+IPv6AcceptRA=no
+
+[RoutingPolicyRule]
+Table=main
+SuppressPrefixLength=0
+Priority=30000
+Family=ipv4
+
+[RoutingPolicyRule]
+FirewallMark=51820
+InvertRule=yes
+Table=51820
+Priority=30001
+Family=ipv4

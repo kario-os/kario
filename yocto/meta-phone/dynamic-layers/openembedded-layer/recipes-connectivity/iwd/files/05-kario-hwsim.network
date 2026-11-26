@@ -1,0 +1,10 @@
+# The emulator only: hwsim0 is mac80211_hwsim's monitor of the simulated
+# radios and never gets an address. The catch-all .network of QEMU's
+# ip=dhcp took it, and network-online.target (the update and cloud tests'
+# steps wait for it) then waited out systemd-networkd-wait-online's two
+# minutes at every boot (2026-11-25).
+[Match]
+Name=hwsim0
+
+[Link]
+Unmanaged=yes

@@ -1,0 +1,16 @@
+[Unit]
+Description=Give the Bluetooth controller its address
+BindsTo=sys-subsystem-bluetooth-devices-hci0.device
+After=sys-subsystem-bluetooth-devices-hci0.device
+Before=bluetooth.service
+# Not in charger mode, where Bluetooth stays off (phone-charger.target).
+ConditionKernelCommandLine=!androidboot.mode=charger
+
+[Service]
+Type=oneshot
+# hci0 appears before the kernel has loaded its firmware and set it up;
+# phone-btaddr waits for that, at most --wait seconds.
+ExecStart=/usr/bin/phone-btaddr --wait 60 hci0
+
+[Install]
+WantedBy=sys-subsystem-bluetooth-devices-hci0.device

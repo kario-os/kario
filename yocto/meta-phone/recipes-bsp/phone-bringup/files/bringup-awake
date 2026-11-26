@@ -1,0 +1,143 @@
+#!/bin/sh
+# The bring-up wake lock (phone-bringup), held only while a computer has
+# the bring-up gadget (usb-console) configured. The phone's USB controller
+# is no wake-up source: a suspended phone drops the link the test kit and
+# SSH use, so while a computer is on it the phone stays up. With a charger
+# alone, or no cable, it lets the phone sleep: held from boot to the end,
+# it kept a 6T up all night on its battery (report 007).
+#
+# Held: the gadget is bound to a controller whose state is "configured"
+# (a host chose a configuration), or "suspended" (the host suspended the
+# bus: a computer that sleeps, the phone still on its cable) while a USB
+# power supply is online. Not held whenever the board has USB power
+# supplies and none is online: without VBUS sensing a controller can keep
+# its last state after the cable is pulled.
+#
+# The controller's state changes come with no uevent (the kernel only
+# sysfs_notify()s the attribute, which sh cannot poll for), so this reads
+# it every PHONE_BRINGUP_POLL seconds: a few file reads, frozen with the
+# rest of user space while the phone sleeps, so it never wakes it. The
+# lock is taken with a timeout of three intervals and renewed at each
+# read: should this stop (killed, stuck), the kernel lets it go itself.
+#
+#   awake [run]    watch, hold and release (phone-bringup-awake.service)
+#   awake check    why the lock should be held now or not; exit 0 if held
+#   awake release  let it go
+set -u
+sys=${KARIO_SYS:-/sys}
+gadget=$sys/kernel/config/usb_gadget/kario-bringup
+lock=phone-bringup
+poll=${PHONE_BRINGUP_POLL:-2}
+
+attr() {
+	v=
+	[ -r "$1" ] && read -r v < "$1" 2> /dev/null
+	printf '%s' "$v"
+}
+
+# vbus: on (a USB power supply is online), off (the board has USB power
+# supplies, none online) or unknown (it has none).
+vbus() {
+	seen=
+	for p in "$sys"/class/power_supply/*; do
+		case $(attr "$p/type") in
+		USB | USB_*) ;;
+		*) continue ;;
+		esac
+		seen=1
+		[ "$(attr "$p/online")" = 1 ] && {
+			echo on
+			return
+		}
+	done
+	if [ -n "$seen" ]; then echo off; else echo unknown; fi
+}
+
+# decide sets why; it succeeds when the lock should be held.
+decide() {
+	udc=$(attr "$gadget/UDC")
+	if [ -z "$udc" ]; then
+		why="the gadget kario-bringup is bound to no USB controller"
+		return 1
+	fi
+	state=$(attr "$sys/class/udc/$udc/state")
+	power=$(vbus)
+	case $state:$power in
+	configured:off)
+		why="$udc says configured, but no USB power supply is online: the cable is out"
+		return 1
+		;;
+	configured:*)
+		why="a computer has configured kario-bringup on $udc"
+		return 0
+		;;
+	suspended:on)
+		why="the computer suspended the link on $udc, the cable still powers the phone"
+		return 0
+		;;
+	suspended:*)
+		why="the link on $udc is suspended and no USB power supply is online"
+		return 1
+		;;
+	esac
+	why="$udc is ${state:-without a state} (no computer has configured it)"
+	return 1
+}
+
+hold() {
+	echo "$lock $((poll * 3 * 1000000000))" > "$sys/power/wake_lock"
+}
+
+release() {
+	echo "$lock" > "$sys/power/wake_unlock" 2> /dev/null
+}
+
+run() {
+	held=
+	said=
+	trap 'release; exit 0' TERM INT
+	while :; do
+		if decide; then
+			hold
+			now=1
+		else
+			[ -z "$held" ] || release
+			now=
+		fi
+		if [ "$now" != "$held" ] || [ -z "$said" ]; then
+			if [ -n "$now" ]; then
+				echo "phone-bringup-awake: holding the wake lock $lock: $why"
+			else
+				echo "phone-bringup-awake: not holding the wake lock $lock, the phone may sleep: $why"
+			fi
+			said=1
+		fi
+		held=$now
+		sleep "$poll" &
+		wait $!
+	done
+}
+
+case ${1:-run} in
+run)
+	if [ ! -e "$sys/power/wake_lock" ]; then
+		echo "phone-bringup-awake: the kernel has no user space wake locks (CONFIG_PM_WAKELOCKS)" >&2
+		exit 0
+	fi
+	release
+	run
+	;;
+check)
+	if decide; then
+		echo "held: $why"
+	else
+		echo "not held: $why"
+		exit 1
+	fi
+	;;
+release) release ;;
+*)
+	echo "usage: awake [run | check | release]" >&2
+	exit 2
+	;;
+esac

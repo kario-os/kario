@@ -1,0 +1,26 @@
+{
+  "id": "com.phone.cards",
+  "name": "卡包",
+  "icon": "卡",
+  "icon_image": "icon.png",
+  "description": "门禁卡 · 交通卡 · 付款卡",
+  "exec": "phone-app-cards",
+  "order": 50,
+  "permissions": [
+    "system"
+  ],
+  "locales": {
+    "zh-Hant": {
+      "name": "卡包",
+      "description": "門禁卡 · 交通卡 · 付款卡"
+    },
+    "en": {
+      "name": "Cards",
+      "description": "Door, transit and payment cards"
+    },
+    "es": {
+      "name": "Tarjetas",
+      "description": "Tarjetas de acceso, transporte y pago"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+[Unit]
+Description=Mark the Android boot slot this system started from as successful
+# As soon as the root file system is up: from here on the USB console can
+# fix the rest, and a fallback to the other slot (Android, which would not
+# take this userdata) helps nothing.
+After=local-fs.target
+# udev makes the link (60-persistent-storage.rules) once it has probed the
+# UFS's partitions, which may be after local-fs.target.
+Wants=dev-disk-by\x2dpartlabel-boot_a.device
+After=dev-disk-by\x2dpartlabel-boot_a.device
+ConditionPathExists=/dev/disk/by-partlabel/boot_a
+# In the A/B layout (43-phone-partitions.md) the other slot is Kario too,
+# and the slot is marked once it came up healthy (phone-ota-good, RAUC).
+ConditionKernelCommandLine=!phone.layout=ab
+
+[Service]
+Type=oneshot
+# The slot is androidboot.slot_suffix's, else the one marked active: a 6T's
+# ABL gives no slot suffix to a boot image with root= in its command line
+# (39-oneplus-6t.md §1).
+ExecStart=/usr/bin/phone-abslot mark-good
+
+[Install]
+WantedBy=multi-user.target

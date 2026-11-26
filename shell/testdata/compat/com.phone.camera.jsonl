@@ -1,0 +1,5 @@
+{"t":"hello","app":"com.phone.camera","proto":"phone.ui/0"}
+{"t":"reset","screen":{"id":"main","title":"相机","body":[{"kind":"button","id":"shoot","text":"拍照","actions":[{"id":"shoot","label":"拍照","primary":true}]},{"kind":"text","text":"按 OK 打开系统取景框；照片保存到「图片」","style":"dim"}],"focus":"shoot"}}
+{"t":"pong","value":"1"}
+{"t":"req","req":1,"cap":"camera.capture","args":null}
+{"t":"update","screen":{"id":"main","title":"相机","body":[{"kind":"button","id":"shoot","text":"拍照","actions":[{"id":"shoot","label":"拍照","primary":true}]},{"kind":"text","text":"已保存到图片（本次第 1 张）","style":"ok"},{"kind":"image","src":"media:p10","rows":8,"label":"相机拍摄 · 480×360"}],"focus":"shoot"}}

@@ -1,0 +1,173 @@
+id = "oneplus-fajita"
+name = "一加 6T（整机测试机，骁龙 845）"
+soc = "骁龙 845（SDM845）"
+# A whole phone (24-sku-framework.md §7.4): its own panel, touchscreen and
+# buttons; a Bluetooth keyboard is the keypad (USB is device only in the
+# mainline device tree). The Yocto machine boots the image on the phone
+# (39-oneplus-6t.md); tools/phone-chroot runs it on Nura's kernel instead.
+class = "phone"
+machine = "oneplus-fajita"
+# The kernel's own device tree, appended to it in the boot image: a whole
+# phone has no keypad overlay.
+dtb = "sdm845-oneplus-fajita.dtb"
+flash = "yocto/fajita-flash.sh"
+# The device tree's root compatible (mainline sdm845-oneplus-fajita.dts);
+# tools/phone-chroot refuses a phone that is not this board.
+compatible = "oneplus,fajita"
+# Nura's device: device-oneplus-fajita (kernel linux-postmarketos-qcom-sdm845,
+# firmware-oneplus-sdm845, UCM alsa-ucm-conf-sdm845, the modem's soc-qcom-modem).
+nura = "oneplus-fajita"
+# The modem over QRTR, rmtfs and ModemManager (Nura's, in the chroot), its
+# GNSS through ModemManager's location interface.
+modem = "modemmanager"
+gnss = "modemmanager"
+# The modem runs the IMS stack (VoLTE) and asks the system for its bearers
+# over QMI's IMS data service, which 81voltd serves (Nura's soc-qcom-modem
+# has it); the image also activates the modem's configuration for the
+# SIM's carrier (phone-qcom-pdc, 39-oneplus-6t.md §11.1).
+ims = "81voltd"
+gpu = true          # Adreno 630 (freedreno)
+# phone-paint's GPU path by default (off, compose or raster;
+# 42-gpu-rendering.md §3, PHONE_PAINT_GPU overrides it): off until the
+# checks of 39-oneplus-6t.md §8.1 and §14.4 pass on this phone. The display
+# and the Adreno are one DRM device (msm), so no gpu_render.
+paint_gpu = "off"
+power_key = true    # the side key: pm8941_pwrkey
+# Found by themselves: the backlight (the panel driver's, the only backlight
+# class device; mainline names it after the DSI device, ae94000.dsi.0), the
+# battery (the bq27411 fuel gauge, the first power supply of type Battery),
+# the vibrator (PMI8998 haptics, an input device with force feedback: in
+# Nura's kernel, not in mainline 6.18), Wi-Fi and Bluetooth (WCN3990).
+# The 6T has no notification LED. Its light and proximity sensors sit behind
+# the SLPI DSP (hexagonrpcd, libssc), not IIO: hal/sensor does not see them.
+# The NFC controller (PN553 in the NQ330) belongs to the kernel's NFC
+# subsystem, not a raw NCI node phone-nfcd could open: no nfc.
+# Still to confirm on the phone (tools/phone-chroot's facts step lists what
+# it finds for each):
+unverified = ["gnss", "ims", "display.panel", "display.inset", "display.touchscreen", "input.buttons", "input.sound_switch", "partitions.part", "rtc.offset", "watchdog.reboot", "audio.quiet_controls"]
+
+# The phone's partitions by role (43-phone-partitions.md). Those named in
+# 39-oneplus-6t.md §9.1 were seen on a 6T; the rest are the usual ones of
+# an SDM845 A/B phone, to confirm with the facts step's partition map
+# (sizes too: the flash script reads them from fastboot before writing).
+# Partitions not listed are kept as well: a flash writes or erases only
+# what this table gives the roles boot, dtbo, root, data and state.
+[partitions]
+# The root file system is all of userdata, as Kario has been flashed so
+# far; "ab" puts it in system_a and system_b (not tried on a phone).
+layout = "userdata"
+slots = "abl"
+part = [
+    { name = "boot", ab = true, role = "boot" },
+    { name = "dtbo", ab = true, role = "dtbo" },
+    { name = "vbmeta", ab = true, role = "vbmeta" },
+    { name = "system", ab = true, role = "root" },
+    { name = "userdata", role = "data" },
+    { name = "misc", role = "misc" },
+    { name = "persist", role = "efs" },
+    { name = "modemst1", role = "efs" },
+    { name = "modemst2", role = "efs" },
+    { name = "fsg", role = "efs" },
+    { name = "fsc", role = "efs" },
+    # OnePlus's copies of the modem's settings: never written (NEVER) but
+    # not in the flash script's backup until the phone's map shows them.
+    { name = "oem_dycnvbk", role = "android" },
+    { name = "oem_stanvbk", role = "android" },
+    { name = "modem", ab = true, role = "firmware" },
+    { name = "dsp", ab = true, role = "firmware" },
+    { name = "bluetooth", ab = true, role = "firmware" },
+    { name = "xbl", ab = true, role = "firmware" },
+    { name = "abl", ab = true, role = "firmware" },
+    { name = "tz", ab = true, role = "firmware" },
+    { name = "keymaster", ab = true, role = "firmware" },
+    { name = "vendor", ab = true, role = "android" },
+    { name = "frp", role = "android" },
+    { name = "devinfo", role = "android" },
+]
+
+# The PMIC's RTC (PM8998, rtc-pm8xxx) is read-only on mainline: the device
+# tree has no allow-set-time and no offset cell, so RTC_SET_TIME fails
+# with ENODEV, and without a network the phone booted at 1970. The system
+# time is kept as an offset from it (hal/rtc, phone-clock); its wake alarm
+# is "+N" seconds from its own time. To confirm: it keeps counting across a
+# reboot and a power-off (39-oneplus-6t.md).
+[rtc]
+read_only = true
+offset = true
+alarm = "relative"
+
+# The SoC's APSS watchdog (qcom_wdt: "qcom,kpss-wdt" on the 32764 Hz sleep
+# clock). Its counters are 20 bits wide, so it takes at most 0xfffff /
+# 32764 = 32 s, and systemd's 10 min for a reboot fails with EINVAL (seen
+# on the 6T under Nura), after which systemd disarms it and the reboot
+# runs unguarded. 30 s it takes. The restart is a hard reset of the SoC
+# (pm8941-pwrkey sets the PMIC's PS_HOLD reset to it before the firmware
+# drops PS_HOLD), so the armed watchdog does not outlive it. To confirm on
+# the phone (39-oneplus-6t.md §14.10).
+[watchdog]
+max_timeout = 32
+reboot = "30s"
+
+# The built-in panel: 6.41" 1080x2340 AMOLED, a DSI command-mode panel. In
+# mainline 6.18 no driver matches its compatible (the sofef00 driver only
+# takes the OnePlus 6's); Nura's kernel drives it.
+[display]
+id = "s6e3fc2x01"
+name = "6.41 寸 1080×2340 AMOLED（三星 S6E3FC2X01）"
+panel = "samsung,s6e3fc2x01"
+width = 1080
+height = 2340
+# The touchscreen's size in the device tree (68 x 148 mm), the panel's.
+width_mm = 68
+height_mm = 148
+# 1080 / 4.5 = 240, the 9-key bar phone's logical width (480 at 2x): pages
+# lay out as on it, with more rows. A logical pixel is 0.28 mm here, 0.18 mm
+# on the 2.8" target: text 1.6 times its size there.
+scale = 4.5
+# Rows left dark at the top and the bottom: the notch and the rounded corners.
+inset = 80
+# The touchscreen (a Synaptics S3706 on RMI4, mainline's device tree): a
+# second input the Shell turns into keys (sku.json's touch,
+# 10-keyboard-interaction-model.md §2.1); its driver is built into the
+# machine's kernel (phone-fajita.cfg; tools/sku.py holds it there).
+touchscreen = "syna,rmi4-i2c"
+
+# The phone's own buttons, as the kernel names their input devices: power
+# (the PMIC's), volume up and down (gpio-keys, labelled in the device tree).
+# The Hall sensor (SW_LID) has no keys and is left alone.
+# sound_switch: the alert slider (top Silent, middle Vibrate, bottom Ring),
+# gpio-keys reporting ABS_SND_PROFILE in mainline's sdm845-oneplus-common.dtsi.
+[input]
+buttons = ["pm8941_pwrkey", "Volume keys"]
+sound_switch = "Alert slider"
+
+# The sound card (20-audio.md §10) through its UCM profile
+# (alsa-ucm-conf-sdm845's OnePlus/fajita): for media the HiFi verb, whose
+# Speaker device plays MultiMedia3 (hw:0,2) on the TFA9894 amplifier;
+# during a call the Voice Call verb with the bottom microphone (Mic) and
+# the earpiece (MultiMedia1, hw:0,0) or the speaker (Speaker1, Kario's
+# addition to the profile). The 6T has no headphone jack. The Yocto
+# machine passes the same values to the image's phone-audiod
+# (PHONE_AUDIO_*, tools/sku.py checks them); the audiod phone-shell starts
+# itself (the selftest, the chroot) has them from sku.json, and
+# tools/phone-chroot sets the verb and device up with Nura's alsaucm only
+# for an image without alsaucm.
+[audio]
+pcm = "plughw:0,2"
+card = "hw:0"
+verb = "HiFi"
+device = "Speaker"
+call_verb = "Voice Call"
+earpiece = "Earpiece"
+earpiece_pcm = "plughw:0,0"
+call_speaker = "Speaker1"
+call_speaker_pcm = "plughw:0,2"
+call_mic = "Mic"
+# A test on the phone plays its media cases quietly (tools/phone-chroot
+# turns these down for the selftest and pixel runs and sets them back
+# after): the WCD934x codec's digital gain on each RX path, as the tester
+# turned them down on 2026-11-23 (15% is -65 dB). The speaker's amplifier
+# (TFA9894 on QUAT_MI2S) is not on those paths as the UCM profile routes
+# it: whether they reach the speaker is to confirm by ear.
+quiet_controls = ["RX0 Digital", "RX1 Digital", "RX2 Digital", "RX3 Digital", "RX4 Digital"]
+quiet_level = "15%"

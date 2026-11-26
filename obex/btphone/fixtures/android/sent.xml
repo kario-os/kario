@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<MAP-msg-listing version="1.0">
+<msg handle="100000000000006" subject="好的，九点西湖边见" datetime="20261116T193500" sender_name="" sender_addressing="+8613800138099" recipient_name="诸葛明" recipient_addressing="+8613655550201" type="SMS_GSM" size="27" text="yes" reception_status="complete" attachment_size="0" priority="no" read="yes" sent="yes" protected="no"/>
+</MAP-msg-listing>

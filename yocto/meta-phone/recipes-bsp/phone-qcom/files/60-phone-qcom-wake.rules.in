@@ -1,0 +1,5 @@
+# Calls, messages and the modem's other QMI traffic come over its QRTR
+# channel (GLINK's IPCRTR on the modem's remoteproc). The kernel makes
+# every GLINK channel able to wake the system but leaves it off: without
+# this a suspended phone hears of a call or an SMS only at its next wake.
+ACTION=="add", SUBSYSTEM=="rpmsg", KERNEL=="@MODEM@:glink-edge.IPCRTR.*", ATTR{power/wakeup}="enabled"

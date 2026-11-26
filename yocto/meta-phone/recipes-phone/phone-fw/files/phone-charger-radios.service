@@ -1,0 +1,14 @@
+[Unit]
+Description=Charger mode: the radios' drivers kept from loading (the board's charger-modprobe.d)
+# The board's package lists the modem's and Wi-Fi's modules (phone-qcom-charger
+# on Qualcomm phones); udev loads none of them in charger mode, so the
+# modem's processor never boots and Wi-Fi never powers up. In place before
+# udev's coldplug, which loads the modules the hardware asks for.
+DefaultDependencies=no
+Before=systemd-udev-trigger.service systemd-modules-load.service
+ConditionDirectoryNotEmpty=/usr/lib/phone/charger-modprobe.d
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c 'mkdir -p /run/modprobe.d && cat /usr/lib/phone/charger-modprobe.d/*.conf > /run/modprobe.d/phone-charger.conf'

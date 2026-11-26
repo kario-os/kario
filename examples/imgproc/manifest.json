@@ -1,0 +1,25 @@
+{
+  "id": "com.example.imgproc",
+  "name": "图片滤镜",
+  "icon": "滤",
+  "description": "示例应用：TypeScript 界面加 C 写的原生模块，比较两边模糊一张图要多久",
+  "version": "1.0",
+  "runtime": "js",
+  "main": "main.js",
+  "native": ["imgproc"],
+  "permissions": [],
+  "locales": {
+    "zh-Hant": {
+      "name": "圖片濾鏡",
+      "description": "範例應用程式：TypeScript 介面加上 C 寫的原生模組，比較兩邊模糊一張圖要多久"
+    },
+    "en": {
+      "name": "Image filters",
+      "description": "A sample app: a TypeScript interface with a native module in C, timing a blur both ways"
+    },
+    "es": {
+      "name": "Filtros de imagen",
+      "description": "App de ejemplo: interfaz en TypeScript con un módulo nativo en C que compara cuánto tarda un desenfoque"
+    }
+  }
+}

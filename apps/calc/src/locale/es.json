@@ -1,0 +1,11 @@
+{
+  "* cycles + − × ÷   # decimal point   OK calculates": "* cambia + − × ÷   # punto decimal   OK calcula",
+  "Calculator": "Calculadora",
+  "Clear": "Borrar",
+  "Division by zero": "División entre cero",
+  "Error: %s": "Error: %s",
+  "Incomplete expression": "Expresión incompleta",
+  "Missing closing parenthesis": "Falta cerrar un paréntesis",
+  "Not a number: %s": "No es un número: %s",
+  "Number out of range: %s": "Número fuera de rango: %s"
+}

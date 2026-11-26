@@ -1,0 +1,18 @@
+[Unit]
+Description=Open the bearers the modem asks for its IMS (VoLTE)
+# The modem asks once it is on LTE with the SIM's session open and its
+# carrier configuration chosen; 81voltd waits for ModemManager's QRTR modem.
+Wants=ModemManager.service
+After=ModemManager.service phone-qcom-uim.service phone-qcom-pdc.service
+
+[Service]
+ExecStart=/usr/bin/81voltd
+Restart=on-failure
+RestartSec=5
+# What the modem asks and the bearers 81voltd opens are GLib info
+# messages, which GLib drops unless asked: kept in the journal while VoLTE
+# is not verified on a phone (39-oneplus-6t.md §11.1).
+Environment=G_MESSAGES_DEBUG=all
+
+[Install]
+WantedBy=multi-user.target

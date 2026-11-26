@@ -1,0 +1,49 @@
+{
+  "id": "com.phone.messages",
+  "name": "短信",
+  "icon": "信",
+  "icon_image": "icon.png",
+  "description": "短信会话",
+  "exec": "phone-app-messages",
+  "order": 2,
+  "permissions": [
+    "sms",
+    "contacts",
+    "notifications"
+  ],
+  "granted": [
+    "contacts"
+  ],
+  "share": [
+    "text"
+  ],
+  "intents": [
+    {
+      "action": "message.compose",
+      "label": "写短信"
+    }
+  ],
+  "locales": {
+    "zh-Hant": {
+      "name": "簡訊",
+      "description": "簡訊對話",
+      "intents": {
+        "message.compose": "寫簡訊"
+      }
+    },
+    "en": {
+      "name": "Messages",
+      "description": "SMS conversations",
+      "intents": {
+        "message.compose": "Write"
+      }
+    },
+    "es": {
+      "name": "Mensajes",
+      "description": "Conversaciones por SMS",
+      "intents": {
+        "message.compose": "Escribir"
+      }
+    }
+  }
+}

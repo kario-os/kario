@@ -1,0 +1,6 @@
+# `make mm-selftest`: telephonyd with its ModemManager backend (sd-bus) and the
+# D-Bus test against mock_mm.py, on hosts without libsystemd or GCC 14.
+FROM docker.io/library/debian:trixie
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        g++ cmake ninja-build pkg-config libsystemd-dev dbus-daemon python3-dbus python3-gi \
+    && rm -rf /var/lib/apt/lists/*

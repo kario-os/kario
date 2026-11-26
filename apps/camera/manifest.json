@@ -1,0 +1,29 @@
+{
+  "id": "com.phone.camera",
+  "name": "相机",
+  "icon": "相",
+  "icon_image": "icon.png",
+  "description": "系统取景 · 照片进图片",
+  "exec": "phone-app-camera",
+  "order": 26,
+  "permissions": [
+    "camera"
+  ],
+  "granted": [
+    "camera"
+  ],
+  "locales": {
+    "zh-Hant": {
+      "name": "相機",
+      "description": "系統取景 · 照片存進圖片"
+    },
+    "en": {
+      "name": "Camera",
+      "description": "The system's viewfinder · photos go into Pictures"
+    },
+    "es": {
+      "name": "Cámara",
+      "description": "El visor del sistema · las fotos van a Imágenes"
+    }
+  }
+}

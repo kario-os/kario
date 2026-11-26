@@ -1,0 +1,176 @@
+# The soak round (make soak, TestSoak): the selftest's everyday paths again
+# and again. App launches and exits, end-to-end encrypted chat over push,
+# video calls out and in, a banner and the notification centre, a tombstone
+# and its revival, a cellular call, SMS out and in, music in the background,
+# the TypeScript calculator. A round starts on the standby screen and ends
+# there with the apps it opened stopped, so the next starts them afresh.
+
+== soak: chat over push
+key f4
+at sys.idle 5000
+type /
+type 鸿雁
+key enter
+wait 张三
+type /
+type 张三
+key enter
+key enter
+wait 输入消息
+type 你好
+key enter
+wait 收到：你好
+
+== soak: video call out (consent on the first round only)
+key f2
+key-if enter 请求使用 3000
+wait 端到端加密
+frames 10
+audio call
+key f2
+wait [视频通话
+
+== soak: video call in, answered on the system screen
+key down 12
+type 视频
+key enter
+wait 好，我打给你
+key f4
+wait 邀请你视频通话 8000
+key enter
+wait 端到端加密
+frames 10
+key f2
+wait [视频通话
+
+== soak: banner and notification centre
+key down 12
+type 在吗
+key enter
+key f4
+wait 收到：在吗
+key up
+wait 通知中心 8000
+wait 收到：在吗
+key enter
+wait 输入消息
+
+== soak: tombstone and revival
+key f4
+type /
+type 鸿雁
+key enter
+wait 张三
+type /
+type 张三
+key enter
+key enter
+wait 输入消息
+type 明天见
+key f4
+at sys.idle
+saved com.phone.chat
+lowmem-kill com.phone.chat
+appstate com.phone.chat stopped
+key f3
+wait 切换应用
+wait 鸿雁
+key enter
+revived com.phone.chat
+wait 明天见
+key enter
+wait 收到：明天见
+key f4
+
+== soak: cellular call
+require-tel
+key f4
+type /
+type 电话
+key enter
+wait 最近通话
+type 94
+wait 张三
+key down
+key enter
+wait 正在呼叫
+audio call
+wait 通话中 6000
+type m
+wait 已静音
+type h
+wait 已保持
+type h
+wait 通话中
+key end
+wait 通话结束
+audio idle
+key f4
+
+== soak: SMS out and in
+require-tel
+key f4
+type /
+type 短信
+key enter
+wait 新信息
+key f2
+wait 收件人号码
+type 13800000003
+key down
+type nihao
+key space
+key down
+key enter
+wait 收到：你好
+key esc
+wait 新信息
+key f4
+tel sms 10086 【中国移动】流量提醒：本月已用 80%
+wait 流量提醒
+gone 流量提醒 8000
+
+== soak: music in the background
+require-audio
+key f4
+type /
+type 音乐
+key enter
+wait 晨光
+key enter
+wait 播放中
+audio media
+freeze-after 1000
+key f4
+sleep 2000
+appstate com.phone.music running
+freeze-after 0
+type /
+type 音乐
+key enter
+wait 正在播放
+key enter
+wait 已暂停
+key f4
+
+== soak: calculator (TypeScript)
+key f4
+type /
+type 计算器
+key enter
+wait 小数点
+type 12
+type *
+type 30
+key enter
+wait = 42
+key f4
+
+== soak: the round's apps stopped
+appstop com.phone.chat
+appstop com.phone.dialer
+appstop com.phone.messages
+appstop com.phone.music
+appstop com.phone.calc
+key f4
+at sys.idle

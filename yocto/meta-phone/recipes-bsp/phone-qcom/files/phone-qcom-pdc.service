@@ -1,0 +1,19 @@
+[Unit]
+Description=Activate the modem's configuration for the SIM's carrier
+# The home network is read from the SIM through its session: without a
+# SIM (phone-qcom-uim failed) this does not run and holds nothing back.
+# Activating a configuration restarts the modem, so before ModemManager.
+Requires=phone-qcom-uim.service
+After=phone-qcom-uim.service
+Before=ModemManager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/phone-qcom/pdc-select qrtr://0
+StateDirectory=phone-qcom
+# The SIM read, the list, the activation, the modem's restart and the
+# SIM's session opened again, each waited for.
+TimeoutStartSec=240
+
+[Install]
+WantedBy=multi-user.target

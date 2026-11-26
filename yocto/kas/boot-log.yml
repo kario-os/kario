@@ -1,0 +1,11 @@
+# Overlay for developers: the kernel's and systemd's messages on the 6T's
+# panel while it boots (console=tty0 in the boot image's command line),
+# until the Shell draws (39-oneplus-6t.md §4). User images show none.
+# Usage:
+#   make yocto-build WORK=$HOME/yocto/fajita-work KASFILE=yocto/kas/phone-fajita.yml KASEXTRA=yocto/kas/boot-log.yml
+header:
+  version: 14
+
+local_conf_header:
+  zz-boot-log: |
+    PHONE_BOOT_LOG = "1"

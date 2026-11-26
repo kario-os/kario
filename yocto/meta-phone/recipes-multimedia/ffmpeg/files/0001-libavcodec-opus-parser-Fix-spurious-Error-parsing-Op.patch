@@ -1,0 +1,32 @@
+From 618fc15e65f57c9ce25d4562f4b516129815608c Mon Sep 17 00:00:00 2001
+From: mux47 <mux100@protonmail.com>
+Date: Tue, 18 Nov 2025 16:43:49 +0000
+Subject: [PATCH] libavcodec/opus/parser: Fix spurious 'Error parsing Opus
+ packet header'
+
+When PARSER_FLAG_COMPLETE_FRAMES is set, opus_parse() calls
+set_frame_duration even on flush (buf_size==0), which triggers
+a spurious "Error parsing Opus packet header" at EOF.
+
+Match streaming-path behavior by skipping duration parsing on empty buffers.
+Fixes #20954
+
+Upstream-Status: Backport [https://code.ffmpeg.org/FFmpeg/FFmpeg/commit/618fc15e65f57c9ce25d4562f4b516129815608c]
+(in FFmpeg 8.1 and later; not on release/8.0; hunk refreshed to 8.0.3's line numbers)
+---
+ libavcodec/opus/parser.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/libavcodec/opus/parser.c b/libavcodec/opus/parser.c
+index 9bf0b31fba4..9ffa4e06d48 100644
+--- a/libavcodec/opus/parser.c
++++ b/libavcodec/opus/parser.c
+@@ -188,7 +188,7 @@ static int opus_parse(AVCodecParserContext *ctx, AVCodecContext *avctx,
+     if (ctx->flags & PARSER_FLAG_COMPLETE_FRAMES) {
+         next = buf_size;
+ 
+-        if (set_frame_duration(ctx, avctx, buf, buf_size) < 0)
++        if (buf_size && set_frame_duration(ctx, avctx, buf, buf_size) < 0)
+             goto fail;
+     } else {
+         next = opus_find_frame_end(ctx, avctx, buf, buf_size, &header_len);

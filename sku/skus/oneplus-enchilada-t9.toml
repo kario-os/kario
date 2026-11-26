@@ -1,0 +1,7 @@
+# The OnePlus 6 in place of the 6T (the same SoC and port).
+id = "oneplus-enchilada-t9"
+board = "oneplus-enchilada"
+device = "bar-t9"
+memory = "2g"
+region = "cn"
+product = "kario-std"

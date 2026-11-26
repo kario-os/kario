@@ -1,0 +1,9 @@
+# The default image: QEMU as a 9-key bar phone.
+id = "qemu-t9"
+board = "qemuarm64"
+display = "qemu-480x640"
+keypad = "qemu-kbd"
+device = "bar-t9"
+memory = "2g"
+region = "cn"
+product = "kario-std"

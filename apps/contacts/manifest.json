@@ -1,0 +1,60 @@
+{
+  "id": "com.phone.contacts",
+  "name": "通讯录",
+  "icon": "人",
+  "icon_image": "icon.png",
+  "description": "联系人 · 导入导出名片",
+  "exec": "phone-app-contacts",
+  "order": 3,
+  "permissions": [
+    "contacts"
+  ],
+  "granted": [
+    "contacts"
+  ],
+  "intents": [
+    {
+      "action": "contact.save",
+      "label": "存为联系人"
+    }
+  ],
+  "commands": [
+    {
+      "id": "new",
+      "label": "新建联系人",
+      "arg": "new"
+    }
+  ],
+  "locales": {
+    "zh-Hant": {
+      "name": "通訊錄",
+      "description": "聯絡人 · 匯入匯出名片",
+      "intents": {
+        "contact.save": "存為聯絡人"
+      },
+      "commands": {
+        "new": "新增聯絡人"
+      }
+    },
+    "en": {
+      "name": "Contacts",
+      "description": "Contacts · import and export vCards",
+      "intents": {
+        "contact.save": "Save"
+      },
+      "commands": {
+        "new": "New contact"
+      }
+    },
+    "es": {
+      "name": "Contactos",
+      "description": "Contactos · importar y exportar vCards",
+      "intents": {
+        "contact.save": "Guardar"
+      },
+      "commands": {
+        "new": "Nuevo contacto"
+      }
+    }
+  }
+}

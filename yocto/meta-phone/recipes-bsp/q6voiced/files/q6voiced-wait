@@ -1,0 +1,26 @@
+#!/bin/sh
+# Starts q6voiced once ModemManager is on the system bus. q6voiced exits
+# at once when the bus does not take its connection, and opens the call's
+# audio path only on the call signals of ModemManager, whose restarts it
+# outlives. What it waits for goes into the journal when it changes: the
+# bus refusing this user is not ModemManager being late.
+#
+#   q6voiced-wait hw:<card>,<device>
+set -u
+said=
+while :; do
+	if out=$(busctl --system call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus \
+		NameHasOwner s org.freedesktop.ModemManager1 2>&1); then
+		[ "$out" = "b true" ] && break
+		why="ModemManager is not on the system bus yet"
+	else
+		why="the system bus does not take q6voiced: $out"
+	fi
+	if [ "$why" != "$said" ]; then
+		echo "q6voiced-wait: $why; waiting"
+		said=$why
+	fi
+	sleep 2
+done
+[ -n "$said" ] && echo "q6voiced-wait: ModemManager is up"
+exec /usr/bin/q6voiced "$@"

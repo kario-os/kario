@@ -1,0 +1,37 @@
+# The crash case on the device: phone-shell runs as a systemd service with an
+# fd store (selftest-boot.sh starts it with systemd-run), crashes on purpose,
+# and the instance systemd restarts takes the apps over from LISTEN_FDS.
+
+sleep 800
+
+== Shell 崩溃：systemd 从 fd 存储把应用连接交给重启的 Shell，应用不重启
+require-fdstore
+at sys.idle 8000
+key f4
+type /
+type 计算器
+key enter
+wait 小数点
+type 58
+wait 58
+app-pid com.phone.calc save
+shell-crash
+at sys.idle 15000
+app-pid com.phone.calc same
+adopted com.phone.calc
+key f4
+type /
+type 计算器
+key enter
+wait 58
+key f4
+
+== Shell 崩溃后应用仍在它自己的 systemd 作用域里，限额照旧，冻结照常
+require-cgroup
+cgroup com.phone.calc memory.max 201326592
+cgroup com.phone.calc pids.max 128
+freeze-after 500
+key f4
+appstate com.phone.calc frozen 5000
+cgroup com.phone.calc cgroup.freeze 1
+freeze-after 0

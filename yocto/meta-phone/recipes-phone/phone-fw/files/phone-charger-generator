@@ -1,0 +1,25 @@
+#!/bin/sh
+# Charger mode (28-battery.md §9): the bootloader says why it started the
+# phone, and androidboot.mode=charger is a charger plugged into a phone
+# that was off. The boot then goes to phone-charger.target (the battery on
+# the screen, no system) instead of the default target, and Bluetooth's
+# hardware activation (the controller's device wants bluetooth.target) is
+# masked; phone-charger-radios.service keeps the other radios' drivers
+# unloaded. The last androidboot.mode= on the command line counts.
+# SYSTEMD_PROC_CMDLINE stands in for /proc/cmdline, as for systemd's own
+# generators (yocto/charger-generator-test.py).
+early=${2:-}
+[ -n "$early" ] || exit 0
+cmdline=${SYSTEMD_PROC_CMDLINE-$(cat /proc/cmdline 2>/dev/null)}
+mode=
+for w in $cmdline; do
+	case $w in
+	androidboot.mode=*) mode=${w#androidboot.mode=} ;;
+	esac
+done
+[ "$mode" = charger ] || exit 0
+mkdir -p "$early" || exit 1
+ln -sf /usr/lib/systemd/system/phone-charger.target "$early/default.target" || exit 1
+ln -sf /dev/null "$early/bluetooth.target"
+printf '<6>phone-charger-generator: androidboot.mode=charger: booting phone-charger.target\n' > /dev/kmsg 2> /dev/null || true
+exit 0

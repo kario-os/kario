@@ -1,0 +1,13 @@
+[Unit]
+Description=Charger mode's screen: the battery's level and the power key to start (phone-charger)
+# The renderer shows the battery; the screen goes off after a few seconds,
+# the power key lights it, holding the key reboots into the system, a
+# charger unplugged for a few seconds powers the phone off (28-battery.md §9).
+ConditionPathExists=/usr/share/phone/sku.json
+
+[Service]
+ExecStart=/usr/bin/phone-charger
+Restart=on-failure
+RestartSec=2
+StandardOutput=journal+console
+StandardError=journal+console

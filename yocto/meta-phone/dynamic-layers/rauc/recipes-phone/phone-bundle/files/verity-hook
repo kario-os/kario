@@ -1,0 +1,26 @@
+#!/bin/sh
+# RAUC hook of the system update bundle (phone-bundle.bb): once a system slot
+# is written, its signed verity descriptor goes into the boot state, where
+# phone-initramfs looks for it. RAUC makes the slot primary only after this.
+# Before RAUC writes the slot, an incremental install's checkpoint for it
+# goes (delta-hook): it would vouch for blocks this install overwrites; and
+# so does the slot's old descriptor: a half-written slot (an install that
+# failed or was stopped) has none to be opened with.
+case "$1" in
+slot-pre-install)
+	[ "$RAUC_SLOT_CLASS" = rootfs ] || exit 0
+	to=${PHONE_SLOTS:-/var/lib/slots}/rootfs_$RAUC_SLOT_BOOTNAME
+	rm -f "$to.progress" "$to.verity" "$to.verity.sig" && sync
+	;;
+slot-post-install)
+	[ "$RAUC_SLOT_CLASS" = rootfs ] || exit 0
+	desc=
+	for f in "$RAUC_BUNDLE_MOUNT_POINT"/*.verity.desc; do desc=$f; done
+	if [ ! -f "$desc" ] || [ ! -f "$desc.sig" ]; then
+		echo "the bundle carries no verity descriptor for slot $RAUC_SLOT_BOOTNAME" >&2
+		exit 1
+	fi
+	to=${PHONE_SLOTS:-/var/lib/slots}/rootfs_$RAUC_SLOT_BOOTNAME.verity
+	cp "$desc" "$to.new" && cp "$desc.sig" "$to.sig.new" && mv "$to.new" "$to" && mv "$to.sig.new" "$to.sig" && sync
+	;;
+esac

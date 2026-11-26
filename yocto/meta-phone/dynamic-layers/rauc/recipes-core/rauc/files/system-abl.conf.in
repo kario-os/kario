@@ -1,0 +1,38 @@
+# RAUC on a phone whose bootloader keeps the A/B slot (Qualcomm's ABL, in
+# the GPT attributes of boot_a and boot_b; 43-phone-partitions.md): the
+# root slots by GPT partition name, written raw (a slot image is ext4 plus
+# its dm-verity hash tree), each with its boot slot, which carries the
+# kernel the root slot's modules are signed for and the root's verity
+# descriptor (phone-abboot.bbclass). rauc-abl is the boot loader backend;
+# the partition names are the board file's (tools/sku.py, PHONE_ROOT_SLOTS
+# and PHONE_BOOT_SLOTS).
+[system]
+compatible=@COMPATIBLE@
+bootloader=custom
+data-directory=/var/lib/slots/rauc
+
+[handlers]
+bootloader-custom-backend=/usr/lib/phone/rauc-abl
+
+[keyring]
+path=/usr/lib/rauc/ca.cert.pem
+
+[slot.rootfs.0]
+device=/dev/disk/by-partlabel/@ROOT_A@
+type=raw
+bootname=a
+
+[slot.rootfs.1]
+device=/dev/disk/by-partlabel/@ROOT_B@
+type=raw
+bootname=b
+
+[slot.boot.0]
+device=/dev/disk/by-partlabel/@BOOT_A@
+type=raw
+parent=rootfs.0
+
+[slot.boot.1]
+device=/dev/disk/by-partlabel/@BOOT_B@
+type=raw
+parent=rootfs.1

@@ -1,0 +1,4 @@
+[env]
+# Load libfontconfig at run time instead of linking it: no -devel package is
+# needed at build time, and a device image without fontconfig still starts.
+RUST_FONTCONFIG_DLOPEN = "on"

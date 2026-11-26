@@ -1,0 +1,11 @@
+{"t":"hello","app":"com.phone.clock","proto":"phone.ui/0"}
+{"t":"req","req":1,"cap":"alarm.list","args":null}
+{"t":"reset","screen":{"id":"main","title":"闹钟","body":[{"kind":"text","text":"01:40","style":"big"},{"kind":"text","text":"2026年11月15日 星期日","style":"dim"},{"kind":"section","text":"闹钟"},{"kind":"text","text":"没有闹钟。按右软键新建。","style":"dim"}],"actions":[{"id":"new","label":"新建闹钟","key":"n"}],"right":"new"}}
+{"t":"update","screen":{"id":"main","title":"闹钟","body":[{"kind":"text","text":"01:40","style":"big"},{"kind":"text","text":"2026年11月15日 星期日","style":"dim"},{"kind":"section","text":"闹钟"},{"kind":"text","text":"没有闹钟。按右软键新建。","style":"dim"}],"actions":[{"id":"new","label":"新建闹钟","key":"n"}],"right":"new"}}
+{"t":"push","screen":{"id":"new","title":"新建闹钟","body":[{"kind":"input","id":"time","placeholder":"时间：07:30、0730，或 +10（10 分钟后）","keyboard":"number"},{"kind":"input","id":"label","placeholder":"标签（可选）"},{"kind":"button","id":"once","text":"保存（仅一次）","actions":[{"id":"save","label":"保存（仅一次）","primary":true}]},{"kind":"button","id":"daily","text":"保存（每天）","actions":[{"id":"save-daily","label":"保存（每天）","primary":true}]}]}}
+{"t":"pong","value":"1"}
+{"t":"req","req":3,"cap":"alarm.set","args":{"id":"","time":"01:42","label":"起床","on":true}}
+{"t":"toast","text":"闹钟已设为 01:42"}
+{"t":"pop"}
+{"t":"update","screen":{"id":"main","title":"闹钟","body":[{"kind":"text","text":"01:40","style":"big"},{"kind":"text","text":"2026年11月15日 星期日","style":"dim"},{"kind":"section","text":"闹钟"},{"kind":"item","id":"a:a1","title":"01:42","subtitle":"起床 · 仅一次","trailing":"开","icon":"钟","actions":[{"id":"toggle","label":"关闭","primary":true},{"id":"delete","label":"删除","key":"d","group":"danger"}]}],"actions":[{"id":"new","label":"新建闹钟","key":"n"}],"right":"new"}}
+{"t":"req","req":7,"cap":"alarm.cancel","args":{"id":"a1","time":"","on":false}}

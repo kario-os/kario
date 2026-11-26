@@ -1,0 +1,21 @@
+[Unit]
+# Socket-activated (phone-imed.socket): started when the shell first connects,
+# restarted after a crash; the shell types with its built-in engine meanwhile.
+Requires=phone-imed.socket
+After=phone-imed.socket
+Description=Phone input method (pinyin, English, 9-key; the dictionary is mapped from /usr/share/phone/ime.dict)
+
+[Service]
+# Small Go heaps: no transparent huge pages (see phone-shell DisableHugePages).
+Environment=GODEBUG=disablethp=1
+ExecStart=/usr/bin/phone-imed --run-dir /run/phone --state-dir /var/lib/phone
+Restart=always
+RestartSec=1
+# Only keys and the user dictionary pass through here: no network, no
+# devices, nothing writable but its own state.
+PrivateNetwork=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/phone /run/phone
+NoNewPrivileges=yes

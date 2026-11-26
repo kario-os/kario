@@ -1,0 +1,11 @@
+# The carriers pdc-select activates a configuration of the modem for, and
+# the words that name each in the descriptions Qualcomm gives its software
+# configurations (MCFG): on Quectel's modules "Volte_OpenMkt-Commercial-CMCC",
+# "OpenMkt-Commercial-CU", "OpenMkt-Commercial-CT". What the 6T's modem
+# holds is still to see on the phone (39-oneplus-6t.md §14.6).
+# A line each: the MCC, its MNCs as numbers (qmicli prints MNC 01 as 1),
+# then the words, lower case. The MNCs are telephonyd's (apns.json).
+460 0,2,4,7,8,13 cmcc chinamobile
+460 1,6,9 cu unicom chinaunicom
+460 3,5,11 ct telecom chinatelecom
+460 15 cbn broadnet

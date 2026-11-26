@@ -1,0 +1,9 @@
+# Two system slots (R37), both this build's slot image: the ext4 file system
+# with its dm-verity hash tree (phone-verity.bbclass), with room for larger
+# updates. The boot state starts with both slots' signed verity descriptors;
+# the data both share is mounted on /var/lib by phone-initramfs.
+part --part-name state --label state --source rootfs --rootfs-dir=${IMGDEPLOYDIR}/${IMAGE_NAME}.state --fstype=ext4 --fixed-size 16M --align 1024
+part --part-name rootfs_a --source rawcopy --sourceparams="file=${IMGDEPLOYDIR}/${IMAGE_NAME}.ext4.verity" --fixed-size 1024M --align 1024
+part --part-name rootfs_b --source rawcopy --sourceparams="file=${IMGDEPLOYDIR}/${IMAGE_NAME}.ext4.verity" --fixed-size 1024M --align 1024
+part --part-name data --label data --fstype=ext4 --size 256M --align 1024
+bootloader --ptable gpt

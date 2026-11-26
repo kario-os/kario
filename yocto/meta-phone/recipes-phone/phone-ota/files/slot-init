@@ -1,0 +1,191 @@
+#!/bin/sh
+# phone-initramfs' /init. On an A/B disk: the slot the state partition chooses
+# (slot-choose), opened read-only through dm-verity after its verity
+# descriptor's signature checks out against the update CA; a slot that fails
+# boots the last good one instead. The data partition goes on /var/lib (made
+# anew first when a factory reset asked, data-wipe), the state partition on
+# /var/lib/slots. Without a state partition (a single root file system):
+# root= from the command line, read-write.
+# Where the bootloader keeps the slot (slots=abl in the board's
+# partitions.conf, 43-phone-partitions.md): the root slot of the slot it
+# started, checked against the descriptor in this initramfs (the boot image
+# and the root slot are written together, and the descriptor is the one of
+# the root file system built with this kernel); a slot that fails reboots,
+# for the bootloader to count the try and turn to the other slot once its
+# tries are spent. The data partition goes on /var/lib, made on the first
+# boot; the persistent area is the state partition where the board has one,
+# else /var/lib/slots on the data partition.
+# In the userdata layout (the boot image's ramdisk says so, phone-bootimg):
+# the root file system is all of the data partition, found by its name and
+# mounted read-write. OnePlus's bootloader appends a root= naming Android's
+# system partition after the boot image's own (39-oneplus-6t.md §1), and
+# may add init=, ro and skip_initramfs: the command line is written to the
+# kernel log, which the next boot finds in pstore, and never read here.
+# shellcheck disable=SC2154 # slot-abl and slot-choose, sourced, set slots, *_part and good
+PATH=/bin:/sbin:/usr/bin:/usr/sbin
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+
+log() { echo "phone-initramfs: $*" > /dev/kmsg; }
+
+# open_slot <slot> <device> <descriptor>: verify slot <slot> and mount it
+# read-only on /root.
+open_slot() {
+	dev=$2
+	desc=$3
+	if [ ! -b "$dev" ] || [ ! -f "$desc" ] || [ ! -f "$desc.sig" ]; then
+		log "slot $1: no partition or no verity descriptor"
+		return 1
+	fi
+	# -no_check_time: a phone may boot before its clock is set.
+	if ! openssl cms -verify -binary -inform DER -in "$desc.sig" -content "$desc" -CAfile /etc/phone/update-ca.pem \
+		-purpose any -no_check_time -out /dev/null 2> /dev/null; then
+		log "slot $1: the verity descriptor's signature does not check out"
+		return 1
+	fi
+	blocks=$(sed -n 's/^data_blocks=\([0-9]\{1,12\}\)$/\1/p' "$desc")
+	offset=$(sed -n 's/^hash_offset=\([0-9]\{1,15\}\)$/\1/p' "$desc")
+	salt=$(sed -n 's/^salt=\([0-9a-f]\{1,128\}\)$/\1/p' "$desc")
+	hash=$(sed -n 's/^root_hash=\([0-9a-f]\{64\}\)$/\1/p' "$desc")
+	if [ -z "$blocks" ] || [ -z "$offset" ] || [ -z "$salt" ] || [ -z "$hash" ]; then
+		log "slot $1: malformed verity descriptor"
+		return 1
+	fi
+	if ! veritysetup open --no-superblock --format=1 --hash=sha256 --data-block-size=4096 --hash-block-size=4096 \
+		--data-blocks="$blocks" --hash-offset="$offset" --salt="$salt" "$dev" "root_$1" "$dev" "$hash" 2> /dev/kmsg; then
+		log "slot $1: dm-verity refused it"
+		return 1
+	fi
+	if ! mount -t ext4 -o ro,noload "/dev/mapper/root_$1" /root 2> /dev/kmsg; then
+		if veritysetup status "root_$1" 2> /dev/null | grep -q 'status:.*corrupted'; then
+			log "slot $1: its data does not match the root hash"
+		else
+			log "slot $1: its file system does not mount"
+		fi
+		veritysetup close "root_$1"
+		return 1
+	fi
+	log "slot $1 ($dev, verified)"
+}
+
+# open_state_slot <slot>: a slot of the A/B disk, with its descriptor from
+# the state partition.
+open_state_slot() {
+	open_slot "$1" "$(part "${root_part}_$1")" "/state/rootfs_$1.verity"
+}
+
+. /usr/lib/phone/slot-abl
+parts_conf /etc/phone/partitions.conf
+layout=$(boot_layout /etc/phone/layout)
+log_cmdline /proc/cmdline
+
+if [ "$slots" = abl ] && [ "$layout" = userdata ]; then
+	log "the userdata layout (the boot image's): the root file system is all of the partition $data_part, read-write;" \
+		"not used from the command line: $(root_words /proc/cmdline)"
+	# A warm reboot keeps this boot's kernel log in pstore; a phone that
+	# never comes up ends in fastboot once the bootloader has counted its
+	# tries (or with volume up held).
+	if ! userdata_root /root 2> /dev/kmsg; then
+		log "the system cannot start: rebooting in 10 s"
+		sleep 10
+		reboot -f 2> /dev/null || echo b > /proc/sysrq-trigger
+		exec sh
+	fi
+	log "starting /sbin/init"
+	mount --move /dev /root/dev
+	umount /sys /proc
+	exec switch_root /root /sbin/init
+fi
+
+# As the kernel would take it: the last root=.
+root=$(tr ' ' '\n' < /proc/cmdline | sed -n 's/^root=//p' | tail -n 1)
+if [ "$slots" = abl ]; then
+	wait_part "${root_part}_b" 30 || :
+else
+	i=0
+	while [ $i -lt 10 ] && [ -z "$(part "$state_part")" ] && [ ! -b "$root" ]; do
+		sleep 1
+		i=$((i + 1))
+	done
+fi
+
+state=$(part "$state_part")
+if [ "$slots" = abl ]; then
+	slot=$(phone-abslot booted 2> /dev/kmsg)
+	case $slot in
+	a | b) ;;
+	*)
+		log "the bootloader's slot is unknown: trying a"
+		slot=a
+		;;
+	esac
+	if ! open_slot "$slot" "$(part "${root_part}_$slot")" /etc/phone/rootfs.verity; then
+		log "slot $slot does not start: rebooting in 10 s, the bootloader counts the try"
+		sleep 10
+		reboot -f 2> /dev/null || echo b > /proc/sysrq-trigger
+		exec sh
+	fi
+	data=$(part "$data_part")
+	if [ -n "$state" ]; then
+		data_ready "$state" "$state_part" && mount -t ext4 "$state" /state
+		. /usr/lib/phone/data-wipe
+		if [ -n "$data" ] && wipe_requested /state; then
+			log "factory reset: making the data partition anew"
+			wipe_format "$data" /root/var/lib /state || log "factory reset: the wipe failed; it is tried again at the next boot"
+		fi
+		umount /state
+	fi
+	if [ -n "$data" ] && data_ready "$data" "$data_part" && mount -t ext4 "$data" /root/var/lib; then
+		mkdir -p /root/var/lib/slots /root/var/lib/phone
+	else
+		log "cannot mount the data partition: /var/lib stays read-only"
+	fi
+	if [ -n "$state" ]; then
+		mount -t ext4 "$state" /root/var/lib/slots || log "cannot mount the state partition"
+	fi
+	# The rest of the system reads the slots where it does on an A/B disk:
+	# the running slot's descriptor (the delta hook, the Shell) and the boot
+	# state, which RAUC's backend keeps from here on (rauc-abl).
+	slots_dir=/root/var/lib/slots
+	cp /etc/phone/rootfs.verity "$slots_dir/rootfs_$slot.verity.new" && cp /etc/phone/rootfs.verity.sig "$slots_dir/rootfs_$slot.verity.sig.new" &&
+		mv "$slots_dir/rootfs_$slot.verity.new" "$slots_dir/rootfs_$slot.verity" &&
+		mv "$slots_dir/rootfs_$slot.verity.sig.new" "$slots_dir/rootfs_$slot.verity.sig" || log "cannot keep slot $slot's descriptor"
+	phone-abslot --booted "$slot" slots > "$slots_dir/boot.new" 2> /dev/kmsg && mv "$slots_dir/boot.new" "$slots_dir/boot" || log "cannot write the boot state"
+	sync
+elif [ -z "$state" ]; then
+	if ! mount -t ext4 "$root" /root; then
+		log "cannot mount $root"
+		exec sh
+	fi
+else
+	. /usr/lib/phone/slot-choose
+	. /usr/lib/phone/data-wipe
+	mount -t ext4 "$state" /state
+	slot=$(choose /state 2> /dev/kmsg)
+	if ! open_state_slot "$slot"; then
+		state /state/boot
+		if [ "$slot" = "$good" ] || ! open_state_slot "$(refuse /state 2> /dev/kmsg)"; then
+			log "no system slot passes verification"
+			exec sh
+		fi
+	fi
+	data=$(part "$data_part")
+	# A factory reset the Shell asked for (docs/31 §11): the data partition
+	# made anew before anything mounts it, the device's keys and the
+	# factory's certificates kept.
+	if [ -n "$data" ] && wipe_requested /state; then
+		log "factory reset: making the data partition anew"
+		wipe_format "$data" /root/var/lib /state || log "factory reset: the wipe failed; it is tried again at the next boot"
+	fi
+	umount /state
+	if [ -n "$data" ] && mount -t ext4 "$data" /root/var/lib; then
+		mkdir -p /root/var/lib/slots /root/var/lib/phone
+	else
+		log "cannot mount the data partition: /var/lib stays read-only"
+	fi
+	mount -t ext4 "$state" /root/var/lib/slots || log "cannot mount the state partition"
+fi
+mount --move /dev /root/dev
+umount /sys /proc
+exec switch_root /root /sbin/init
