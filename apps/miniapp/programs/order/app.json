@@ -1,0 +1,12 @@
+{
+  "name": "晨光咖啡点餐",
+  "icon": "咖",
+  "description": "扫码点餐 · 小程序支付",
+  "permissions": ["scan", "payment"],
+  "purposes": {"camera": "Scan the QR code on the table to order"},
+  "locales": {
+    "zh-Hant": {"name": "晨光咖啡點餐", "description": "掃碼點餐 · 小程式付款"},
+    "en": {"name": "Morning Light Coffee", "description": "Scan to order · mini-program payment"},
+    "es": {"name": "Café Luz de la Mañana", "description": "Pide escaneando · pago en el miniprograma"}
+  }
+}

@@ -1,0 +1,7 @@
+HTTP/1.1 200 OK
+Content-Type: text/plain
+Set-Cookie: a=1
+set-cookie: b=2
+__proto__: p
+Constructor: c
+

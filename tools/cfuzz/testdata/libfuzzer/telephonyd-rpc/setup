@@ -1,0 +1,11 @@
+{"id":1,"method":"status"}
+{"id":2,"method":"subscribe"}
+{"id":3,"method":"radio.set","params":{"on":false}}
+{"id":4,"method":"radio.set","params":{"on":true}}
+{"id":5,"method":"data.set","params":{"on":true}}
+{"id":6,"method":"roaming.set","params":{"on":true,"national":false}}
+{"id":7,"method":"apn.list"}
+{"id":8,"method":"apn.set","params":{"op":"save","apn":{"id":"cmnet","name":"CMNET","apn":"cmnet.test","types":["default"],"ip_type":"ipv4"}}}
+{"id":9,"method":"apn.mms"}
+{"id":10,"method":"mms.connect"}
+{"id":11,"method":"mms.disconnect"}

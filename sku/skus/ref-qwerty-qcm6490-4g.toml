@@ -1,0 +1,11 @@
+# The open reference phone with the full keyboard (24-sku-framework.md §9):
+# a landscape screen over a QWERTY candybar. The 2.8" portrait panel is
+# mounted sideways and the renderer turns its frames (rotate); no region:
+# the user's or the SIM's.
+id = "ref-qwerty-qcm6490-4g"
+board = "qcm6490-ref"
+display = "dmt028"
+rotate = 90
+keypad = "qwerty-v1"
+memory = "4g"
+product = "ref"

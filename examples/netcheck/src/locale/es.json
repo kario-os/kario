@@ -1,0 +1,14 @@
+{
+  "Test server (http://127.0.0.1:…), OK runs the checks": "Servidor de pruebas (http://127.0.0.1:…), OK ejecuta las comprobaciones",
+  "Network check": "Comprobación de red",
+  "Stream: no body": "Flujo: sin cuerpo",
+  "Stream: %d bytes in %d chunks, read as they came": "Flujo: %d bytes en %d trozos, leídos según llegaban",
+  "Stream: %d bytes in %d chunks, all at once": "Flujo: %d bytes en %d trozos, todos de golpe",
+  "Abort: the request was answered": "Cancelar: la petición recibió respuesta",
+  "Abort: %s": "Cancelar: %s",
+  "Cookies: before %s, sent back %s, without “include” %s": "Cookies: antes %s, devueltas %s, sin «include» %s",
+  "WebSocket: echoed “%s”, closed %d": "WebSocket: eco «%s», cerrado %d",
+  "%s failed: %s": "%s falló: %s",
+  "All %d checks passed": "Las %d comprobaciones pasaron",
+  "%d of %d checks failed": "%d de %d comprobaciones fallaron"
+}

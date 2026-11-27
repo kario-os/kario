@@ -1,0 +1,10 @@
+{
+  "id": "com.example.notes",
+  "name": "便签",
+  "icon": "记",
+  "icon_image": "icon.png",
+  "description": "示例第三方应用：签名打包，经商店安装",
+  "version": "1.0",
+  "exec": "phone-app-notes",
+  "order": 60
+}

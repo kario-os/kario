@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="{{.Lang}}">
+<head>
+<meta charset="utf-8">
+<title>Kario preview</title>
+<style>
+  body { margin: 0; background: #1b1d22; color: #ccd; font: 14px system-ui, sans-serif; display: flex; gap: 24px; padding: 24px; }
+  #screen { image-rendering: auto; box-shadow: 0 0 0 1px #333, 0 8px 24px #0008; max-height: 92vh; }
+  .keys { display: grid; grid-template-columns: repeat(3, 64px); gap: 6px; align-content: start; }
+  button { height: 40px; background: #2b2f38; color: #dde; border: 1px solid #444; border-radius: 6px; cursor: pointer; }
+  button:active { background: #3b4150; }
+  .help { grid-column: 1 / 4; line-height: 1.6; color: #99a; margin-top: 12px; font-size: 12px; }
+  kbd { background: #2b2f38; border: 1px solid #444; border-radius: 3px; padding: 0 4px; }
+</style>
+</head>
+<body>
+<img id="screen" src="/frame.png" alt="screen">
+<div class="keys">
+  <button data-key="tab">{{.Options}}</button><button data-key="enter">OK</button><button data-key="f2">{{.RightSoft}}</button>
+  <button data-key="call">{{.Call}}</button><button data-key="up">↑</button><button data-key="f4">{{.HangUp}}</button>
+  <button data-key="left">←</button><button data-key="down">↓</button><button data-key="right">→</button>
+  <button data-text="1">1</button><button data-text="2">2</button><button data-text="3">3</button>
+  <button data-text="4">4</button><button data-text="5">5</button><button data-text="6">6</button>
+  <button data-text="7">7</button><button data-text="8">8</button><button data-text="9">9</button>
+  <button data-text="*">*</button><button data-text="0">0</button><button data-text="#">#</button>
+  <button data-key="esc">{{.Back}}</button><button data-key="voldown">{{.VolumeDown}}</button><button data-key="volup">{{.VolumeUp}}</button>
+  <div class="help">{{.Help}}</div>
+</div>
+<script>
+const named = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right", Enter: "enter", Escape: "esc",
+  Tab: "tab", F1: "tab", F2: "f2", F3: "f3", F4: "f4", F5: "call", Backspace: "backspace", F6: "ime", F7: "sym",
+  F8: "voldown", F9: "volup", F10: "playpause", F11: "previous", F12: "next" };
+function send(body) { fetch("/key", { method: "POST", body: new URLSearchParams(body) }); }
+document.addEventListener("keydown", e => {
+  if (named[e.key]) { send({ key: named[e.key] }); e.preventDefault(); return; }
+  if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) { send({ text: e.key, long: e.altKey ? "1" : "" }); e.preventDefault(); }
+});
+for (const b of document.querySelectorAll("button")) {
+  b.addEventListener("click", () => send(b.dataset.key ? { key: b.dataset.key } : { text: b.dataset.text }));
+}
+let seq = 0;
+const img = document.getElementById("screen");
+async function follow() {
+  for (;;) {
+    try {
+      const r = await (await fetch("/wait?seq=" + seq)).json();
+      if (r.seq !== seq) { seq = r.seq; img.src = "/frame.png?" + seq; }
+    } catch (e) { await new Promise(r => setTimeout(r, 1000)); }
+  }
+}
+follow();
+</script>
+</body>
+</html>

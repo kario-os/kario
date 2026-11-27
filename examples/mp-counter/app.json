@@ -1,0 +1,11 @@
+{
+  "name": "计数器",
+  "icon": "数",
+  "description": "示例小程序：签名打包，由宿主验签后加载",
+  "permissions": ["storage"],
+  "locales": {
+    "zh-Hant": {"name": "計數器", "description": "範例小程式：簽名打包，由宿主驗簽後載入"},
+    "en": {"name": "Counter", "description": "Sample mini-program: signed and packed, loaded once the host has verified it"},
+    "es": {"name": "Contador", "description": "Miniprograma de ejemplo: firmado y empaquetado, se carga cuando el anfitrión lo ha verificado"}
+  }
+}

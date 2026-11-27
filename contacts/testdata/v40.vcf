@@ -1,0 +1,7 @@
+BEGIN:VCARD
+VERSION:4.0
+FN:Bob 王
+N:王;Bob;;;
+TEL;VALUE=uri;TYPE="voice,cell";PREF=1:tel:+86-137-0000-1234
+TEL;VALUE=uri;TYPE=home:tel:010-12345678;ext=12
+END:VCARD

@@ -1,0 +1,5 @@
+id = "ref"
+# The open reference phones (24-sku-framework.md §9), installed as
+# share/phone/profile.d/20-product.json.
+[profile]
+product = "参考机"

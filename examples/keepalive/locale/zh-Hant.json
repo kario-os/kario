@@ -1,0 +1,11 @@
+{
+  "Connected to %s · heartbeat every %d s (push heartbeat %d s)": "已連上 %s · 心跳每 %d 秒（推播心跳 %d 秒）",
+  "Disconnect": "中斷",
+  "Enter the server as host:port": "伺服器請寫成 主機:連接埠",
+  "Heartbeats sent: %d": "已送出心跳 %d 次",
+  "Keepalive Sample": "長連線範例",
+  "Last message: %s": "最後一則訊息：%s",
+  "Not connected": "沒有連線",
+  "Not connected: %v": "沒連上：%v",
+  "Server (host:port)": "伺服器（主機:連接埠）"
+}

@@ -1,0 +1,15 @@
+{
+  "Charger unplugged: powering off": "充電器已拔出，即將關機",
+  "Charging": "正在充電",
+  "Charging - too low to start": "正在充電，電量過低，無法開機",
+  "Charging, %d%%": "正在充電，%d%%",
+  "Charging, %d%% - too low to start": "正在充電，%d%%，電量過低，無法開機",
+  "Fast charging": "正在快速充電",
+  "Fast charging, %d%%": "正在快速充電，%d%%",
+  "Full": "已充飽",
+  "Hold the power key to start": "長按電源鍵開機",
+  "No battery found": "未偵測到電池",
+  "Powering off…": "正在關機…",
+  "Starting at %d%%": "電量到 %d%% 時開機",
+  "Starting…": "正在開機…"
+}

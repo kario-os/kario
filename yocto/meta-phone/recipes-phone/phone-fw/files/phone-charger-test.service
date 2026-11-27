@@ -1,0 +1,15 @@
+[Unit]
+Description=Charger mode's test on the emulator (phone.charger-test=1, yocto/qemu-charger.sh)
+# Only with phone.charger-test=1 or =start, which only the emulator's
+# test passes: it checks the charger's screen and what charger mode leaves
+# out, then unplugs test_power's simulated chargers, after which the phone
+# must power off; or (start) that a low battery's start waits for the
+# level.
+ConditionKernelCommandLine=phone.charger-test
+After=phone-charger.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/phone/charger-test.sh
+StandardOutput=journal+console
+StandardError=journal+console

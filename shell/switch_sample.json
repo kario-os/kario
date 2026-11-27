@@ -1,0 +1,22 @@
+{
+  "device": {"brand": "Xiaomi", "model": "Redmi Note 9", "os": "android", "os_version": "12"},
+  "contacts": [
+    "BEGIN:VCARD\r\nVERSION:3.0\r\nN:欧阳;青;;;\r\nFN:欧阳青\r\nTEL;TYPE=CELL:+86 136 5555 0101\r\nNOTE:从旧手机搬来\r\nEND:VCARD\r\n",
+    "BEGIN:VCARD\r\nVERSION:4.0\r\nFN:司马蓝\r\nTEL;TYPE=cell;VALUE=uri:tel:+86-136-5555-0102\r\nEND:VCARD"
+  ],
+  "call_log": [
+    {"number": "+86 136 5555 0101", "name": "欧阳青", "type": "in", "ago": 30, "duration": 61},
+    {"number": "13655550102", "name": "司马蓝", "type": "out", "ago": 20, "duration": 42},
+    {"number": "13655550199", "type": "missed", "ago": 10, "duration": 0}
+  ],
+  "sms": [
+    {"address": "+8613655550101", "body": "周末一起去爬山吗？", "type": "in", "ago": 15, "read": false},
+    {"address": "13655550101", "body": "好啊，周六早上八点山脚见", "type": "out", "ago": 5, "read": true}
+  ],
+  "calendar": [
+    "BEGIN:VEVENT\r\nUID:20261121-climb@kario-switch-selftest\r\nDTSTAMP:20261115T080000Z\r\nDTSTART;TZID=Asia/Shanghai:20261121T080000\r\nDTEND;TZID=Asia/Shanghai:20261121T120000\r\nSUMMARY:和欧阳青爬山\r\nBEGIN:VALARM\r\nACTION:DISPLAY\r\nTRIGGER:-PT1H\r\nEND:VALARM\r\nEND:VEVENT\r\n"
+  ],
+  "photos": [
+    {"id": "IMG-20261115-0800", "name": "IMG_20261115_0800.jpg", "taken_ago": 172800}
+  ]
+}

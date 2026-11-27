@@ -1,0 +1,10 @@
+{"t":"hello","app":"com.phone.weather","proto":"phone.ui/0"}
+{"t":"reset","screen":{"id":"main","title":"天气","body":[{"kind":"text","text":"北京（未定位）","style":"title"},{"kind":"text","text":"21°C 晴","style":"big"},{"kind":"text","text":"今天 17°C–26°C","style":"dim"},{"kind":"section","text":"未来 3 天"},{"kind":"item","id":"d1","title":"11月16日","subtitle":"阴","trailing":"10°C–20°C"},{"kind":"item","id":"d2","title":"11月17日","subtitle":"小雨","trailing":"9°C–19°C"},{"kind":"item","id":"d3","title":"11月18日","subtitle":"阵雨","trailing":"12°C–22°C"},{"kind":"text","text":"更新于 01:41 · 后台刷新 0 次 · 数据为模拟","style":"dim"}],"actions":[{"id":"refresh","label":"刷新","key":"r"},{"id":"share","label":"分享","key":"s"}]}}
+{"t":"req","req":1,"cap":"app.settings","args":null}
+{"t":"req","req":2,"cap":"location.get","args":null}
+{"t":"req","req":3,"cap":"job.schedule","args":{"id":"cleanup","every_min":1440,"charging":true}}
+{"t":"req","req":4,"cap":"job.schedule","args":{"id":"refresh","every_min":60}}
+{"t":"update","screen":{"id":"main","title":"天气","body":[{"kind":"text","text":"北京（未定位）","style":"title"},{"kind":"text","text":"21°C 晴","style":"big"},{"kind":"text","text":"今天 17°C–26°C","style":"dim"},{"kind":"section","text":"未来 3 天"},{"kind":"item","id":"d1","title":"11月16日","subtitle":"阴","trailing":"10°C–20°C"},{"kind":"item","id":"d2","title":"11月17日","subtitle":"小雨","trailing":"9°C–19°C"},{"kind":"item","id":"d3","title":"11月18日","subtitle":"阵雨","trailing":"12°C–22°C"},{"kind":"text","text":"更新于 01:41 · 后台刷新 0 次 · 数据为模拟","style":"dim"}],"actions":[{"id":"refresh","label":"刷新","key":"r"},{"id":"share","label":"分享","key":"s"}]}}
+{"t":"req","req":5,"cap":"widget.set","args":{"text":"北京 晴 21°C","arg":"today"}}
+{"t":"pong","value":"1"}
+{"t":"req","req":6,"cap":"share.open","args":{"kind":"text","text":"北京今天晴，17°C–26°C"}}

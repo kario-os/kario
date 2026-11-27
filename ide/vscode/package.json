@@ -1,0 +1,353 @@
+{
+  "name": "kario-studio",
+  "displayName": "Kario Studio",
+  "description": "Build, run, debug (under Node.js, or on a phone in developer mode), test, package and publish Kario TypeScript apps (KarioUI) from VS Code or Cursor",
+  "version": "0.1.0",
+  "publisher": "kario-os",
+  "license": "Apache-2.0",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kario-os/kario"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Debuggers",
+    "Testing"
+  ],
+  "main": "./out/src/extension.js",
+  "activationEvents": [
+    "workspaceContains:manifest.json",
+    "workspaceContains:*/manifest.json",
+    "onDebugResolve:kario"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "kario.new",
+        "title": "New App",
+        "category": "Kario"
+      },
+      {
+        "command": "kario.build",
+        "title": "Build",
+        "category": "Kario"
+      },
+      {
+        "command": "kario.run",
+        "title": "Run in the Terminal",
+        "category": "Kario"
+      },
+      {
+        "command": "kario.preview",
+        "title": "Run in the Preview Panel",
+        "category": "Kario"
+      },
+      {
+        "command": "kario.debug",
+        "title": "Debug (Node.js)",
+        "category": "Kario"
+      },
+      {
+        "command": "kario.debugDevice",
+        "title": "Debug on the Phone (Developer Mode)",
+        "category": "Kario"
+      },
+      {
+        "command": "kario.attachDevice",
+        "title": "Debug the App Already on the Phone",
+        "category": "Kario"
+      },
+      {
+        "command": "kario.stop",
+        "title": "Stop the Running App",
+        "category": "Kario"
+      },
+      {
+        "command": "kario.test",
+        "title": "Run Tests",
+        "category": "Kario"
+      },
+      {
+        "command": "kario.package",
+        "title": "Package (.phoneapp)",
+        "category": "Kario"
+      },
+      {
+        "command": "kario.publish",
+        "title": "Publish to the Store",
+        "category": "Kario"
+      },
+      {
+        "command": "kario.launchConfig",
+        "title": "Add a Debug Configuration (launch.json)",
+        "category": "Kario"
+      },
+      {
+        "command": "kario.viewPreview",
+        "title": "Preview the Views (without Running the App)",
+        "category": "Kario"
+      },
+      {
+        "command": "kario.viewPreviewAll",
+        "title": "Preview the Views on Every Form Factor",
+        "category": "Kario"
+      },
+      {
+        "command": "kario.profile",
+        "title": "Run with the Performance Timeline (Perfetto)",
+        "category": "Kario"
+      },
+      {
+        "command": "kario.pickDevice",
+        "title": "Choose the Device (SKU or Form Factor)",
+        "category": "Kario"
+      },
+      {
+        "command": "kario.editManifest",
+        "title": "Edit the Manifest (Permissions, Purposes, Privacy Label)",
+        "category": "Kario"
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "kario.manifestEditor",
+        "displayName": "Kario Manifest Editor",
+        "selector": [
+          {
+            "filenamePattern": "**/manifest.json"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
+    "configuration": {
+      "title": "Kario",
+      "properties": {
+        "kario.cli": {
+          "type": "string",
+          "default": "kario",
+          "description": "The kario command (kario build in the Kario tree: build/bin/kario)."
+        },
+        "kario.shell": {
+          "type": "string",
+          "default": "",
+          "description": "phone-shell (empty: kario finds it beside itself or on PATH)."
+        },
+        "kario.renderer": {
+          "type": "string",
+          "default": "",
+          "description": "The pixel renderer of the preview panel (empty: kario finds phone-paint)."
+        },
+        "kario.node": {
+          "type": "string",
+          "default": "",
+          "description": "Node.js 22.15 or newer (empty: node on PATH)."
+        },
+        "kario.device": {
+          "type": "string",
+          "default": "bar-t9",
+          "enum": [
+            "bar-t9",
+            "bar-qwerty",
+            "communicator"
+          ],
+          "description": "The form factor the app runs on (when kario.sku is empty)."
+        },
+        "kario.sku": {
+          "type": "string",
+          "default": "",
+          "description": "A SKU to simulate (kario run -sku: its screen, keypad, memory tier and region); Kario: Choose the Device lists them. Empty: the form factor alone."
+        },
+        "kario.language": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "zh-Hans",
+            "zh-Hant",
+            "en",
+            "es"
+          ],
+          "description": "The system's language (empty: the Shell's)."
+        },
+        "kario.previewAddress": {
+          "type": "string",
+          "default": "127.0.0.1:8790",
+          "description": "Where the preview's page is served."
+        },
+        "kario.inspectAddress": {
+          "type": "string",
+          "default": "127.0.0.1:9229",
+          "description": "Node.js's inspector for the debugger."
+        },
+        "kario.signing.devStore": {
+          "type": "string",
+          "default": "",
+          "description": "Sign packages with a development store kept in this directory (developer mode)."
+        },
+        "kario.signing.key": {
+          "type": "string",
+          "default": "dev.key",
+          "description": "The developer's signing key (phone-pkg keygen), relative to the project."
+        },
+        "kario.signing.cert": {
+          "type": "string",
+          "default": "dev.cert",
+          "description": "The developer's certificate from the store (phone-pkg register), relative to the project."
+        },
+        "kario.storeUrl": {
+          "type": "string",
+          "default": "",
+          "description": "The store backend packages are submitted to (POST /v1/submissions)."
+        },
+        "kario.rollout": {
+          "type": "number",
+          "default": 100,
+          "minimum": 0,
+          "maximum": 100,
+          "description": "An update goes to this percentage of devices first."
+        },
+        "kario.reloadOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "In the preview panel and when debugging, build the app again when a source is saved and restart it on its pages (kario run -watch)."
+        }
+      }
+    },
+    "debuggers": [
+      {
+        "type": "kario",
+        "label": "Kario (phone)",
+        "languages": [
+          "typescript"
+        ],
+        "configurationAttributes": {
+          "launch": {
+            "required": [
+              "project"
+            ],
+            "properties": {
+              "project": {
+                "type": "string",
+                "description": "The app's directory (manifest.json, src/main.ts).",
+                "default": "${workspaceFolder}"
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "Pause before the app's first line.",
+                "default": false
+              },
+              "devstore": {
+                "type": "string",
+                "description": "The development store the build is signed with (default kario's own, as kario device install)."
+              },
+              "developer": {
+                "type": "string",
+                "description": "The developer's name in the development store's certificate.",
+                "default": "Example Developer"
+              },
+              "native": {
+                "type": "string",
+                "description": "The prebuilt native modules, <arch>/<name>.so (default the project's native/)."
+              },
+              "ssh": {
+                "type": "string",
+                "description": "The ssh command, with its options (default $KARIO_SSH or ssh)."
+              },
+              "to": {
+                "type": "string",
+                "description": "The phone (default $KARIO_DEVICE or root@10.71.0.1, its address on the trusted cable)."
+              }
+            }
+          },
+          "attach": {
+            "required": [
+              "project"
+            ],
+            "properties": {
+              "project": {
+                "type": "string",
+                "description": "The app's directory (manifest.json, src/main.ts).",
+                "default": "${workspaceFolder}"
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "Pause in the next code the app runs.",
+                "default": false
+              },
+              "devstore": {
+                "type": "string",
+                "description": "The development store the build is signed with (default kario's own, as kario device install)."
+              },
+              "developer": {
+                "type": "string",
+                "description": "The developer's name in the development store's certificate.",
+                "default": "Example Developer"
+              },
+              "native": {
+                "type": "string",
+                "description": "The prebuilt native modules, <arch>/<name>.so (default the project's native/)."
+              },
+              "ssh": {
+                "type": "string",
+                "description": "The ssh command, with its options (default $KARIO_SSH or ssh)."
+              },
+              "to": {
+                "type": "string",
+                "description": "The phone (default $KARIO_DEVICE or root@10.71.0.1, its address on the trusted cable)."
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "kario",
+            "request": "launch",
+            "name": "Kario: debug on the phone",
+            "project": "${workspaceFolder}",
+            "stopOnEntry": false
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "Kario: debug on the phone",
+            "description": "Build, install and debug the app on a phone in developer mode",
+            "body": {
+              "type": "kario",
+              "request": "launch",
+              "name": "Kario: debug on the phone",
+              "project": "^\"\\${workspaceFolder}\"",
+              "stopOnEntry": false
+            }
+          },
+          {
+            "label": "Kario: attach on the phone",
+            "description": "Debug the app as it runs on the phone (not restarted; one not running starts under the debugger)",
+            "body": {
+              "type": "kario",
+              "request": "attach",
+              "name": "Kario: attach on the phone",
+              "project": "^\"\\${workspaceFolder}\""
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "test": "tsc -p . && node --test \"out/test/*.test.js\" \"scripts/*.test.mjs\"",
+    "vsix": "tsc -p . && node scripts/vsix.mjs",
+    "e2e": "tsc -p . && node scripts/e2e.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "20.19.43",
+    "@types/vscode": "1.85.0",
+    "@vscode/test-electron": "3.1.0",
+    "typescript": "5.9.3"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "Blur in TypeScript": "用 TypeScript 模糊",
+  "Blur on a worker thread": "在工作线程上模糊",
+  "Blur with native code": "用原生代码模糊",
+  "Blurred %d×%d (radius %d) with %s in %s ms": "已模糊 %d×%d（半径 %d）：%s，%s 毫秒",
+  "Blurred on a worker thread in %s ms": "在工作线程上模糊完了，%s 毫秒",
+  "Blurring on a worker thread…": "正在工作线程上模糊…",
+  "Checksum %s": "校验和 %s",
+  "Compare": "比较",
+  "Image filters": "图片滤镜",
+  "Loading the native module…": "正在加载原生模块…",
+  "Native %s ms, TypeScript %s ms: %s× faster": "原生 %s 毫秒，TypeScript %s 毫秒：快 %s 倍",
+  "Native code: %s": "原生代码：%s",
+  "Same pixels both ways": "两边的像素完全一样",
+  "The two results differ": "两边的结果不一样",
+  "TypeScript": "TypeScript",
+  "TypeScript only: %s": "只用 TypeScript：%s",
+  "native code": "原生代码"
+}

@@ -1,0 +1,11 @@
+{
+  "name": "便签",
+  "icon": "签",
+  "description": "数据绑定与本地存储",
+  "permissions": ["storage"],
+  "locales": {
+    "zh-Hant": {"name": "便條", "description": "資料繫結與本機儲存"},
+    "en": {"name": "Notes", "description": "Data binding and local storage"},
+    "es": {"name": "Notas", "description": "Vinculación de datos y almacenamiento local"}
+  }
+}

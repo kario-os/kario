@@ -1,0 +1,612 @@
+Kario's patch to QuickJS-ng 0.18.0: debugger hooks for kario-jsrt
+(29-app-development.md §3, the debugger of apps installed in developer
+mode). Like QuickJS-ng, this patch is under the MIT licence (LICENSE in the
+QuickJS-ng tree); Copyright (c) 2026 The Kario authors.
+
+- JS_SetDebugHandler: frames entered while a handler is set run every
+  instruction through it (a second dispatch table: frames entered without
+  one pay nothing); debugger statements (a new opcode, OP_debugger) and
+  thrown exceptions, with whether a try on the stack catches them, call it
+  in any frame. Code compiled while a handler is set, or after
+  JS_SetDebugPositions (an app a debugger may attach to while it runs),
+  records the position of every statement, where breakpoints and steps
+  stop.
+- JS_DebugFrameCount, JS_DebugFramePoint, JS_DebugFrameInfo,
+  JS_DebugFrameLines, JS_DebugFrameVariables, JS_DebugSetVariable: the
+  frames on the stack, their positions, line tables, arguments, locals and
+  closure variables.
+- OP_debugger renumbers the opcodes after it: the bytecode version and the
+  version string (0.18.0+kario.1) change with it, so bytecode of the
+  unpatched engine is never loaded.
+
+Applied by make jsrt (Makefile) and by Yocto's quickjs recipe.
+
+Upstream-Status: Inappropriate [hooks for Kario's own debugger protocol]
+
+diff -ruN orig/quickjs.c new/quickjs.c
+--- orig/quickjs.c
++++ new/quickjs.c
+@@ -382,6 +382,13 @@
+     JSInterruptHandler *interrupt_handler;
+     void *interrupt_opaque;
+ 
++    JSDebugHandler *debug_handler;
++    void *debug_opaque;
++    /* an exception the handler saw is on its way up the stack */
++    bool debug_unwinding;
++    /* compile every statement's position, as under a handler */
++    bool debug_positions;
++
+     JSPromiseHook *promise_hook;
+     void *promise_hook_opaque;
+     // for smuggling the parent promise from js_promise_then
+@@ -890,6 +897,7 @@
+     int pc2line_len;
+     uint8_t *pc2line_buf;
+     char *source;
++    void *debug_data; /* JSDebugPoint.data */
+ } JSFunctionBytecode;
+ 
+ typedef struct JSBoundFunction {
+@@ -1270,6 +1278,10 @@
+                                int atom_type);
+ static void JS_FreeAtomStruct(JSRuntime *rt, JSAtomStruct *p);
+ static void free_function_bytecode(JSRuntime *rt, JSFunctionBytecode *b);
++static void js_debug_step(JSContext *ctx, JSStackFrame *sf, uint8_t *pc);
++static void js_debug_call(JSContext *ctx, JSStackFrame *sf, JSDebugEvent event,
++                          JSValueConst exception, bool caught);
++static bool js_debug_caught(JSStackFrame *sf, JSValue *sp, JSValue *stack_buf);
+ static JSValue js_call_c_function(JSContext *ctx, JSValueConst func_obj,
+                                   JSValueConst this_obj,
+                                   int argc, JSValueConst *argv, int flags);
+@@ -2475,6 +2487,18 @@
+     rt->interrupt_opaque = opaque;
+ }
+ 
++void JS_SetDebugHandler(JSRuntime *rt, JSDebugHandler *handler, void *opaque)
++{
++    rt->debug_handler = handler;
++    rt->debug_opaque = opaque;
++    rt->debug_unwinding = false;
++}
++
++void JS_SetDebugPositions(JSRuntime *rt, bool on)
++{
++    rt->debug_positions = on;
++}
++
+ void JS_SetCanBlock(JSRuntime *rt, bool can_block)
+ {
+     rt->can_block = can_block;
+@@ -18074,10 +18098,13 @@
+ #endif
+ 
+ #if !DIRECT_DISPATCH
+-#define SWITCH(pc)      DUMP_BYTECODE_OR_DONT(pc) switch (opcode = *pc++)
++#define SWITCH(pc)      DUMP_BYTECODE_OR_DONT(pc) if (unlikely(debug_steps)) js_debug_step(ctx, sf, pc + 1); switch (opcode = *pc++)
+ #define CASE(op)        case op
+ #define DEFAULT         default
+ #define BREAK           break
++    /* kario-debugger.patch: frames entered while a debug handler is set
++       call it before each instruction */
++    bool debug_steps = rt->debug_handler != NULL;
+ #else
+     __extension__ static const void * const dispatch_table[256] = {
+ #define DEF(id, size, n_pop, n_push, f) && case_OP_ ## id,
+@@ -18085,7 +18112,13 @@
+ #include "quickjs-opcode.h"
+         [ OP_COUNT ... 255 ] = &&case_default
+     };
+-#define SWITCH(pc)      DUMP_BYTECODE_OR_DONT(pc) __extension__ ({ goto *dispatch_table[opcode = *pc++]; });
++    /* kario-debugger.patch: frames entered while a debug handler is set
++       go through debug_step before each instruction */
++    __extension__ static const void * const debug_dispatch_table[256] = {
++        [ 0 ... 255 ] = &&debug_step
++    };
++    const void * const *dispatch = unlikely(rt->debug_handler) ? debug_dispatch_table : dispatch_table;
++#define SWITCH(pc)      DUMP_BYTECODE_OR_DONT(pc) __extension__ ({ goto *dispatch[opcode = *pc++]; });
+ #define CASE(op)        case_ ## op
+ #define DEFAULT         case_default
+ #define BREAK           SWITCH(pc)
+@@ -20885,6 +20918,12 @@
+ 
+         CASE(OP_nop):
+             BREAK;
++        CASE(OP_debugger):
++            if (unlikely(rt->debug_handler)) {
++                sf->cur_pc = pc;
++                js_debug_call(ctx, sf, JS_DEBUG_STATEMENT, JS_UNDEFINED, false);
++            }
++            BREAK;
+         CASE(OP_is_undefined_or_null):
+             if (JS_VALUE_GET_TAG(sp[-1]) == JS_TAG_UNDEFINED ||
+                 JS_VALUE_GET_TAG(sp[-1]) == JS_TAG_NULL) {
+@@ -20927,6 +20966,11 @@
+             JS_FreeValue(ctx, sp[-1]);
+             sp[-1] = JS_FALSE;
+             BREAK;
++#if DIRECT_DISPATCH
++        debug_step:
++            js_debug_step(ctx, sf, pc);
++            goto *dispatch_table[opcode];
++#endif
+         CASE(OP_invalid):
+         DEFAULT:
+             JS_ThrowInternalError(ctx, "invalid opcode: pc=%u opcode=0x%02x",
+@@ -20941,6 +20985,14 @@
+         build_backtrace(ctx, rt->current_exception, JS_UNDEFINED,
+                         NULL, 0, 0, 0);
+     }
++    if (unlikely(rt->debug_handler) && !rt->debug_unwinding) {
++        rt->debug_unwinding = true;
++        if (!JS_IsUncatchableError(rt->current_exception)) {
++            sf->cur_pc = pc;
++            js_debug_call(ctx, sf, JS_DEBUG_EXCEPTION, rt->current_exception,
++                          js_debug_caught(sf, sp, stack_buf));
++        }
++    }
+     if (!JS_IsUncatchableError(rt->current_exception)) {
+         while (sp > stack_buf) {
+             JSValue val = *--sp;
+@@ -20957,6 +21009,7 @@
+                     rt->current_exception = JS_UNINITIALIZED;
+                     JS_FreeValueRT(rt, ctx->error_back_trace);
+                     ctx->error_back_trace = JS_UNDEFINED;
++                    rt->debug_unwinding = false;
+                     pc = b->byte_code_buf + pos;
+                     goto restart;
+                 }
+@@ -22479,6 +22532,320 @@
+     opcode_info[(op) >= OP_TEMP_START ? \
+                 (op) + (OP_TEMP_END - OP_TEMP_START) : (op)]
+ 
++/* kario-debugger.patch: what a debug handler (JS_SetDebugHandler) reads
++   and writes. */
++
++static JSFunctionBytecode *js_debug_bytecode(JSStackFrame *sf)
++{
++    JSObject *p;
++
++    if (JS_VALUE_GET_TAG(sf->cur_func) != JS_TAG_OBJECT)
++        return NULL;
++    p = JS_VALUE_GET_OBJ(sf->cur_func);
++    if (!js_class_has_bytecode(p->class_id))
++        return NULL;
++    return p->u.func.function_bytecode;
++}
++
++/* The instruction a frame is at: the one about to run in a frame the
++   handler was called for, the call in the frames under it. */
++static uint32_t js_debug_pc(JSStackFrame *sf, JSFunctionBytecode *b)
++{
++    if (!sf->cur_pc || sf->cur_pc <= b->byte_code_buf)
++        return 0;
++    return sf->cur_pc - b->byte_code_buf - 1;
++}
++
++static JSStackFrame *js_debug_frame(JSContext *ctx, int level)
++{
++    JSStackFrame *sf;
++
++    if (level < 0)
++        return NULL;
++    for (sf = ctx->rt->current_stack_frame; sf && level > 0; sf = sf->prev_frame)
++        level--;
++    return sf;
++}
++
++static void js_debug_call(JSContext *ctx, JSStackFrame *sf, JSDebugEvent event,
++                          JSValueConst exception, bool caught)
++{
++    JSRuntime *rt = ctx->rt;
++    JSFunctionBytecode *b = js_debug_bytecode(sf);
++    JSDebugPoint at;
++    JSValue exc, bt;
++
++    if (!b || !rt->debug_handler)
++        return;
++    at.frame = sf;
++    at.data = &b->debug_data;
++    at.pc = js_debug_pc(sf, b);
++    at.exception = exception;
++    at.caught = caught;
++    exc = rt->current_exception;
++    bt = ctx->error_back_trace;
++    rt->current_exception = JS_UNINITIALIZED;
++    ctx->error_back_trace = JS_UNDEFINED;
++    rt->debug_handler(ctx, event, &at, rt->debug_opaque);
++    JS_FreeValue(ctx, rt->current_exception);
++    JS_FreeValue(ctx, ctx->error_back_trace);
++    rt->current_exception = exc;
++    ctx->error_back_trace = bt;
++}
++
++static no_inline void js_debug_step(JSContext *ctx, JSStackFrame *sf, uint8_t *pc)
++{
++    ctx->rt->debug_unwinding = false;
++    sf->cur_pc = pc;
++    js_debug_call(ctx, sf, JS_DEBUG_STEP, JS_UNDEFINED, false);
++}
++
++/* Whether pc is inside a try block of b: between an OP_catch and its
++   handler, where the compiler puts the block. */
++static bool js_debug_in_try(JSFunctionBytecode *b, uint32_t pc)
++{
++    uint32_t pos, target;
++    int op;
++
++    for (pos = 0; pos < b->byte_code_len; pos += short_opcode_info(op).size) {
++        op = b->byte_code_buf[pos];
++        if (op == OP_catch) {
++            target = pos + 1 + (int32_t)get_u32(b->byte_code_buf + pos + 1);
++            if (pc > pos && pc < target)
++                return true;
++        }
++    }
++    return false;
++}
++
++/* Whether a frame catches an exception thrown at sf: its own catch offsets
++   on the stack, else the try blocks around the calls in the frames under
++   it, up to an async function's, which rejects its promise instead. */
++static bool js_debug_caught(JSStackFrame *sf, JSValue *sp, JSValue *stack_buf)
++{
++    JSFunctionBytecode *b;
++
++    while (sp > stack_buf) {
++        sp--;
++        if (JS_VALUE_GET_TAG(*sp) == JS_TAG_CATCH_OFFSET && JS_VALUE_GET_INT(*sp) != 0)
++            return true;
++    }
++    for (;;) {
++        b = js_debug_bytecode(sf);
++        if (b && (b->func_kind & JS_FUNC_ASYNC))
++            return false;
++        sf = sf->prev_frame;
++        if (!sf)
++            return false;
++        b = js_debug_bytecode(sf);
++        if (b && sf->cur_pc && js_debug_in_try(b, js_debug_pc(sf, b)))
++            return true;
++    }
++}
++
++int JS_DebugFrameCount(JSContext *ctx)
++{
++    JSStackFrame *sf;
++    int n = 0;
++
++    for (sf = ctx->rt->current_stack_frame; sf; sf = sf->prev_frame)
++        n++;
++    return n;
++}
++
++int JS_DebugFramePoint(JSContext *ctx, int level, JSDebugPoint *at)
++{
++    JSStackFrame *sf = js_debug_frame(ctx, level);
++    JSFunctionBytecode *b;
++
++    if (!sf)
++        return -1;
++    b = js_debug_bytecode(sf);
++    at->frame = sf;
++    at->data = b ? &b->debug_data : NULL;
++    at->pc = b ? js_debug_pc(sf, b) : 0;
++    at->exception = JS_UNDEFINED;
++    at->caught = false;
++    return 0;
++}
++
++JSValue JS_DebugFrameInfo(JSContext *ctx, int level)
++{
++    JSStackFrame *sf = js_debug_frame(ctx, level);
++    JSFunctionBytecode *b;
++    JSValue ret, name;
++    const char *str;
++    int line, col;
++
++    if (!sf)
++        return JS_UNDEFINED;
++    ret = JS_NewObject(ctx);
++    if (JS_IsException(ret))
++        return ret;
++    b = js_debug_bytecode(sf);
++    str = get_func_name(ctx, sf->cur_func);
++    if (str && *str)
++        name = JS_NewString(ctx, str);
++    else if (b && b->func_name != JS_ATOM_NULL)
++        name = JS_AtomToString(ctx, b->func_name);
++    else
++        name = JS_NewString(ctx, "");
++    JS_FreeCString(ctx, str);
++    JS_DefinePropertyValueStr(ctx, ret, "name", name, JS_PROP_C_W_E);
++    if (!b) {
++        JS_DefinePropertyValueStr(ctx, ret, "native", JS_TRUE, JS_PROP_C_W_E);
++        return ret;
++    }
++    line = find_line_num(ctx, b, js_debug_pc(sf, b), &col);
++    JS_DefinePropertyValueStr(ctx, ret, "file",
++                              b->filename != JS_ATOM_NULL ? JS_AtomToString(ctx, b->filename) : JS_NewString(ctx, ""),
++                              JS_PROP_C_W_E);
++    JS_DefinePropertyValueStr(ctx, ret, "line", js_int32(line), JS_PROP_C_W_E);
++    JS_DefinePropertyValueStr(ctx, ret, "column", js_int32(col), JS_PROP_C_W_E);
++    return ret;
++}
++
++int JS_DebugFrameLines(JSContext *ctx, int level, JSDebugLine **lines)
++{
++    JSStackFrame *sf = js_debug_frame(ctx, level);
++    JSFunctionBytecode *b;
++    JSDebugLine *tab, *grown;
++    const uint8_t *p, *p_end;
++    uint32_t pc, val;
++    int32_t v;
++    int n, cap, ret, line, col;
++    unsigned int op;
++
++    *lines = NULL;
++    if (!sf || !(b = js_debug_bytecode(sf)))
++        return -1;
++    cap = 16;
++    tab = js_malloc(ctx, cap * sizeof(*tab));
++    if (!tab)
++        return -1;
++    pc = 0;
++    line = b->line_num;
++    col = b->col_num;
++    n = 0;
++    tab[n++] = (JSDebugLine){ 0, line, col };
++    p = b->pc2line_buf;
++    p_end = p ? p + b->pc2line_len : NULL;
++    while (p && p < p_end) {
++        op = *p++;
++        if (op == 0) {
++            ret = get_leb128(&val, p, p_end);
++            if (ret < 0)
++                break;
++            pc += val;
++            p += ret;
++            ret = get_sleb128(&v, p, p_end);
++            if (ret < 0)
++                break;
++            p += ret;
++            line += v;
++        } else {
++            op -= PC2LINE_OP_FIRST;
++            pc += op / PC2LINE_RANGE;
++            line += (op % PC2LINE_RANGE) + PC2LINE_BASE;
++        }
++        ret = get_sleb128(&v, p, p_end);
++        if (ret < 0)
++            break;
++        p += ret;
++        col += v;
++        if (tab[n - 1].pc == pc) {
++            tab[n - 1] = (JSDebugLine){ pc, line, col };
++            continue;
++        }
++        if (n == cap) {
++            cap *= 2;
++            grown = js_realloc(ctx, tab, cap * sizeof(*tab));
++            if (!grown) {
++                js_free(ctx, tab);
++                return -1;
++            }
++            tab = grown;
++        }
++        tab[n++] = (JSDebugLine){ pc, line, col };
++    }
++    *lines = tab;
++    return n;
++}
++
++static bool js_debug_var(JSStackFrame *sf, JSFunctionBytecode *b, bool closure, int i,
++                         JSAtom *name, JSValue **pv, bool *is_const)
++{
++    JSObject *p = JS_VALUE_GET_OBJ(sf->cur_func);
++
++    if (closure) {
++        if (i < 0 || i >= b->closure_var_count || !p->u.func.var_refs || !p->u.func.var_refs[i])
++            return false;
++        *name = b->closure_var[i].var_name;
++        *is_const = b->closure_var[i].is_const;
++        *pv = p->u.func.var_refs[i]->pvalue;
++        return true;
++    }
++    if (!b->vardefs || i < 0 || i >= b->arg_count + b->var_count)
++        return false;
++    *name = b->vardefs[i].var_name;
++    *is_const = b->vardefs[i].is_const;
++    if (i < b->arg_count) {
++        if (i >= sf->arg_count)
++            return false;
++        *pv = &sf->arg_buf[i];
++    } else {
++        *pv = &sf->var_buf[i - b->arg_count];
++    }
++    return true;
++}
++
++JSValue JS_DebugFrameVariables(JSContext *ctx, int level, bool closure)
++{
++    JSStackFrame *sf = js_debug_frame(ctx, level);
++    JSFunctionBytecode *b;
++    JSValue ret, item, *pv;
++    JSAtom name;
++    bool is_const;
++    int i, n;
++    uint32_t k = 0;
++
++    ret = JS_NewArray(ctx);
++    if (JS_IsException(ret) || !sf || !(b = js_debug_bytecode(sf)))
++        return ret;
++    n = closure ? b->closure_var_count : b->arg_count + b->var_count;
++    for (i = 0; i < n; i++) {
++        if (!js_debug_var(sf, b, closure, i, &name, &pv, &is_const) || name == JS_ATOM_NULL)
++            continue;
++        item = JS_NewObject(ctx);
++        if (JS_IsException(item))
++            break;
++        JS_DefinePropertyValueStr(ctx, item, "name", JS_AtomToString(ctx, name), JS_PROP_C_W_E);
++        JS_DefinePropertyValueStr(ctx, item, "index", js_int32(i), JS_PROP_C_W_E);
++        JS_DefinePropertyValueStr(ctx, item, "const", js_bool(is_const), JS_PROP_C_W_E);
++        if (!JS_IsUninitialized(*pv))
++            JS_DefinePropertyValueStr(ctx, item, "value", js_dup(*pv), JS_PROP_C_W_E);
++        JS_DefinePropertyValueUint32(ctx, ret, k++, item, JS_PROP_C_W_E);
++    }
++    return ret;
++}
++
++int JS_DebugSetVariable(JSContext *ctx, int level, bool closure, int index, JSValue val)
++{
++    JSStackFrame *sf = js_debug_frame(ctx, level);
++    JSFunctionBytecode *b;
++    JSValue *pv;
++    JSAtom name;
++    bool is_const;
++
++    if (!sf || !(b = js_debug_bytecode(sf)) || !js_debug_var(sf, b, closure, index, &name, &pv, &is_const) ||
++        is_const || JS_IsUninitialized(*pv)) {
++        JS_FreeValue(ctx, val);
++        return -1;
++    }
++    set_value(ctx, pv, val);
++    return 0;
++}
++
+ static void json_free_token(JSParseState *s, JSToken *token) {
+     // Only free actual allocated values
+     switch(token->val) {
+@@ -29425,6 +29792,12 @@
+         }
+     }
+ 
++    /* kario-debugger.patch: code compiled under a debugger (or for one
++       that may attach later) has the position of every statement, where
++       breakpoints and steps stop */
++    if ((ctx->rt->debug_handler || ctx->rt->debug_positions) && s->token.val != '{')
++        emit_source_loc(s);
++
+     switch(tok = s->token.val) {
+     case '{':
+         if (js_parse_block(s))
+@@ -30247,9 +30620,10 @@
+         break;
+ 
+     case TOK_DEBUGGER:
+-        /* currently no debugger, so just skip the keyword */
++        emit_source_loc(s);
+         if (next_token(s))
+             goto fail;
++        emit_op(s, OP_debugger);
+         if (js_parse_expect_semi(s))
+             goto fail;
+         break;
+@@ -37248,6 +37622,7 @@
+     JS_FreeAtomRT(rt, b->filename);
+     js_free_rt(rt, b->pc2line_buf);
+     js_free_rt(rt, b->source);
++    js_free_rt(rt, b->debug_data);
+ 
+     remove_gc_object(&b->header);
+     if (rt->gc_phase == JS_GC_PHASE_REMOVE_CYCLES && JS_REF_COUNT(b) != 0) {
+@@ -38564,7 +38939,8 @@
+     BC_TAG_SYMBOL,
+ } BCTagEnum;
+ 
+-#define BC_VERSION 29
++/* kario-debugger.patch: OP_debugger renumbers the opcodes after it */
++#define BC_VERSION (29 | 0x80)
+ 
+ typedef struct BCWriterState {
+     JSContext *ctx;
+diff -ruN orig/quickjs.h new/quickjs.h
+--- orig/quickjs.h
++++ new/quickjs.h
+@@ -1495,12 +1495,74 @@
+ JS_EXTERN int JS_SetModuleExportList(JSContext *ctx, JSModuleDef *m,
+                                      const JSCFunctionListEntry *tab, int len);
+ 
++/* Debugger hooks: Kario's patch (kario-debugger.patch), not upstream
++   QuickJS-ng. A handler sees the bytecode as it runs; the frames on the
++   stack are read and written by level, 0 the innermost. */
++
++typedef enum JSDebugEvent {
++    JS_DEBUG_STEP,      /* before an instruction */
++    JS_DEBUG_STATEMENT, /* a debugger statement */
++    JS_DEBUG_EXCEPTION, /* an exception thrown, before the stack unwinds */
++} JSDebugEvent;
++
++typedef struct JSDebugPoint {
++    /* the frame: the same pointer while it runs */
++    const void *frame;
++    /* the debugger's slot in the frame's function: NULL or memory from
++       js_malloc_rt(), freed with the function; NULL for a native frame */
++    void **data;
++    /* the instruction's offset in its function */
++    uint32_t pc;
++    /* JS_DEBUG_EXCEPTION: the exception, and whether a try around the
++       point in a frame on the stack catches it (an exception that ends an
++       async function rejects its promise: not caught) */
++    JSValueConst exception;
++    bool caught;
++} JSDebugPoint;
++
++typedef void JSDebugHandler(JSContext *ctx, JSDebugEvent event,
++                            const JSDebugPoint *at, void *opaque);
++
++/* Bytecode frames entered while a handler is set call it before each of
++   their instructions; debugger statements and exceptions call it in any
++   frame. The handler may run JavaScript: what it throws is dropped, and
++   the exception being thrown is kept. Code compiled while a handler is set
++   has the position of every statement (otherwise only of calls, property
++   accesses, operators and throws). */
++JS_EXTERN void JS_SetDebugHandler(JSRuntime *rt, JSDebugHandler *handler,
++                                  void *opaque);
++/* Code compiled while on has the position of every statement too, without
++   a handler: a debugger that attaches later stops on every line. */
++JS_EXTERN void JS_SetDebugPositions(JSRuntime *rt, bool on);
++JS_EXTERN int JS_DebugFrameCount(JSContext *ctx);
++/* -1 when there is no such frame. */
++JS_EXTERN int JS_DebugFramePoint(JSContext *ctx, int level, JSDebugPoint *at);
++/* { name, file, line, column }, or { name, native: true } */
++JS_EXTERN JSValue JS_DebugFrameInfo(JSContext *ctx, int level);
++
++typedef struct JSDebugLine {
++    uint32_t pc;
++    int line, column;
++} JSDebugLine;
++
++/* The positions of the level's function, by offset, ascending from 0:
++   their count, *lines from js_malloc(); -1 for a native frame. */
++JS_EXTERN int JS_DebugFrameLines(JSContext *ctx, int level, JSDebugLine **lines);
++/* The level's arguments and locals, or (closure) the outer variables its
++   function uses: an array of { name, index, value, const }, where value
++   is missing for a variable not initialized yet. */
++JS_EXTERN JSValue JS_DebugFrameVariables(JSContext *ctx, int level, bool closure);
++/* Sets the variable index (of JS_DebugFrameVariables) to val (taken). */
++JS_EXTERN int JS_DebugSetVariable(JSContext *ctx, int level, bool closure,
++                                  int index, JSValue val);
++
+ /* Version */
+ 
+ #define QJS_VERSION_MAJOR 0
+ #define QJS_VERSION_MINOR 18
+ #define QJS_VERSION_PATCH 0
+-#define QJS_VERSION_SUFFIX ""
++/* Kario's patch changes the bytecode (OP_debugger): another version. */
++#define QJS_VERSION_SUFFIX "+kario.1"
+ 
+ JS_EXTERN const char* JS_GetVersion(void);
+ 
+diff -ruN orig/quickjs-opcode.h new/quickjs-opcode.h
+--- orig/quickjs-opcode.h
++++ new/quickjs-opcode.h
+@@ -269,6 +269,7 @@
+ DEF(using_dispose_merge, 1, 2, 1, none)
+ DEF(  using_dispose_end, 1, 1, 0, none)
+ DEF(        using_check, 2, 1, 2, u8)
++DEF(       debugger, 1, 0, 0, none) /* kario-debugger.patch */
+ /* must be the last non short and non temporary opcode */
+ DEF(            nop, 1, 0, 0, none)
+ 

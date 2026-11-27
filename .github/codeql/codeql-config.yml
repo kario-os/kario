@@ -1,0 +1,13 @@
+# CodeQL's configuration (.github/workflows/codeql.yml). Left out: what is
+# not this repository's code (vendored and generated files, the Mermaid
+# bundle, build output) and test fixtures, which hold hostile input on
+# purpose (sandbox escapes, malformed packages).
+name: kario
+paths-ignore:
+  - vendor
+  - build
+  - "**/node_modules"
+  - "**/testdata"
+  - shell/mermaid/lovely-mermaid.iife.js
+  - sdk/ts/ui.d.ts
+  - sdk/ts/node/languages.mjs

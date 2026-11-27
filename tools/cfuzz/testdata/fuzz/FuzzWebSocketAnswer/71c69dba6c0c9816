@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("\x03HTTP/1.1 101\r\nUpgrade:websocket\r\nConnection:Upgrade\r\nSec-WebSocket-Accept:s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\nSec-WebSocket-Protocol:\r\nCon v3.kario\r\n\r\n")

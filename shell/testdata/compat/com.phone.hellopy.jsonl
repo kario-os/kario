@@ -1,0 +1,4 @@
+{"t": "hello", "app": "com.phone.hellopy", "proto": "phone.ui/0"}
+{"t": "reset", "screen": {"id": "main", "title": "Python 示例", "body": [{"kind": "text", "style": "big", "text": "Hello from Python"}, {"kind": "text", "style": "dim", "text": "同一套 phone.Ui 协议，无需 SDK"}, {"kind": "text", "text": "已点击 0 次"}, {"kind": "button", "id": "inc", "text": "点我", "actions": [{"id": "inc", "label": "点我", "primary": true}]}]}}
+{"t": "update", "screen": {"id": "main", "title": "Python 示例", "body": [{"kind": "text", "style": "big", "text": "Hello from Python"}, {"kind": "text", "style": "dim", "text": "同一套 phone.Ui 协议，无需 SDK"}, {"kind": "text", "text": "已点击 1 次"}, {"kind": "button", "id": "inc", "text": "点我", "actions": [{"id": "inc", "label": "点我", "primary": true}]}]}}
+{"t": "pong", "value": "1"}

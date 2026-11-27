@@ -1,0 +1,81 @@
+# The snapshots the selftest cannot hold still (docs/40-testing.md §2):
+# what the status bar held still and the masks of shell/snapcmp.go do not
+# cover. One per line, "<name> <verb> [<regexp>]", <name> a glob:
+#   skip          not compared
+#   skip-text     the text renderer's not compared
+#   skip-pixel    the pixel renderer's not compared
+#   mask <re>     each match (its first group if it has one) shown as "#",
+#                 before the pixel renderer lays the text out
+# A line that names no snapshot of the script fails the shell tests.
+
+# The simulated weather follows the date.
+41-weather skip
+41-location-dialog skip
+41-location-always skip
+78-charging mask \S+ \S+ -?\d+°[CF]
+92-idle-es mask \S+ \S+ -?\d+°[CF]
+93-nfc-pick mask \S+ \S+ -?\d+°[CF]
+# Behind a dialog: only the pixel renderer draws the standby screen there.
+70-usb-trust mask \S+ \S+ -?\d+°[CF]
+93-nfc-present mask \S+ \S+ -?\d+°[CF]
+
+# The month and the day of the run, with their lunar dates and holidays.
+60-calendar-month skip
+61-calendar-day skip
+
+# Today's date in the settings.
+92-datetime-es mask \p{L}+, \d{1,2} de \p{L}+
+
+# Timings measured in the run.
+50-native-compare skip
+
+# Behind the dialog, the contacts case's call to 13700001234: hung up as
+# soon as it connects, it lasted 0 s (no duration shown) or 1 s, as the
+# second turned.
+47-sim-pin mask ^已拨(?: · \d\d:\d\d)?$
+
+# The computer's kernel, and how long the Shell has run (with the spaces
+# before them: the values are right-aligned).
+40-about mask [ ]*\d+\.\d+\.\d+[-\w.+]*
+40-about mask [ ]*(?:\d+h)?(?:\d+m)?\d+s\b
+
+# The video plays on (2 to 4 seconds in) while it is taken: how far the
+# bar is, and in pixels the picture.
+52-video mask [━─]{3,}
+52-video skip-pixel
+
+# The song plays on (3 to 9 seconds in): how far the bar is.
+27-music mask [━─]{3,}
+27-music skip-pixel
+
+# The voice message records on: how far its bar is, drawn and not text.
+32-voice-rec skip-pixel
+
+# The simulated camera is a live picture: in the video call's corner and
+# in the viewfinder (its photos are one picture, phone-mediad --test-stills).
+05-video-call skip-pixel
+34-camera skip-pixel
+
+# The wallet numbers an order by the time it was made; the wide screen
+# shows it beside the confirmation.
+10-trusted-confirm mask P(\d{10,})
+76-pay-fingerprint mask P(\d{10,})
+77-pay-invalidated mask P(\d{10,})
+
+# A push token made for the run: base64url, its data and its signature
+# (the text renderer cuts it short).
+53-tutorial-reminder mask [A-Za-z0-9_-]{12,}(?:\.[A-Za-z0-9_-]*)?
+
+# The family pairing code is random, and so its QR code.
+96-parent-code mask \d{4} \d{4}
+96-parent-code skip-pixel
+
+# The text renderer wraps the article's address inside its port.
+04-permission mask (\d{4})/article
+
+# How long ago the account last synced.
+accounts mask (\d+ \S+前)
+
+# The hotspot's password is made for the run, and on the text renderer's
+# screen: the pairing QR code is too wide for it and leaves room.
+switch-qr mask (?m)^\s+密码\s+(\S+)$

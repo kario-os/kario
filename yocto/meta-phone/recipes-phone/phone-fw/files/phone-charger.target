@@ -1,0 +1,12 @@
+[Unit]
+Description=Charger mode: the battery on the screen, nothing else (the bootloader started the phone for its charger)
+# The default target when phone-charger-generator finds
+# androidboot.mode=charger (28-battery.md §10): the basic system and the
+# charger's screen; not multi-user.target, so no Shell, no telephony, no
+# Wi-Fi or Bluetooth, no apps. phone-charger-test.service runs only on
+# the emulator's test (phone.charger-test=1).
+Requires=basic.target
+Wants=phone-charger.service phone-charger-radios.service phone-charger-test.service
+After=basic.target
+Conflicts=rescue.service rescue.target
+AllowIsolate=yes

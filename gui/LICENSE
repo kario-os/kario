@@ -1,0 +1,12 @@
+phone-gui
+Copyright (c) 2026 the project owners.
+
+phone-gui is a pixel renderer for the renderer slot (23-renderer-protocol.md):
+the open image's renderer and the one the product renderer is compared with.
+It is licensed under the GNU General Public License, version 3 only
+(GPL-3.0-only), full text in COPYING, and uses Slint under Slint's GPLv3
+option. Whoever distributes it on a device takes on the GPLv3's duties there,
+including the installation information of its section 6.
+
+Contributions are accepted under the same licence, signed off as everywhere
+in this repository (CONTRIBUTING.md).

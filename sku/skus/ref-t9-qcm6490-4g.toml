@@ -1,0 +1,9 @@
+# The open reference phone with the number pad (24-sku-framework.md §9):
+# a portrait screen over a T9 candybar, on the same board as
+# ref-qwerty-qcm6490-4g.
+id = "ref-t9-qcm6490-4g"
+board = "qcm6490-ref"
+display = "dmt028"
+keypad = "t9-v1"
+memory = "4g"
+product = "ref"

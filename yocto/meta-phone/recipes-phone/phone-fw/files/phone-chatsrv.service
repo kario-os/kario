@@ -1,0 +1,17 @@
+[Unit]
+Description=Simulated Hongyan server (stands in for the app vendor's cloud in the prototype)
+After=phone-pushgw.service
+Wants=phone-pushgw.service
+
+[Service]
+# Small Go heaps: no transparent huge pages (see phone-shell DisableHugePages).
+Environment=GODEBUG=disablethp=1
+# The push gateway: the simulated one on this device, unless the product
+# layer names the cloud's (phone-services, /usr/share/phone/services.env).
+Environment=PHONE_PUSH_GATEWAY=https://127.0.0.1:8790 PHONE_PUSH_GATEWAY_CERT=/var/lib/phone/pushgw-tls/cert.pem
+EnvironmentFile=-/usr/share/phone/services.env
+ExecStart=/usr/bin/phone-chatsrv --listen 127.0.0.1:8791 --gateway ${PHONE_PUSH_GATEWAY} --gateway-cert ${PHONE_PUSH_GATEWAY_CERT}
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

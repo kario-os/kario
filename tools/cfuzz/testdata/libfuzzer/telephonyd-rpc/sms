@@ -1,0 +1,8 @@
+{"id":1,"method":"sms.send","params":{"to":"10086","text":"caf\u00e9 \ud83d\ude00","id":"o1"}}
+{"id":2,"method":"sim.sms","params":{"from":"10086","text":"held","held":true}}
+{"id":3,"method":"sms.pending"}
+{"id":4,"method":"sms.ack","params":{"keys":["m1@failed","nothing"]}}
+{"id":5,"method":"sms.legacy"}
+{"id":6,"method":"sms.legacy_drop"}
+{"id":7,"method":"sim.sms","params":{"from":"10086","data":"0041","class":0}}
+{"id":8,"method":"sim.cb","params":{"channel":4371,"serial":12288,"text":"Flood warning"}}

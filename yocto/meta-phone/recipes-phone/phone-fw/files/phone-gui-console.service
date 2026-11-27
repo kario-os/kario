@@ -1,0 +1,10 @@
+[Unit]
+Description=The display's shell and renderer on the console as a console file (only with phone.gui-console on the kernel command line)
+# Pulled in by phone-gui-console-generator.
+Before=phone-display.service
+
+[Service]
+ExecStart=/usr/libexec/phone/gui-console
+# phone-paint's PHONE_PAINT_STEPS lines, as tail copies them, joined into
+# whole lines by the journal.
+StandardOutput=journal

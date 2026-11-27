@@ -1,0 +1,4 @@
+{"id":1,"method":"dial","params":{"number":"+8613800138000","sim":1}}
+{"id":2,"method":"sms.send","params":{"to":"10086","text":"caf\u00e9 \ud83d\ude00 \"q\"","parts":[1,2.5,-3e2]}}
+{"id":3,"ok":true,"result":null}
+[true,false,{},[],""]

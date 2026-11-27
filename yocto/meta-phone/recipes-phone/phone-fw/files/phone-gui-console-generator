@@ -1,0 +1,25 @@
+#!/bin/sh
+# The GUI drive's console (phone.gui-console on the kernel command line,
+# yocto/qemu-gui.sh): what phone-display's shell and renderer say reaches
+# the console only through gui-console (phone-gui-console.service), as a
+# console file, not as the journal's plain copy, on which the kernel's
+# lines can land; phone-paint's PHONE_PAINT_STEPS lines go to a file it
+# relays too, not to the console itself (a phone.gui=1 boot's
+# systemd.setenv= of them gives way to the service's own setting).
+# SYSTEMD_PROC_CMDLINE stands in for /proc/cmdline, as for systemd's own
+# generators (yocto/qemu-gui-drive-test.py).
+normal=${1:-}
+[ -n "$normal" ] || exit 0
+cmdline=${SYSTEMD_PROC_CMDLINE-$(cat /proc/cmdline 2>/dev/null)}
+on=
+for w in $cmdline; do
+	case $w in
+	phone.gui-console) on=1 ;;
+	esac
+done
+[ -n "$on" ] || exit 0
+mkdir -p "$normal/phone-display.service.d" "$normal/multi-user.target.wants" || exit 1
+printf '[Service]\nEnvironment=PHONE_PAINT_STEPS=/run/phone/gui-steps.jsonl\nStandardOutput=journal\nStandardError=journal\n' \
+	> "$normal/phone-display.service.d/gui-console.conf" || exit 1
+ln -sf /usr/lib/systemd/system/phone-gui-console.service "$normal/multi-user.target.wants/phone-gui-console.service" || exit 1
+exit 0

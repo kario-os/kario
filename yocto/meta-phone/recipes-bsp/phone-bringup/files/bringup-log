@@ -1,0 +1,24 @@
+#!/bin/sh
+# The kernel's log of the boots before this one, which the device tree's
+# ramoops region keeps across a reboot: systemd-pstore moves it from
+# /sys/fs/pstore to /var/lib/systemd/pstore at boot.
+#
+#   bringup-log        the last kept console log (an oops or panic: its dmesg)
+#   bringup-log -a     every kept file, oldest first
+set -eu
+files=$(find /sys/fs/pstore /var/lib/systemd/pstore -type f -exec ls -1tr {} + 2>/dev/null || true)
+if [ -z "$files" ]; then
+	echo "bringup-log: nothing kept from an earlier boot"
+	exit 0
+fi
+if [ "${1:-}" = "-a" ]; then
+	for f in $files; do
+		echo "==> $f <=="
+		cat "$f"
+	done
+	exit 0
+fi
+last=$(echo "$files" | grep -E 'dmesg|console' | tail -n 1)
+[ -n "$last" ] || last=$(echo "$files" | tail -n 1)
+echo "==> $last <=="
+cat "$last"

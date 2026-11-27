@@ -1,0 +1,64 @@
+# The AI review report (docs/38-contributing.md): once a pull request's
+# platform run has passed, a model reads the pull request and posts an
+# advisory report as one comment, updated for later commits. This runs in
+# the base repository's context, with its secret, also for pull requests
+# from forks; so it never checks out or runs the pull request's code. Only
+# the default branch's scripts/ai-review.py runs, and it fetches the pull
+# request (metadata, diff, files at its head) from the API as data. It needs
+# two settings: the AI_REVIEW_PROVIDER variable (deepseek, qwen, kimi, glm,
+# openai, anthropic, gemini, openrouter; deepseek when unset) and that
+# provider's key in the AI_REVIEW_API_KEY secret; without the key it posts
+# nothing. Maintainers can generate a
+# report again by hand: Actions, ai-review, Run workflow, with the number.
+name: ai-review
+
+on:
+  workflow_run:
+    workflows: [platform]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number
+        required: true
+        type: number
+      budget:
+        description: Token budget for this run (empty for the AI_REVIEW_TOKEN_BUDGET variable)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ai-review-${{ github.event.workflow_run.head_sha || inputs.pr }}
+  cancel-in-progress: false
+
+jobs:
+  review:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.event == 'pull_request' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.path == '.github/workflows/ci.yml')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: |
+            scripts
+            .github
+      - name: Review (scripts/ai-review.py)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          AI_REVIEW_API_KEY: ${{ secrets.AI_REVIEW_API_KEY }}
+          AI_REVIEW_PROVIDER: ${{ vars.AI_REVIEW_PROVIDER }}
+          AI_REVIEW_BASE_URL: ${{ vars.AI_REVIEW_BASE_URL }}
+          AI_REVIEW_MODEL: ${{ vars.AI_REVIEW_MODEL }}
+          AI_REVIEW_LANG: ${{ vars.AI_REVIEW_LANG }}
+          AI_REVIEW_TOKEN_BUDGET: ${{ vars.AI_REVIEW_TOKEN_BUDGET }}
+        run: python3 scripts/ai-review.py

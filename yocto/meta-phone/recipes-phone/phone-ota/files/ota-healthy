@@ -1,0 +1,17 @@
+#!/bin/sh
+# Whether the running slot came up healthy (phone-ota-good.service): the
+# system services run and, where the display service runs (always on a
+# phone; with phone.gui=1 on the emulator), the shell came up with its
+# renderer and started an app: it writes /run/phone/healthy. A renderer
+# that cannot start (no display on the emulator) keeps it from that.
+# phone.unhealthy on the kernel command line makes it fail, for the
+# rollback test.
+grep -qw phone.unhealthy /proc/cmdline && exit 1
+systemctl is-active -q phone-telephonyd.service || exit 1
+[ "$(systemctl show -P ConditionResult phone-display.service)" = yes ] || exit 0
+for i in $(seq 1 120); do
+	[ -e /run/phone/healthy ] && exit 0
+	sleep 1
+done
+echo "ota-healthy: the shell did not come up with its renderer and an app" > /dev/console
+exit 1

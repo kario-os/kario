@@ -1,0 +1,11 @@
+{
+  "(%d bytes)": "(%d bytes)",
+  "Connected to %s · heartbeat every %d s": "Conectado a %s · latido cada %d s",
+  "Disconnect": "Desconectar",
+  "Heartbeats sent: %d": "Latidos enviados: %d",
+  "Keepalive WebSocket Sample": "Ejemplo de WebSocket propio",
+  "Last message: %s": "Último mensaje: %s",
+  "Not connected": "Sin conexión",
+  "Not connected: %s": "No se conectó: %s",
+  "Server (wss://…)": "Servidor (wss://…)"
+}

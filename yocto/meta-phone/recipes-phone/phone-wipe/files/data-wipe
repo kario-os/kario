@@ -1,0 +1,123 @@
+#!/bin/sh
+# A factory reset's wipe, before the phone's services start (docs/31 §11).
+# The Shell left a request in the persistent area (the state partition on
+# /var/lib/slots, outside the data partition) and restarted the phone. The
+# device's identity (its keys and the factory's files under phone/, which
+# the factory's certificate names) is copied into the persistent area
+# first, the data area is made anew (the initramfs on an A/B disk:
+# wipe_format) or emptied (phone-wipe.service where the data shares the
+# root file system: wipe_empty), the identity goes back with a new data
+# salt, and the request goes last: a wipe cut short by a power loss starts
+# over at the next boot. The same steps and paths as Go's package wipe.
+#
+# Sourced by the initramfs' /init; run as a program by phone-wipe.service:
+#   data-wipe empty <var/lib> <persistent area>
+
+WIPE_KEEP="phone/factory phone/keystore/device.key phone/keystore/device-sm2.key"
+
+wipe_log() {
+	if [ -w /dev/kmsg ]; then
+		echo "phone-wipe: $*" > /dev/kmsg
+	else
+		echo "phone-wipe: $*" >&2
+	fi
+}
+
+# wipe_requested <persistent area>
+wipe_requested() { [ -f "$1/wipe/request" ]; }
+
+# wipe_save <var/lib> <persistent area>: the identity into the persistent
+# area, unless an earlier try kept it already.
+wipe_save() {
+	[ -f "$2/wipe/kept" ] && return 0
+	rm -rf "$2/wipe/keep" || return 1
+	for p in $WIPE_KEEP; do
+		[ -e "$1/$p" ] || continue
+		mkdir -p "$2/wipe/keep/$(dirname "$p")" && cp -a "$1/$p" "$2/wipe/keep/$p" || return 1
+	done
+	sync
+	: > "$2/wipe/kept" || return 1
+	sync
+}
+
+# wipe_restore <var/lib> <persistent area>: the identity back, a new data
+# salt, then the request gone.
+wipe_restore() {
+	mkdir -p "$1/phone/keystore" || return 1
+	chmod 0711 "$1/phone" && chmod 0700 "$1/phone/keystore" || return 1
+	for p in $WIPE_KEEP; do
+		[ -e "$2/wipe/keep/$p" ] || continue
+		mkdir -p "$1/$(dirname "$p")" && cp -a "$2/wipe/keep/$p" "$1/$p" || return 1
+	done
+	# BusyBox's head here has no -c.
+	dd if=/dev/urandom of="$1/phone/keystore/data.salt" bs=32 count=1 2> /dev/null && chmod 0600 "$1/phone/keystore/data.salt" || return 1
+	sync
+	rm -rf "$2/wipe" || return 1
+	sync
+}
+
+# wipe_empty <var/lib> <persistent area>: the phone's state, its Wi-Fi
+# networks and its Bluetooth pairings emptied in place.
+wipe_empty() {
+	wipe_save "$1" "$2" || return 1
+	for d in phone iwd bluetooth; do
+		[ -d "$1/$d" ] || continue
+		for f in "$1/$d"/* "$1/$d"/.[!.]* "$1/$d"/..?*; do
+			if [ -e "$f" ] || [ -L "$f" ]; then
+				rm -rf "$f" || return 1
+			fi
+		done
+	done
+	wipe_restore "$1" "$2"
+}
+
+# wipe_format <data partition> <mount point> <persistent area>: the data
+# partition made anew (mke2fs discards its blocks first where the storage
+# can), the identity kept. Without mke2fs it is emptied in place instead.
+wipe_format() {
+	if ! command -v mkfs.ext4 > /dev/null; then
+		wipe_log "no mkfs.ext4: emptying the data partition instead"
+		mount -t ext4 "$1" "$2" || return 1
+		wipe_empty "$2" "$3"
+		rc=$?
+		umount "$2"
+		return $rc
+	fi
+	if [ ! -f "$3/wipe/kept" ]; then
+		if mount -t ext4 "$1" "$2"; then
+			wipe_save "$2" "$3"
+			rc=$?
+			umount "$2"
+			[ $rc = 0 ] || return 1
+		else
+			wipe_log "the data partition does not mount: the device's keys and certificates are lost"
+			mkdir -p "$3/wipe" && : > "$3/wipe/kept" || return 1
+		fi
+	fi
+	mkfs.ext4 -F -q -L data "$1" || return 1
+	mount -t ext4 "$1" "$2" || return 1
+	wipe_restore "$2" "$3"
+	rc=$?
+	umount "$2"
+	return $rc
+}
+
+if [ "${0##*/}" = data-wipe ]; then
+	case "$1" in
+	empty)
+		[ $# = 3 ] || { echo "usage: data-wipe empty <var/lib> <persistent area>" >&2; exit 2; }
+		wipe_requested "$3" || exit 0
+		wipe_log "factory reset: emptying the data in $2"
+		if wipe_empty "$2" "$3"; then
+			wipe_log "factory reset: done"
+		else
+			wipe_log "factory reset: the wipe failed; it is tried again at the next boot"
+			exit 1
+		fi
+		;;
+	*)
+		echo "usage: data-wipe empty <var/lib> <persistent area>" >&2
+		exit 2
+		;;
+	esac
+fi

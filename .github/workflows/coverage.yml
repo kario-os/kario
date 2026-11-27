@@ -1,0 +1,109 @@
+# Code coverage (docs/40-testing.md §7), by hand only: Actions › coverage ›
+# Run workflow, or gh workflow run coverage (-f parts='go-e2e rust'). It is
+# make coverage: the Go unit tests and the text selftest on the system
+# built with -cover, merged; phone-paint's tests; telephonyd's and the C
+# SDK's; the JavaScript under Node.js (sdk/ts/node, Kario Studio). It takes
+# about as long as the go and selftest jobs of platform together, one after
+# the other, so it does not run for pull requests. The report is the
+# coverage-report artifact (report/index.html), its summary this run's.
+# Like platform, it ends by pruning the runs past the newest 3 of each
+# workflow.
+name: coverage
+
+on:
+  workflow_dispatch:
+    inputs:
+      parts:
+        description: make coverage's parts, empty for all (go-unit go-e2e rust c ts)
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: coverage
+  cancel-in-progress: false
+
+env:
+  CXX23: g++-14
+  GOFLAGS: -mod=vendor
+
+jobs:
+  coverage:
+    runs-on: ubuntu-24.04
+    # As platform's selftest job: the limit that matters is the step's.
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ide/vscode/package-lock.json
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            build/coverage/rust/target
+          key: cargo-coverage-${{ runner.os }}-${{ hashFiles('paint/Cargo.lock') }}
+          restore-keys: cargo-coverage-${{ runner.os }}-
+      - name: Toolchain (telephonyd's C++23 and its gcov, sd-bus; ffmpeg for the media tests; rustc's llvm-tools)
+        run: |
+          sudo apt-get update && sudo apt-get install -y g++-14 cmake ninja-build pkg-config libsystemd-dev libcurl4-openssl-dev ffmpeg
+          rustup component add llvm-tools
+      - name: Go modules (vendor/ is not in git)
+        run: go mod vendor
+      - name: Kario Studio's packages (its tests run under coverage)
+        working-directory: ide/vscode
+        run: npm ci
+      - name: make coverage
+        timeout-minutes: 120
+        env:
+          PARTS: ${{ inputs.parts }}
+        run: |
+          case $PARTS in *"'"* | *'$'*) echo "::error::parts: no quotes or \$"; exit 1 ;; esac
+          make coverage PARTS="$PARTS"
+      - name: The summary
+        if: always()
+        run: |
+          if [ -f build/coverage/summary.md ]; then
+            cat build/coverage/summary.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "make coverage wrote no summary" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: |
+            build/coverage/summary.*
+            build/coverage/parts.json
+            build/coverage/report/
+            build/coverage/go/merged.out
+            build/coverage/go/func.txt
+            build/coverage/go/selftest-junit.xml
+            build/coverage/logs/
+          if-no-files-found: warn
+
+  # The run history: only the newest 3 runs of each workflow stay, with
+  # their logs and artifacts (scripts/ci-prune.sh, as platform's prune).
+  prune:
+    if: always()
+    needs: [coverage]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Delete the runs past the newest 3 of each workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: sh scripts/ci-prune.sh "$GITHUB_REPOSITORY" 3

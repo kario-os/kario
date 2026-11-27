@@ -1,0 +1,14 @@
+# The open reference flip phone (24-sku-framework.md §9.10): a clamshell
+# with the T9 candybar's portrait screen inside, a memory LCD outside and a
+# fingerprint sensor as the OK key's surface, on the candybars' module.
+# 4 GB: smooth use first, others' apps kept in memory rather than killed
+# and started anew; its self-refresh costs about 0.5 mA asleep, which the
+# 7-day standby budget holds (§9.10.10). 2 GB is for a basic T9 phone that
+# runs only Kario's own apps (§9.10.1).
+id = "ref-flip-qcm6490-4g"
+board = "qcm6490-flip"
+display = "dmt028"
+outer_display = "ls013b7dh05"
+keypad = "t9-fp-v1"
+memory = "4g"
+product = "ref"

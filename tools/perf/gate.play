@@ -1,0 +1,87 @@
+# The gate's fixed sequence (docs/39-oneplus-6t.md §8.1), played into
+# phone-paint by PHONE_PAINT_PLAY (paint/src/play.rs): the same keys and
+# touches for every GPU path and screen size, so their tables compare.
+# The Shell starts it from the idle screen with no screen lock; apps are
+# started cold (the kit and host.sh start the phone's Shell afresh).
+
+wait sys.idle 90000
+sleep 1000
+
+# Main menu: open it, move the focus over the grid.
+key enter
+wait sys.menu
+key right 3
+key down 2
+key left 3
+key up 2
+
+# Contacts: scroll the list with the keys, then with a finger.
+open contacts
+wait com.phone.contacts/list 10000
+key down 15
+key up 15
+drag 50% 75% 50% 25% 250
+drag 50% 25% 50% 75% 250
+key enter
+key esc
+key f4
+wait sys.idle
+
+# Messages: a new SMS typed on the 9-key pad, then erased (no draft left).
+key enter
+wait sys.menu
+open messages
+wait com.phone.messages/list 10000
+key down 3
+key f2
+wait com.phone.messages/new
+type 13800000000
+key down
+type 4433555555666
+key 0
+type 9666777555
+key backspace 16
+key up
+key backspace 11
+key esc
+wait com.phone.messages/list
+key f4
+wait sys.idle
+
+# Settings: its sub-pages in and out.
+key enter
+wait sys.menu
+open settings
+wait com.phone.settings/root 10000
+key enter
+wait com.phone.settings/g.device
+key enter
+wait com.phone.settings/about
+key down 5
+key esc
+wait com.phone.settings/g.device
+key esc
+wait com.phone.settings/root
+key down 10
+drag 50% 75% 50% 30% 250
+key last
+key enter
+wait com.phone.settings/
+key esc
+key first
+key f4
+wait sys.idle
+
+# Gallery: the grid and a photo or two.
+key enter
+wait sys.menu
+open gallery
+wait com.phone.gallery/list 10000
+key right 2
+key down 2
+key enter
+key right 2
+key left 2
+key esc
+key f4
+wait sys.idle

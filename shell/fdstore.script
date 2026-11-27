@@ -1,0 +1,153 @@
+# The crash cases on the device: phone-shell runs as a systemd service with an
+# fd store of four places (phone-fdstore-check.service, which selftest-boot.sh
+# starts), crashes on purpose, and the instance systemd restarts takes the
+# apps over from LISTEN_FDS.
+
+sleep 800
+
+== Shell 崩溃：systemd 从 fd 存储把应用连接交给重启的 Shell，应用不重启
+require-fdstore
+at sys.idle 8000
+key f4
+type /
+type 计算器
+key enter
+wait 小数点
+# Three digits: `wait` sees the whole screen, and the status bar's clock
+# can show any two.
+type 587
+wait 587
+app-pid com.phone.calc save
+shell-crash
+at sys.idle 15000
+app-pid com.phone.calc same
+adopted com.phone.calc
+key f4
+type /
+type 计算器
+key enter
+wait 587
+key f4
+
+== Shell 崩溃后应用仍在它自己的 systemd 作用域里，限额照旧，冻结照常
+require-cgroup
+cgroup com.phone.calc memory.max 201326592
+cgroup com.phone.calc pids.max 128
+freeze-after 500
+key f4
+appstate com.phone.calc frozen 5000
+cgroup com.phone.calc cgroup.freeze 1
+freeze-after 0
+
+== 应用自己的长连接，fd 存储的位置不够时：存储只有 4 个位置，应用自己的连接最多占 1 个（测试服务器在 Shell 的服务之外，崩溃后还在）；「长连接示例」连上后它的连接在存储里，「保活 WebSocket 示例」再连上，最近用过的后者占了这个位置、前者的挤出去（只在 Shell 手里）；后者停掉，前者的回到存储；后者再连上又把它挤出去；Shell 崩溃，systemd 重启的 Shell 接管两个应用和后者的连接，告诉前者「没有位置（full）」，前者重新连上，这回它最近用过、占了位置；最后卸载
+require-fdstore
+require-cgroup
+require-example keepalive
+require-example keepalive-ts
+appstop com.phone.calc
+key f4
+setting developer_mode 1
+at sys.idle
+freeze-after -1
+keep-server 127.0.0.1:0 outside
+pkg-install keepalive
+pkg-install keepalive-ts
+type /
+type 长连接示例
+key enter
+at com.example.keepalive/main 10000
+fill {keepalive}
+key enter
+wait 已连上 127.0.0.1 10000
+keep-got 1 HELLO
+fdstore com.example.keepalive keep yes
+key f4
+at sys.idle
+type /
+type 保活 WebSocket 示例
+key enter
+at com.example.keepalivets/main 10000
+fill ws://{keepalive}/live
+key enter
+wait 已连上 ws://127.0.0.1 10000
+keep-got 2 HELLO
+fdstore com.example.keepalivets keep yes
+fdstore com.example.keepalive keep no
+shell-log keepalive: no room for com.example.keepalive's connection in the fd store (4 places
+fdstore com.example.keepalive app yes
+fdstore com.example.keepalivets app yes
+key f4
+at sys.idle
+appstop com.example.keepalivets
+fdstore com.example.keepalive keep yes
+shell-log keepalive: com.example.keepalive's connection has a place in the fd store again
+type /
+type 保活 WebSocket 示例
+key enter
+at com.example.keepalivets/main 10000
+fill ws://{keepalive}/live
+key enter
+wait 已连上 ws://127.0.0.1 10000
+keep-got 3 HELLO
+fdstore com.example.keepalivets keep yes
+fdstore com.example.keepalive keep no
+key f4
+at sys.idle
+app-pid com.example.keepalive save
+app-pid com.example.keepalivets save
+shell-crash
+at sys.idle 15000
+freeze-after -1
+app-pid com.example.keepalive same
+app-pid com.example.keepalivets same
+adopted com.example.keepalive
+adopted com.example.keepalivets
+shell-log keepalive: com.example.keepalive's connection had no room in the fd store; told the app to connect again (full)
+app-log com.example.keepalive com.example.keepalive: keepalive lost (full): connecting again
+keep-got 4 HELLO
+fdstore com.example.keepalive keep yes
+fdstore com.example.keepalivets keep no
+fdstore com.example.keepalivets app yes
+appstop com.example.keepalive
+appstop com.example.keepalivets
+pkg-uninstall com.example.keepalive
+pkg-uninstall com.example.keepalivets
+keep-server off
+freeze-after 0
+setting developer_mode 0
+
+== 应用自己的长连接在 Shell 崩溃前被服务器断开：「长连接示例」在前台，自己读到断开；Shell 那份只在应用冻结时才看，没察觉；systemd 发现存储里那份挂断了，把它扔掉；Shell 崩溃，systemd 重启的 Shell 接管应用，发现它的连接没跟过来，告诉它「丢了（dropped）」；最后卸载
+require-fdstore
+require-cgroup
+require-example keepalive
+key f4
+setting developer_mode 1
+at sys.idle
+freeze-after -1
+keep-server 127.0.0.1:0 outside
+pkg-install keepalive
+type /
+type 长连接示例
+key enter
+at com.example.keepalive/main 10000
+fill {keepalive}
+key enter
+wait 已连上 127.0.0.1 10000
+keep-got 1 HELLO
+fdstore com.example.keepalive keep yes
+keep-reset
+app-log com.example.keepalive com.example.keepalive: keepalive closed: the server closed it
+wait 没有连接
+fdstore com.example.keepalive keep no
+app-pid com.example.keepalive save
+shell-crash
+at sys.idle 15000
+freeze-after -1
+app-pid com.example.keepalive same
+adopted com.example.keepalive
+shell-log keepalive: com.example.keepalive's connection did not come along; told the app to connect again (dropped)
+appstop com.example.keepalive
+pkg-uninstall com.example.keepalive
+keep-server off
+freeze-after 0
+setting developer_mode 0

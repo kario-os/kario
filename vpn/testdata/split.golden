@@ -1,0 +1,31 @@
+== kario-vpn.key (secret)
+yAnz5TF+lXXJte14tji3zlMNq+hd2rYUIgJBgB3fBmk=
+== 50-kario-vpn.netdev
+[NetDev]
+Name=kario-vpn
+Kind=wireguard
+
+[WireGuard]
+PrivateKeyFile=/run/systemd/network/kario-vpn.key
+RouteTable=main
+
+[WireGuardPeer]
+PublicKey=xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=
+Endpoint=vpn.example.com:51820
+AllowedIPs=10.77.0.0/24
+AllowedIPs=192.168.10.0/24
+PersistentKeepalive=25
+== 50-kario-vpn.network
+[Match]
+Name=kario-vpn
+
+[Link]
+RequiredForOnline=no
+
+[Network]
+Address=10.77.0.2/24
+DNS=10.77.0.1
+Domains=~. office.example
+DNSDefaultRoute=yes
+LinkLocalAddressing=no
+IPv6AcceptRA=no

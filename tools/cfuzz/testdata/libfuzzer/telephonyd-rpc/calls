@@ -1,0 +1,10 @@
+{"id":1,"method":"dial","params":{"number":"13800000001"}}
+{"id":2,"method":"calls"}
+{"id":3,"method":"dtmf","params":{"call_id":"1","tones":"123#"}}
+{"id":4,"method":"hold","params":{"call_id":"1","on":true}}
+{"id":5,"method":"mute","params":{"call_id":"1","on":true}}
+{"id":6,"method":"sim.ring","params":{"number":"13700000000"}}
+{"id":7,"method":"answer","params":{"call_id":"2"}}
+{"id":8,"method":"sim.hangup","params":{"number":"13700000000"}}
+{"id":9,"method":"hangup","params":{"call_id":"1","blocked":true}}
+{"id":10,"method":"log"}

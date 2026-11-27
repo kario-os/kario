@@ -1,0 +1,6 @@
+{"t":"start","value":"kario://notes/1"}
+{"t":"ping","value":"7"}
+{"t":"action","screen":"home","node":"q","action":"go","value":"x","fields":{"q":"caf\u00e9 \ud83d\ude00","n":[1,{"a":null}]}}
+{"t":"event","event":"x"}
+{"t":"res","req":1,"ok":true,"data":{"text":"hi"}}
+{"t":"lifecycle","state":"background"}

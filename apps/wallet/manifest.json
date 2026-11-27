@@ -1,0 +1,93 @@
+{
+  "id": "com.phone.wallet",
+  "name": "飞钱",
+  "icon": "钱",
+  "icon_image": "icon.png",
+  "description": "付款码 · 扫码 · 转账 · 替别的应用付款（支付类，示例）",
+  "exec": "phone-app-wallet",
+  "order": 20,
+  "permissions": [
+    "camera",
+    "keystore",
+    "attest",
+    "notifications",
+    "nfc",
+    "nfc_reader"
+  ],
+  "purposes": {
+    "camera": "扫收款码付款",
+    "nfc_reader": "读实体交通卡的余额"
+  },
+  "intents": [
+    {
+      "action": "pay",
+      "label": "付款"
+    }
+  ],
+  "nfc": [
+    {
+      "id": "transit",
+      "category": "other",
+      "description": "飞钱交通卡",
+      "aids": [
+        "F0465154524E53"
+      ],
+      "express": true,
+      "locales": {
+        "zh-Hant": "飛錢交通卡",
+        "en": "Feiqian transit card",
+        "es": "Tarjeta de transporte Feiqian"
+      }
+    },
+    {
+      "id": "pay",
+      "category": "payment",
+      "description": "飞钱付款",
+      "aids": [
+        "325041592E5359532E4444463031",
+        "F0465150415901"
+      ],
+      "requires_unlock": true,
+      "locales": {
+        "zh-Hant": "飛錢付款",
+        "en": "Feiqian pay",
+        "es": "Pago Feiqian"
+      }
+    }
+  ],
+  "locales": {
+    "zh-Hant": {
+      "name": "飛錢",
+      "description": "付款碼 · 掃碼 · 轉帳 · 替其他應用程式付款（付款類範例）",
+      "purposes": {
+        "camera": "掃描收款碼付款",
+        "nfc_reader": "讀實體交通卡的餘額"
+      },
+      "intents": {
+        "pay": "付款"
+      }
+    },
+    "en": {
+      "name": "Feiqian",
+      "description": "Payment code · scan · transfer · pays for other apps (a payment sample)",
+      "purposes": {
+        "camera": "Scan a merchant's code to pay",
+        "nfc_reader": "Read a physical transit card's balance"
+      },
+      "intents": {
+        "pay": "Pay"
+      }
+    },
+    "es": {
+      "name": "Feiqian",
+      "description": "Código de pago · escanear · transferir · paga por otras apps (un ejemplo de pagos)",
+      "purposes": {
+        "camera": "Escanear el código de un comercio para pagar",
+        "nfc_reader": "Leer el saldo de una tarjeta de transporte física"
+      },
+      "intents": {
+        "pay": "Pagar"
+      }
+    }
+  }
+}
