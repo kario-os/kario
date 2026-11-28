@@ -1,0 +1,20 @@
+[Unit]
+Description=Factory mode's gate: only with kario.factory=1, and only while the keystore is not provisioned (docs/31 §13)
+# The bootloader's command line: the line's fixture boots the phone with
+# it. A provisioned phone refuses (exit 3) and boots as ever; the mark it
+# writes otherwise is in /run, gone at the next boot.
+ConditionKernelCommandLine=kario.factory=1
+After=phone-keystored.socket systemd-tmpfiles-setup.service
+Wants=phone-keystored.socket
+Before=phone-factory.service phone-display.service phone-smsd.service phone-pushd.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/phone-factory-test --gate
+SuccessExitStatus=3
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=multi-user.target

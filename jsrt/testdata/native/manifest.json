@@ -1,0 +1,7 @@
+{
+  "id": "com.example.test",
+  "name": "Native",
+  "runtime": "js",
+  "main": "main.js",
+  "native": ["probe"]
+}

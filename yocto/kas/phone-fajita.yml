@@ -1,0 +1,84 @@
+# The OnePlus 6T (machine oneplus-fajita, 39-oneplus-6t.md): the QEMU
+# image's distribution and packages on the phone, plus meta-qcom for the
+# Qualcomm modem services and kario-bsp's layers for the machine, its
+# kernel and the Qualcomm glue. Built with the phone's SKU, whose generated
+# overlay names this machine too:
+#   make yocto-build WORK=$HOME/yocto/fajita-work KASFILE=yocto/kas/phone-fajita.yml SKU=oneplus-fajita-t9
+# With a kario-bsp checkout of one's own instead of the pinned commit
+# (yocto/kas/local-bsp.yml):
+#   make yocto-build ... KARIO_BSP=../kario-bsp KASEXTRA=yocto/kas/local-bsp.yml
+header:
+  version: 14
+  includes:
+    - yocto/kas/phone-qemuarm64.yml
+
+machine: oneplus-fajita
+
+repos:
+  # The upstream layers at phone-qemuarm64.yml's commits, the tested ones.
+
+  # qrtr, rmtfs and tqftpserv (BSD-3-Clause). Its qbootctl and hexagonrpc
+  # are GPL-3.0 and stay out of the image (phone-qcom marks the boot slot).
+  meta-qcom:
+    url: https://github.com/qualcomm-linux/meta-qcom
+    branch: wrynose
+    commit: c791f2b7d050745ad83077e40a362c9b6c15fade
+
+  # meta-qcom depends on this layer; its newer linux-firmware is not
+  # preferred, so oe-core's is used.
+  meta-lts-mixins:
+    url: https://git.yoctoproject.org/meta-lts-mixins
+    branch: wrynose/linux-firmware
+    commit: d0fd372d1da9cacca04585f7a1b088fdfb32b77e
+
+  # The public BSP layers (24-sku-framework.md §8.7.6): the 6T's machine,
+  # kernel, firmware and UCM profiles (meta-kario-sdm845) and the glue
+  # any Qualcomm board reuses (meta-kario-qcom). The commit is the one
+  # line a new kario-bsp changes: make test and CI fetch kario-bsp at it
+  # too (scripts/kario-bsp.py), and kas refuses one main no longer has
+  # (kario-bsp is published as one commit, replaced each time). In quotes:
+  # YAML reads a commit of digits alone as a number.
+  kario-bsp:
+    url: https://github.com/kario-os/kario-bsp
+    branch: main
+    commit: "f228abe971ee5859e96496b9f72abeead6be41f2"
+    layers:
+      meta-kario-qcom:
+      meta-kario-sdm845:
+
+local_conf_header:
+  # The userdata layout: the phone's root is one ext4 on userdata, which
+  # the boot image's phone-initramfs mounts, so no RAUC, verity or wic
+  # disk. The A/B layout is phone-fajita-ab.yml (43-phone-partitions.md).
+  # The initramfs's cryptsetup as on QEMU: veritysetup only, on OpenSSL,
+  # without udev (which would bring systemd's udev, shadow and base-files).
+  ota: |
+    SKIP_META_RAUC_FEATURE_CHECK = "1"
+    PACKAGECONFIG:pn-cryptsetup = "veritysetup openssl"
+    PACKAGECONFIG:remove:pn-cryptsetup = "udev"
+  phone-fajita: |
+    # The modem over QRTR (no USB): ModemManager's and libqmi's QRTR
+    # transport (libqrtr-glib, LGPL-2.1).
+    PACKAGECONFIG:append:pn-modemmanager = " qrtr"
+    PACKAGECONFIG:append:pn-libqmi = " qrtr"
+    # The Adreno 630 through Mesa's freedreno (phone-paint's GPU path,
+    # 42-gpu-rendering.md); its firmware comes with firmware-oneplus-sdm845.
+    PACKAGECONFIG:append:pn-mesa = " freedreno"
+    # And in the initramfs too: msm is built in and binds at 5.5 s, before
+    # the root is mounted, and without the firmware there it failed to load
+    # a630_sqe.fw (-2) and loaded it at phone-paint's first open. The zap
+    # shader is the one the device tree names (firmware-name).
+    PHONE_INITRAMFS_FIRMWARE = "qcom/a630_sqe.fw qcom/a630_gmu.bin qcom/sdm845/OnePlus/enchilada/a630_zap.mbn"
+    PHONE_INITRAMFS_FIRMWARE_PACKAGES = "linux-firmware-qcom-adreno-a630 firmware-oneplus-sdm845"
+    # The previous boots' kernel logs out of pstore into
+    # /var/lib/systemd/pstore at each boot (phone-bringup), and the journal
+    # on userdata, so that a boot that went wrong can be read after the next.
+    PACKAGECONFIG:append:pn-systemd = " pstore"
+    FILESYSTEM_PERMS_TABLES:remove = "files/fs-perms-volatile-log.txt"
+    # linux-firmware's licence packages without a LICENSE of their own take
+    # the recipe's, which lists GPL-3.0-only, so INCOMPATIBLE_LICENSE leaves
+    # them out, and the firmware packages that need them (none the phone
+    # uses) fail the build-deps check.
+    ERROR_QA:remove:pn-linux-firmware = "build-deps"
+    WARN_QA:append:pn-linux-firmware = " build-deps"
+  qemu: ""

@@ -1,0 +1,24 @@
+ 00:00  ■ 工厂模式           4G ▂▄▆ 82%
+╔══════════════════════════════════════╗
+║ ■ 工厂测试 · 按键                    ║
+║                                      ║
+║  每个键按一次。                      ║
+║  已按 2 个键，共 47 个               ║
+║  还剩：back c call clear comma d     ║
+║  dot down e end f fn g h i ime j k   ║
+║  l left m n o ok p power q r right   ║
+║  s shift soft-left soft-right space  ║
+║  sym t u up v vol-down vol-up w x y  ║
+║  z                                   ║
+║                                      ║
+║  刚按：b                             ║
+║                                      ║
+║                                      ║
+║                                      ║
+║                                      ║
+║                                      ║
+║                                      ║
+║                                      ║
+║                                      ║
+║  20 秒内没按新的键就不通过           ║
+╚══════════════════════════════════════╝

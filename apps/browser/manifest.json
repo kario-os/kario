@@ -1,0 +1,69 @@
+{
+  "id": "com.phone.browser",
+  "name": "浏览器",
+  "icon": "浏",
+  "icon_image": "icon.png",
+  "description": "网页浏览 · 书签、历史、页内查找（系统的网页视图：WPE WebKit）",
+  "exec": "phone-app-browser",
+  "order": 28,
+  "permissions": [
+    "net"
+  ],
+  "share": [
+    "link"
+  ],
+  "settings": [
+    {"key": "content_blocking", "title": "拦截广告和跟踪", "type": "toggle", "default": true},
+    {"key": "search", "title": "搜索引擎", "type": "choice", "choices": ["必应", "百度"], "default": "必应"}
+  ],
+  "locales": {
+    "zh-Hant": {
+      "name": "瀏覽器",
+      "description": "瀏覽網頁 · 書籤、記錄、頁內尋找（系統的網頁檢視：WPE WebKit）",
+      "settings": {
+        "content_blocking": {
+          "title": "封鎖廣告和追蹤"
+        },
+        "search": {
+          "title": "搜尋引擎",
+          "choices": [
+            "Bing",
+            "百度"
+          ]
+        }
+      }
+    },
+    "en": {
+      "name": "Browser",
+      "description": "Web browsing · bookmarks, history, find in page (the system's web view: WPE WebKit)",
+      "settings": {
+        "content_blocking": {
+          "title": "Block ads and trackers"
+        },
+        "search": {
+          "title": "Search engine",
+          "choices": [
+            "Bing",
+            "Baidu"
+          ]
+        }
+      }
+    },
+    "es": {
+      "name": "Navegador",
+      "description": "Navega por la web · marcadores, historial, buscar en la página (la vista web del sistema: WPE WebKit)",
+      "settings": {
+        "content_blocking": {
+          "title": "Bloquear anuncios y rastreo"
+        },
+        "search": {
+          "title": "Buscador",
+          "choices": [
+            "Bing",
+            "Baidu"
+          ]
+        }
+      }
+    }
+  }
+}

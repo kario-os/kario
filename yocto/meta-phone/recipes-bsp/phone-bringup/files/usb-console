@@ -1,0 +1,64 @@
+#!/bin/sh
+# The bring-up USB gadget: a serial console (CDC-ACM, ttyGS0, with a login
+# prompt) and a network link (CDC-NCM, interface dbg0, the phone at
+# 172.16.42.1 handing the computer an address) on the phone's USB device
+# controller. Bound before the shell starts, it holds the controller: the
+# shell's own USB sharing stays off while it does. Its interface is not the
+# shell's usb0, so the shell's USB firewall leaves it alone.
+#
+#   usb-console start | stop
+set -eu
+g=/sys/kernel/config/usb_gadget/kario-bringup
+
+mac() {
+	printf '%s\n%s' "$1" "$serial" | sha256sum | cut -c1-12 |
+		sed 's/^\(.\)./\12/; s/../&:/g; s/:$//'
+}
+
+case "${1:-start}" in
+start)
+	udc=
+	for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+		for d in /sys/class/udc/*; do
+			[ -e "$d" ] && udc=${d##*/} && break
+		done
+		[ -z "$udc" ] || break
+		sleep 1
+	done
+	if [ -z "$udc" ]; then
+		echo "usb-console: no USB device controller" >&2
+		exit 1
+	fi
+	serial=$(sed -n 's/.*androidboot\.serialno=\([^ ]*\).*/\1/p' /proc/cmdline)
+	[ -n "$serial" ] || serial=$(cut -c1-12 /etc/machine-id)
+	mkdir -p $g/strings/0x409 $g/configs/c.1/strings/0x409 $g/functions/acm.GS0 $g/functions/ncm.dbg
+	echo 0x1d6b > $g/idVendor
+	echo 0x0104 > $g/idProduct
+	echo 0x0100 > $g/bcdDevice
+	echo 0x0200 > $g/bcdUSB
+	echo Kario > $g/strings/0x409/manufacturer
+	echo "Kario bring-up console" > $g/strings/0x409/product
+	echo "$serial" > $g/strings/0x409/serialnumber
+	echo "ACM + NCM" > $g/configs/c.1/strings/0x409/configuration
+	echo 500 > $g/configs/c.1/MaxPower
+	if [ -z "$(cat $g/UDC)" ]; then
+		echo "dbg%d" > $g/functions/ncm.dbg/ifname
+		mac kario-bringup-dev > $g/functions/ncm.dbg/dev_addr
+		mac kario-bringup-host > $g/functions/ncm.dbg/host_addr
+	fi
+	[ -e $g/configs/c.1/acm.GS0 ] || ln -s $g/functions/acm.GS0 $g/configs/c.1/
+	[ -e $g/configs/c.1/ncm.dbg ] || ln -s $g/functions/ncm.dbg $g/configs/c.1/
+	[ -n "$(cat $g/UDC)" ] || echo "$udc" > $g/UDC
+	echo "usb-console: ttyGS0 and $(cat $g/functions/ncm.dbg/ifname) on $udc"
+	;;
+stop)
+	[ -d $g ] || exit 0
+	echo "" > $g/UDC || true
+	rm -f $g/configs/c.1/acm.GS0 $g/configs/c.1/ncm.dbg
+	rmdir $g/configs/c.1/strings/0x409 $g/configs/c.1 $g/functions/acm.GS0 $g/functions/ncm.dbg $g/strings/0x409 $g
+	;;
+*)
+	echo "usage: usb-console start | stop" >&2
+	exit 2
+	;;
+esac

@@ -1,0 +1,11 @@
+{
+  "Back": "Atrás",
+  "Call": "Llamar",
+  "Enter=OK Esc=back Tab=options F2=right soft key F3=tasks F4=home F6=Zh/En F7=symbols Alt+key=long press /commands ^C=quit": "Enter=OK Esc=atrás Tab=opciones F2=tecla derecha F3=apps F4=inicio F6=Zh/En F7=símbolos Alt+tecla=pulsación larga /comandos ^C=salir",
+  "Hang up": "Colgar",
+  "Keyboard: arrow keys, <kbd>Enter</kbd> OK, <kbd>Esc</kbd> back, <kbd>Tab</kbd>/<kbd>F1</kbd> options, <kbd>F2</kbd> right soft key, <kbd>F5</kbd> call, <kbd>F4</kbd> hang up, <kbd>F3</kbd> switch apps, <kbd>/</kbd> command palette; letters and digits type directly, holding <kbd>Alt</kbd> is a long press.": "Teclado: flechas, <kbd>Enter</kbd> OK, <kbd>Esc</kbd> atrás, <kbd>Tab</kbd>/<kbd>F1</kbd> opciones, <kbd>F2</kbd> tecla de función derecha, <kbd>F5</kbd> llamar, <kbd>F4</kbd> colgar, <kbd>F3</kbd> cambiar de app, <kbd>/</kbd> paleta de comandos; las letras y los números se escriben directamente, mantener <kbd>Alt</kbd> es una pulsación larga.",
+  "Options": "Opciones",
+  "Right soft key": "Tecla de función derecha",
+  "Volume +": "Volumen +",
+  "Volume −": "Volumen −"
+}

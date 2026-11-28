@@ -1,0 +1,12 @@
+[Unit]
+Description=Bring-up: keep the phone out of suspend while a computer has the USB console configured (systemctl stop phone-bringup-awake lets it sleep then too)
+DefaultDependencies=no
+After=sysinit.target phone-bringup-usb.service
+
+[Service]
+ExecStart=/usr/libexec/phone-bringup/awake
+ExecStopPost=-/usr/libexec/phone-bringup/awake release
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

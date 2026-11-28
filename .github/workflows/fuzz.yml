@@ -1,0 +1,159 @@
+# Fuzzing of the parsers of untrusted input (docs/17-app-sandbox.md §9,
+# docs/38-contributing.md), by hand only: Actions › fuzz › Run workflow,
+# or gh workflow run fuzz -f targets='usbshare|obex' -f minutes=30. Each of
+# make fuzz-list's targets runs in a job of its own: make fuzz's (Go's own,
+# and the Go drivers of the C and C++ harnesses built with ASan and UBSan)
+# and make fuzz-libfuzzer's (the same harnesses as libFuzzer targets). A
+# target's corpus is kept between runs in the cache; an input that fails is
+# uploaded and fails the run. Like platform, it ends by pruning the runs
+# past the newest 3 of each workflow.
+name: fuzz
+
+on:
+  workflow_dispatch:
+    inputs:
+      targets:
+        description: Regular expression on make fuzz-list's package:target names (empty for all)
+        type: string
+        default: ''
+      minutes:
+        description: Minutes per target
+        type: number
+        default: 10
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fuzz
+  cancel-in-progress: false
+
+env:
+  CXX23: g++-14
+  GOFLAGS: -mod=vendor
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      targets: ${{ steps.plan.outputs.targets }}
+      timeout: ${{ steps.plan.outputs.timeout }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: The targets (make fuzz-list)
+        id: plan
+        env:
+          ONLY: ${{ inputs.targets }}
+          MINUTES: ${{ inputs.minutes }}
+        run: |
+          case $MINUTES in '' | *[!0-9]*) echo "::error::minutes is a whole number"; exit 1 ;; esac
+          if [ "$MINUTES" -lt 1 ] || [ "$MINUTES" -gt 300 ]; then echo "::error::minutes is 1 to 300"; exit 1; fi
+          case $ONLY in *"'"* | *'$'*) echo "::error::targets: no quotes or \$ (make passes it to grep -E)"; exit 1 ;; esac
+          targets=$(make -s fuzz-list ONLY="$ONLY" | jq -Rnc '[inputs | select(length > 0)]')
+          if [ "$targets" = "[]" ]; then echo "::error::no target matches $ONLY"; exit 1; fi
+          {
+            echo "targets=$targets"
+            echo "timeout=$((MINUTES + 30))"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "### fuzz"
+            echo
+            echo "$(jq length <<< "$targets") targets, $MINUTES minutes each:"
+            jq -r '.[] | "- `\(.)`"' <<< "$targets"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  fuzz:
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: ${{ fromJSON(needs.plan.outputs.timeout) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(needs.plan.outputs.targets) }}
+    env:
+      TARGET: ${{ matrix.target }}
+      MINUTES: ${{ inputs.minutes }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      # The calendar's FuzzICS and tools/cfuzz's FuzzTextDecoder start
+      # Node.js: platform's go job's.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # clang 19 at least: libstdc++ 14 declares std::expected (telephonyd's
+      # JSON) only for __cpp_concepts 202002, which clang 18 does not define.
+      - name: Toolchain (the harnesses' C++23; clang and its libFuzzer runtime)
+        run: sudo apt-get update && sudo apt-get install -y g++-14 clang-19 libclang-rt-19-dev
+      - name: Go modules (vendor/ is not in git)
+        run: go mod vendor
+      # Go keeps a target's corpus in its build cache, by package and name;
+      # libFuzzer in the directory make fuzz-libfuzzer is given.
+      - name: Where the target keeps its corpus
+        id: corpus
+        run: |
+          case $TARGET in
+            libfuzzer:*) dir=$RUNNER_TEMP/corpus/${TARGET#libfuzzer:} ;;
+            *) pkg=${TARGET%%:*}; dir=$(go env GOCACHE)/fuzz/github.com/kario-os/kario/${pkg#./}/${TARGET#*:} ;;
+          esac
+          mkdir -p "$dir"
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+          name=$(printf '%s' "${TARGET#./}" | tr -c 'A-Za-z0-9._-' '_')
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "key=fuzz-corpus-$name" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.corpus.outputs.dir }}
+          key: ${{ steps.corpus.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ${{ steps.corpus.outputs.key }}-
+      - name: Fuzz ${{ matrix.target }}
+        env:
+          CORPUS: ${{ steps.corpus.outputs.dir }}
+        run: |
+          echo "corpus: $(find "$CORPUS" -type f | wc -l) inputs from earlier runs"
+          case $TARGET in
+            libfuzzer:*)
+              make fuzz-libfuzzer ONLY="^$TARGET\$\$" FUZZTIME="${MINUTES}m" LF_CC=clang-19 LF_CXX=clang++-19 \
+                FUZZCORPUS="$RUNNER_TEMP/corpus" FUZZOUT="$RUNNER_TEMP/crashers" ;;
+            *)
+              make fuzz ONLY="^$TARGET\$\$" FUZZTIME="${MINUTES}m" FUZZPAR="$(nproc)" ;;
+          esac
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: ${{ steps.corpus.outputs.dir }}
+          key: ${{ steps.corpus.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+      # What failed: Go writes it into the package's testdata/fuzz (commit it
+      # there as a regression once fixed), libFuzzer into crashers/.
+      - name: Collect the failing inputs
+        if: failure()
+        run: |
+          mkdir -p "$RUNNER_TEMP/crashers"
+          git ls-files -z --others --exclude-standard -- '*/testdata/fuzz/*' | xargs -0 -r cp --parents -t "$RUNNER_TEMP/crashers"
+          find "$RUNNER_TEMP/crashers" -type f
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: crashers-${{ steps.corpus.outputs.name }}
+          path: ${{ runner.temp }}/crashers/
+          if-no-files-found: ignore
+
+  # The run history: only the newest 3 runs of each workflow stay, with
+  # their logs and artifacts (scripts/ci-prune.sh, as platform's prune).
+  prune:
+    if: always()
+    needs: [fuzz]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Delete the runs past the newest 3 of each workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: sh scripts/ci-prune.sh "$GITHUB_REPOSITORY" 3

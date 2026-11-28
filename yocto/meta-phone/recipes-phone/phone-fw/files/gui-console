@@ -1,0 +1,13 @@
+#!/bin/sh
+# gui-console (phone-gui-console.service, phone.gui-console): what
+# phone-display's shell and renderer say, from the journal, on the console
+# as one console file printed as it grows (console-file, no end: the
+# machine goes down with it), gui-<boot id>.log, for
+# yocto/qemu-gui-drive.py. phone-paint's PHONE_PAINT_STEPS lines join them
+# through this service's own journal: the renderer writes a line in many
+# pieces, which the journal puts together.
+steps=/run/phone/gui-steps.jsonl
+: >> "$steps"
+tail -f -n +1 "$steps" &
+journalctl -b -f -q -a -o cat -n all -u phone-display.service -u phone-gui-console.service |
+	/usr/libexec/phone/console-file "gui-$(cut -c1-8 /proc/sys/kernel/random/boot_id).log" /dev/stdin 1 > /dev/console

@@ -1,0 +1,14 @@
+{
+  "Choose a contact": "选择联系人",
+  "Delete conversation": "删除会话",
+  "Message": "内容",
+  "No messages": "没有短信",
+  "Not deleted: %v": "没删掉：%v",
+  "Not sent: %v": "没发出：%v",
+  "Number": "号码",
+  "SMS Lite": "简讯",
+  "Sent": "已发出",
+  "Verification code: %s": "验证码：%s",
+  "Wait for a verification code": "等验证码",
+  "Waiting for a message with a code…": "正在等带验证码的短信…"
+}

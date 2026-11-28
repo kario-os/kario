@@ -1,0 +1,191 @@
+{
+  "source": "Written for Kario in the shape of libphonenumber's metadata, from the ITU-T E.164 country code assignments, ITU-T E.212 mobile country codes and the national numbering plans; a subset: country codes, international and national (trunk) prefixes, the lengths of national significant numbers and a few display patterns.",
+  "regions": [
+    {"region": "CN", "cc": "86", "mcc": ["460", "461"], "intl": ["00"], "national": ["0"], "lengths": [10, 11], "formats": [
+      {"lead": "1", "nat": "xxx xxxx xxxx", "intl": "xxx xxxx xxxx"},
+      {"lead": "400,800", "nat": "xxx xxx xxxx", "intl": "xxx xxx xxxx"},
+      {"lead": "10,2", "nat": "0xx xxxx xxxx", "intl": "xx xxxx xxxx"},
+      {"lead": "", "nat": "0xxx xxxx xxxx", "intl": "xxx xxxx xxxx"},
+      {"lead": "", "nat": "0xxx xxx xxxx", "intl": "xxx xxx xxxx"}]},
+    {"region": "HK", "cc": "852", "mcc": ["454"], "intl": ["001", "002", "00"], "national": [], "lengths": [8, 9], "formats": [
+      {"lead": "", "nat": "xxxx xxxx", "intl": "xxxx xxxx"},
+      {"lead": "", "nat": "xxx xxx xxx", "intl": "xxx xxx xxx"}]},
+    {"region": "MO", "cc": "853", "mcc": ["455"], "intl": ["00"], "national": [], "lengths": [8], "formats": [
+      {"lead": "", "nat": "xxxx xxxx", "intl": "xxxx xxxx"}]},
+    {"region": "TW", "cc": "886", "mcc": ["466"], "intl": ["002", "005", "006", "007", "009", "00"], "national": ["0"], "lengths": [8, 9], "formats": [
+      {"lead": "9", "nat": "0xxx xxx xxx", "intl": "xxx xxx xxx"},
+      {"lead": "", "nat": "0x xxxx xxxx", "intl": "x xxxx xxxx"},
+      {"lead": "", "nat": "0x xxx xxxx", "intl": "x xxx xxxx"}]},
+    {"region": "US", "cc": "1", "mcc": ["310", "311", "312", "313", "314", "315", "316"], "intl": ["011"], "national": ["1"], "lengths": [10], "formats": [
+      {"lead": "", "nat": "(xxx) xxx-xxxx", "intl": "xxx-xxx-xxxx"}]},
+    {"region": "CA", "cc": "1", "mcc": ["302"], "intl": ["011"], "national": ["1"], "lengths": [10], "formats": [
+      {"lead": "", "nat": "(xxx) xxx-xxxx", "intl": "xxx-xxx-xxxx"}]},
+    {"region": "PR", "cc": "1", "mcc": ["330"], "intl": ["011"], "national": ["1"], "lengths": [10], "formats": [
+      {"lead": "", "nat": "(xxx) xxx-xxxx", "intl": "xxx-xxx-xxxx"}]},
+    {"region": "DO", "cc": "1", "mcc": ["370"], "intl": ["011"], "national": ["1"], "lengths": [10], "formats": [
+      {"lead": "", "nat": "(xxx) xxx-xxxx", "intl": "xxx-xxx-xxxx"}]},
+    {"region": "GB", "cc": "44", "mcc": ["234", "235"], "intl": ["00"], "national": ["0"], "lengths": [9, 10], "formats": [
+      {"lead": "7,1", "nat": "0xxxx xxxxxx", "intl": "xxxx xxxxxx"},
+      {"lead": "2", "nat": "0xx xxxx xxxx", "intl": "xx xxxx xxxx"},
+      {"lead": "", "nat": "0xxx xxx xxxx", "intl": "xxx xxx xxxx"},
+      {"lead": "", "nat": "0xxxx xxxxx", "intl": "xxxx xxxxx"}]},
+    {"region": "IE", "cc": "353", "mcc": ["272"], "intl": ["00"], "national": ["0"], "lengths": [7, 8, 9], "formats": [
+      {"lead": "", "nat": "0xx xxx xxxx", "intl": "xx xxx xxxx"},
+      {"lead": "1", "nat": "0x xxx xxxx", "intl": "x xxx xxxx"},
+      {"lead": "", "nat": "0xx xxx xxx", "intl": "xx xxx xxx"},
+      {"lead": "", "nat": "0xx xxxxx", "intl": "xx xxxxx"}]},
+    {"region": "ES", "cc": "34", "mcc": ["214"], "intl": ["00"], "national": [], "lengths": [9], "formats": [
+      {"lead": "", "nat": "xxx xx xx xx", "intl": "xxx xx xx xx"}]},
+    {"region": "MX", "cc": "52", "mcc": ["334"], "intl": ["00"], "national": ["01", "044", "045", "1"], "lengths": [10], "formats": [
+      {"lead": "33,55,81", "nat": "xx xxxx xxxx", "intl": "xx xxxx xxxx"},
+      {"lead": "", "nat": "xxx xxx xxxx", "intl": "xxx xxx xxxx"}]},
+    {"region": "AR", "cc": "54", "mcc": ["722"], "intl": ["00"], "national": ["0"], "lengths": [10, 11], "mobile15": true, "formats": [
+      {"lead": "911", "nat": "_0xx 15-xxxx-xxxx", "intl": "x xx xxxx-xxxx"},
+      {"lead": "9", "nat": "_0xxx 15-xxx-xxxx", "intl": "x xxx xxx-xxxx"},
+      {"lead": "11", "nat": "0xx xxxx-xxxx", "intl": "xx xxxx-xxxx"},
+      {"lead": "", "nat": "0xxx xxx-xxxx", "intl": "xxx xxx-xxxx"}]},
+    {"region": "CO", "cc": "57", "mcc": ["732"], "intl": ["00", "007", "009"], "national": ["0"], "lengths": [10], "formats": [
+      {"lead": "", "nat": "xxx xxx xxxx", "intl": "xxx xxx xxxx"}]},
+    {"region": "CL", "cc": "56", "mcc": ["730"], "intl": ["00"], "national": [], "lengths": [9], "formats": [
+      {"lead": "2,9", "nat": "x xxxx xxxx", "intl": "x xxxx xxxx"},
+      {"lead": "", "nat": "xx xxx xxxx", "intl": "xx xxx xxxx"}]},
+    {"region": "PE", "cc": "51", "mcc": ["716"], "intl": ["00"], "national": ["0"], "lengths": [8, 9], "formats": [
+      {"lead": "9", "nat": "xxx xxx xxx", "intl": "xxx xxx xxx"},
+      {"lead": "1", "nat": "(0x) xxx xxxx", "intl": "x xxx xxxx"},
+      {"lead": "", "nat": "(0xx) xxxxxx", "intl": "xx xxxxxx"}]},
+    {"region": "VE", "cc": "58", "mcc": ["734"], "intl": ["00"], "national": ["0"], "lengths": [10], "formats": [
+      {"lead": "", "nat": "0xxx-xxxxxxx", "intl": "xxx-xxxxxxx"}]},
+    {"region": "EC", "cc": "593", "mcc": ["740"], "intl": ["00"], "national": ["0"], "lengths": [8, 9], "formats": [
+      {"lead": "9", "nat": "0xx xxx xxxx", "intl": "xx xxx xxxx"},
+      {"lead": "", "nat": "0x xxx xxxx", "intl": "x xxx xxxx"}]},
+    {"region": "GT", "cc": "502", "mcc": ["704"], "intl": ["00"], "national": [], "lengths": [8], "formats": [
+      {"lead": "", "nat": "xxxx xxxx", "intl": "xxxx xxxx"}]},
+    {"region": "CU", "cc": "53", "mcc": ["368"], "intl": ["119"], "national": ["0"], "lengths": [8], "formats": [
+      {"lead": "", "nat": "0x xxxxxxx", "intl": "x xxxxxxx"}]},
+    {"region": "BO", "cc": "591", "mcc": ["736"], "intl": ["00"], "national": ["0"], "lengths": [8], "formats": [
+      {"lead": "6,7", "nat": "xxxx xxxx", "intl": "xxxx xxxx"},
+      {"lead": "", "nat": "0x xxx xxxx", "intl": "x xxx xxxx"}]},
+    {"region": "HN", "cc": "504", "mcc": ["708"], "intl": ["00"], "national": [], "lengths": [8], "formats": [
+      {"lead": "", "nat": "xxxx-xxxx", "intl": "xxxx-xxxx"}]},
+    {"region": "PY", "cc": "595", "mcc": ["744"], "intl": ["00"], "national": ["0"], "lengths": [7, 8, 9], "formats": [
+      {"lead": "9", "nat": "0xxx xxx xxx", "intl": "xxx xxx xxx"},
+      {"lead": "", "nat": "0xx xxx xxxx", "intl": "xx xxx xxxx"},
+      {"lead": "", "nat": "0xx xxx xxx", "intl": "xx xxx xxx"},
+      {"lead": "", "nat": "0xx xxxxx", "intl": "xx xxxxx"}]},
+    {"region": "SV", "cc": "503", "mcc": ["706"], "intl": ["00"], "national": [], "lengths": [8], "formats": [
+      {"lead": "", "nat": "xxxx xxxx", "intl": "xxxx xxxx"}]},
+    {"region": "NI", "cc": "505", "mcc": ["710"], "intl": ["00"], "national": [], "lengths": [8], "formats": [
+      {"lead": "", "nat": "xxxx xxxx", "intl": "xxxx xxxx"}]},
+    {"region": "CR", "cc": "506", "mcc": ["712"], "intl": ["00"], "national": [], "lengths": [8], "formats": [
+      {"lead": "", "nat": "xxxx xxxx", "intl": "xxxx xxxx"}]},
+    {"region": "PA", "cc": "507", "mcc": ["714"], "intl": ["00"], "national": [], "lengths": [7, 8], "formats": [
+      {"lead": "", "nat": "xxxx-xxxx", "intl": "xxxx-xxxx"},
+      {"lead": "", "nat": "xxx-xxxx", "intl": "xxx-xxxx"}]},
+    {"region": "UY", "cc": "598", "mcc": ["748"], "intl": ["00"], "national": ["0"], "lengths": [8], "formats": [
+      {"lead": "9", "nat": "0xx xxx xxx", "intl": "xx xxx xxx"},
+      {"lead": "", "nat": "xxxx xxxx", "intl": "xxxx xxxx"}]},
+    {"region": "GQ", "cc": "240", "mcc": ["627"], "intl": ["00"], "national": [], "lengths": [9], "formats": [
+      {"lead": "", "nat": "xxx xxx xxx", "intl": "xxx xxx xxx"}]},
+    {"region": "BR", "cc": "55", "mcc": ["724"], "intl": ["00"], "national": ["0"], "lengths": [10, 11], "formats": [
+      {"lead": "", "nat": "(xx) xxxxx-xxxx", "intl": "xx xxxxx-xxxx"},
+      {"lead": "", "nat": "(xx) xxxx-xxxx", "intl": "xx xxxx-xxxx"}]},
+    {"region": "PT", "cc": "351", "mcc": ["268"], "intl": ["00"], "national": [], "lengths": [9], "formats": [
+      {"lead": "", "nat": "xxx xxx xxx", "intl": "xxx xxx xxx"}]},
+    {"region": "FR", "cc": "33", "mcc": ["208"], "intl": ["00"], "national": ["0"], "lengths": [9], "formats": [
+      {"lead": "", "nat": "0x xx xx xx xx", "intl": "x xx xx xx xx"}]},
+    {"region": "DE", "cc": "49", "mcc": ["262"], "intl": ["00"], "national": ["0"], "lengths": [6, 7, 8, 9, 10, 11], "formats": [
+      {"lead": "15,16,17", "nat": "0xxx xxxxxxxx", "intl": "xxx xxxxxxxx"},
+      {"lead": "15,16,17", "nat": "0xxx xxxxxxx", "intl": "xxx xxxxxxx"},
+      {"lead": "30,40,69,89", "nat": "0xx xxxxxxxx", "intl": "xx xxxxxxxx"}]},
+    {"region": "IT", "cc": "39", "mcc": ["222"], "intl": ["00"], "national": [], "lengths": [6, 7, 8, 9, 10, 11], "formats": [
+      {"lead": "3", "nat": "xxx xxx xxxx", "intl": "xxx xxx xxxx"},
+      {"lead": "02,06", "nat": "xx xxxx xxxx", "intl": "xx xxxx xxxx"},
+      {"lead": "0", "nat": "xxx xxx xxxx", "intl": "xxx xxx xxxx"}]},
+    {"region": "NL", "cc": "31", "mcc": ["204"], "intl": ["00"], "national": ["0"], "lengths": [9], "formats": [
+      {"lead": "6", "nat": "0x xxxxxxxx", "intl": "x xxxxxxxx"},
+      {"lead": "10,20,30,40,70", "nat": "0xx xxx xxxx", "intl": "xx xxx xxxx"},
+      {"lead": "", "nat": "0xxx xxxxxx", "intl": "xxx xxxxxx"}]},
+    {"region": "BE", "cc": "32", "mcc": ["206"], "intl": ["00"], "national": ["0"], "lengths": [8, 9], "formats": [
+      {"lead": "4", "nat": "0xxx xx xx xx", "intl": "xxx xx xx xx"},
+      {"lead": "", "nat": "0x xxx xx xx", "intl": "x xxx xx xx"}]},
+    {"region": "CH", "cc": "41", "mcc": ["228"], "intl": ["00"], "national": ["0"], "lengths": [9], "formats": [
+      {"lead": "", "nat": "0xx xxx xx xx", "intl": "xx xxx xx xx"}]},
+    {"region": "AT", "cc": "43", "mcc": ["232"], "intl": ["00"], "national": ["0"], "lengths": [7, 8, 9, 10, 11, 12, 13], "formats": [
+      {"lead": "6", "nat": "0xxx xxxxxxx", "intl": "xxx xxxxxxx"}]},
+    {"region": "SE", "cc": "46", "mcc": ["240"], "intl": ["00"], "national": ["0"], "lengths": [7, 8, 9, 10], "formats": [
+      {"lead": "7", "nat": "0xx-xxx xx xx", "intl": "xx-xxx xx xx"},
+      {"lead": "8", "nat": "0x-xxx xxx xx", "intl": "x-xxx xxx xx"}]},
+    {"region": "NO", "cc": "47", "mcc": ["242"], "intl": ["00"], "national": [], "lengths": [8], "formats": [
+      {"lead": "", "nat": "xxx xx xxx", "intl": "xxx xx xxx"}]},
+    {"region": "DK", "cc": "45", "mcc": ["238"], "intl": ["00"], "national": [], "lengths": [8], "formats": [
+      {"lead": "", "nat": "xx xx xx xx", "intl": "xx xx xx xx"}]},
+    {"region": "FI", "cc": "358", "mcc": ["244"], "intl": ["00"], "national": ["0"], "lengths": [6, 7, 8, 9, 10], "formats": [
+      {"lead": "4,50", "nat": "0xx xxx xxxx", "intl": "xx xxx xxxx"}]},
+    {"region": "PL", "cc": "48", "mcc": ["260"], "intl": ["00"], "national": [], "lengths": [9], "formats": [
+      {"lead": "", "nat": "xxx xxx xxx", "intl": "xxx xxx xxx"}]},
+    {"region": "RU", "cc": "7", "mcc": ["250"], "intl": ["810", "00"], "national": ["8"], "lengths": [10], "formats": [
+      {"lead": "", "nat": "8 (xxx) xxx-xx-xx", "intl": "xxx xxx-xx-xx"}]},
+    {"region": "KZ", "cc": "7", "mcc": ["401"], "intl": ["810", "00"], "national": ["8"], "lengths": [10], "formats": [
+      {"lead": "", "nat": "8 (xxx) xxx-xx-xx", "intl": "xxx xxx-xx-xx"}]},
+    {"region": "TR", "cc": "90", "mcc": ["286"], "intl": ["00"], "national": ["0"], "lengths": [10], "formats": [
+      {"lead": "", "nat": "0xxx xxx xx xx", "intl": "xxx xxx xx xx"}]},
+    {"region": "JP", "cc": "81", "mcc": ["440", "441"], "intl": ["010"], "national": ["0"], "lengths": [9, 10], "formats": [
+      {"lead": "70,80,90", "nat": "0xx-xxxx-xxxx", "intl": "xx-xxxx-xxxx"},
+      {"lead": "3,6", "nat": "0x-xxxx-xxxx", "intl": "x-xxxx-xxxx"},
+      {"lead": "", "nat": "0xx-xxx-xxxx", "intl": "xx-xxx-xxxx"},
+      {"lead": "", "nat": "0xxx-xxx-xxxx", "intl": "xxx-xxx-xxxx"}]},
+    {"region": "KR", "cc": "82", "mcc": ["450"], "intl": ["00700", "001", "002", "00"], "national": ["0"], "lengths": [8, 9, 10], "formats": [
+      {"lead": "1", "nat": "0xx-xxxx-xxxx", "intl": "xx-xxxx-xxxx"},
+      {"lead": "1", "nat": "0xx-xxx-xxxx", "intl": "xx-xxx-xxxx"},
+      {"lead": "2", "nat": "0x-xxxx-xxxx", "intl": "x-xxxx-xxxx"},
+      {"lead": "2", "nat": "0x-xxx-xxxx", "intl": "x-xxx-xxxx"},
+      {"lead": "", "nat": "0xx-xxxx-xxxx", "intl": "xx-xxxx-xxxx"},
+      {"lead": "", "nat": "0xx-xxx-xxxx", "intl": "xx-xxx-xxxx"}]},
+    {"region": "SG", "cc": "65", "mcc": ["525"], "intl": ["000", "001", "002", "008", "00"], "national": [], "lengths": [8], "formats": [
+      {"lead": "", "nat": "xxxx xxxx", "intl": "xxxx xxxx"}]},
+    {"region": "MY", "cc": "60", "mcc": ["502"], "intl": ["00"], "national": ["0"], "lengths": [8, 9, 10], "formats": [
+      {"lead": "11", "nat": "0xx-xxxx xxxx", "intl": "xx-xxxx xxxx"},
+      {"lead": "1", "nat": "0xx-xxx xxxx", "intl": "xx-xxx xxxx"},
+      {"lead": "3", "nat": "0x-xxxx xxxx", "intl": "x-xxxx xxxx"},
+      {"lead": "", "nat": "0x-xxx xxxx", "intl": "x-xxx xxxx"}]},
+    {"region": "TH", "cc": "66", "mcc": ["520"], "intl": ["001"], "national": ["0"], "lengths": [8, 9], "formats": [
+      {"lead": "6,8,9", "nat": "0xx xxx xxxx", "intl": "xx xxx xxxx"},
+      {"lead": "", "nat": "0x xxx xxxx", "intl": "x xxx xxxx"}]},
+    {"region": "VN", "cc": "84", "mcc": ["452"], "intl": ["00"], "national": ["0"], "lengths": [9, 10], "formats": [
+      {"lead": "", "nat": "0xx xxx xx xx", "intl": "xx xxx xx xx"},
+      {"lead": "", "nat": "0xxx xxx xxxx", "intl": "xxx xxx xxxx"}]},
+    {"region": "PH", "cc": "63", "mcc": ["515"], "intl": ["00"], "national": ["0"], "lengths": [8, 9, 10], "formats": [
+      {"lead": "9", "nat": "0xxx xxx xxxx", "intl": "xxx xxx xxxx"},
+      {"lead": "2", "nat": "0x xxxx xxxx", "intl": "x xxxx xxxx"}]},
+    {"region": "ID", "cc": "62", "mcc": ["510"], "intl": ["001", "007", "008", "00"], "national": ["0"], "lengths": [9, 10, 11, 12], "formats": [
+      {"lead": "8", "nat": "0xxx-xxxx-xxxxx", "intl": "xxx-xxxx-xxxxx"},
+      {"lead": "8", "nat": "0xxx-xxxx-xxxx", "intl": "xxx-xxxx-xxxx"},
+      {"lead": "8", "nat": "0xxx-xxxx-xxx", "intl": "xxx-xxxx-xxx"}]},
+    {"region": "IN", "cc": "91", "mcc": ["404", "405", "406"], "intl": ["00"], "national": ["0"], "lengths": [10], "formats": [
+      {"lead": "6,7,8,9", "nat": "0xxxxx xxxxx", "intl": "xxxxx xxxxx"},
+      {"lead": "", "nat": "0xx xxxx xxxx", "intl": "xx xxxx xxxx"}]},
+    {"region": "AU", "cc": "61", "mcc": ["505"], "intl": ["0011"], "national": ["0"], "lengths": [9], "formats": [
+      {"lead": "4,5", "nat": "0xxx xxx xxx", "intl": "xxx xxx xxx"},
+      {"lead": "", "nat": "(0x) xxxx xxxx", "intl": "x xxxx xxxx"}]},
+    {"region": "NZ", "cc": "64", "mcc": ["530"], "intl": ["00"], "national": ["0"], "lengths": [8, 9, 10], "formats": [
+      {"lead": "2", "nat": "0xx xxxx xxxx", "intl": "xx xxxx xxxx"},
+      {"lead": "2", "nat": "0xx xxx xxxx", "intl": "xx xxx xxxx"},
+      {"lead": "2", "nat": "0xx xxx xxx", "intl": "xx xxx xxx"},
+      {"lead": "", "nat": "0x xxx xxxx", "intl": "x xxx xxxx"}]},
+    {"region": "AE", "cc": "971", "mcc": ["424", "430", "431"], "intl": ["00"], "national": ["0"], "lengths": [8, 9], "formats": [
+      {"lead": "5", "nat": "0xx xxx xxxx", "intl": "xx xxx xxxx"},
+      {"lead": "", "nat": "0x xxx xxxx", "intl": "x xxx xxxx"}]},
+    {"region": "SA", "cc": "966", "mcc": ["420"], "intl": ["00"], "national": ["0"], "lengths": [8, 9], "formats": [
+      {"lead": "5", "nat": "0xx xxx xxxx", "intl": "xx xxx xxxx"},
+      {"lead": "", "nat": "0xx xxx xxx", "intl": "xx xxx xxx"}]},
+    {"region": "ZA", "cc": "27", "mcc": ["655"], "intl": ["00"], "national": ["0"], "lengths": [9], "formats": [
+      {"lead": "", "nat": "0xx xxx xxxx", "intl": "xx xxx xxxx"}]},
+    {"region": "EG", "cc": "20", "mcc": ["602"], "intl": ["00"], "national": ["0"], "lengths": [8, 9, 10], "formats": [
+      {"lead": "1", "nat": "0xxx xxx xxxx", "intl": "xxx xxx xxxx"},
+      {"lead": "", "nat": "0x xxxx xxxx", "intl": "x xxxx xxxx"},
+      {"lead": "", "nat": "0xx xxx xxx", "intl": "xx xxx xxx"}]},
+    {"region": "NG", "cc": "234", "mcc": ["621"], "intl": ["009"], "national": ["0"], "lengths": [8, 10], "formats": [
+      {"lead": "7,8,9", "nat": "0xxx xxx xxxx", "intl": "xxx xxx xxxx"},
+      {"lead": "", "nat": "0x xxx xxxx", "intl": "x xxx xxxx"}]}
+  ]
+}

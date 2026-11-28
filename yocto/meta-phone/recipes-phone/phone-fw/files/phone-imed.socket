@@ -1,0 +1,9 @@
+[Unit]
+Description=Socket of phone-imed (the input method starts on the first connection)
+
+[Socket]
+ListenStream=/run/phone/imed.sock
+SocketMode=0600
+
+[Install]
+WantedBy=sockets.target

@@ -1,0 +1,11 @@
+{
+  "(%d bytes)": "（%d 字节）",
+  "Connected to %s · heartbeat every %d s": "已连上 %s · 心跳每 %d 秒",
+  "Disconnect": "断开",
+  "Heartbeats sent: %d": "已发心跳 %d 次",
+  "Keepalive WebSocket Sample": "保活 WebSocket 示例",
+  "Last message: %s": "最后一条消息：%s",
+  "Not connected": "没有连接",
+  "Not connected: %s": "没连上：%s",
+  "Server (wss://…)": "服务器（wss://…）"
+}

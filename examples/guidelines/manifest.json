@@ -1,0 +1,21 @@
+{
+  "id": "com.example.guidelines",
+  "name": "Guidelines",
+  "icon": "G",
+  "description": "33 号文档的正反例页面，scripts/guideline-shots.sh 用它出图",
+  "version": "1.0",
+  "runtime": "js",
+  "main": "main.js",
+  "permissions": ["keystore"],
+  "locales": {
+    "zh-Hant": {
+      "description": "33 號文件的正反例頁面，scripts/guideline-shots.sh 用它出圖"
+    },
+    "en": {
+      "description": "The do and don't pages of document 33, drawn by scripts/guideline-shots.sh"
+    },
+    "es": {
+      "description": "Las páginas de ejemplo del documento 33, que dibuja scripts/guideline-shots.sh"
+    }
+  }
+}

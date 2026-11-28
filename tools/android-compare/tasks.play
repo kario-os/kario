@@ -1,0 +1,128 @@
+# The comparison's tasks (docs/40-testing.md §9) as a fixed sequence, for
+# the Kario half's numbers that need no person: frame times, key to screen,
+# cold starts (tools/android-compare/kario-half.sh runs it through the kit's
+# perf step, tools/perf/host.sh --play on this machine). The same keys a
+# person presses in the timed run, except the last key of a task that would
+# reach outside the phone (the call, the SMS): the dial task stops before
+# the call key, the SMS is erased. Scanning to pay is left out: the
+# scanner and the payment confirmation are system overlays, which a step
+# cannot wait for; it is timed by video only.
+# The Shell starts it from the idle screen with no screen lock; every app
+# starts cold (the Shell is started afresh for each run).
+
+wait sys.idle 90000
+sleep 1000
+
+# Dial: smart dialling from the idle screen (94 finds Zhang San), the
+# first match focused; the timed run then presses the call key.
+type 94
+wait com.phone.dialer/ 10000
+key down
+sleep 500
+key f4
+wait sys.idle
+
+# SMS: a new message to a number, three characters of 9-key pinyin
+# (wo dao le), then erased: no SMS goes out, no draft is left.
+key enter
+wait sys.menu
+open messages
+wait com.phone.messages/list 10000
+key f2
+wait com.phone.messages/new
+type 13800000000
+key down
+type 96
+key enter
+type 326
+key enter
+type 53
+key enter
+key backspace 6
+key up
+key backspace 11
+key esc
+wait com.phone.messages/list
+key f4
+wait sys.idle
+
+# Chat: the first conversation in Hongyan, a reply of two characters
+# (hao de) sent; the demo server's reply comes back by push.
+key enter
+wait sys.menu
+open chat
+wait com.phone.chat/list 10000
+key enter
+wait com.phone.chat/chat: 10000
+type 42633
+key enter
+key enter
+sleep 2000
+key f4
+wait sys.idle
+
+# Camera: opened from the main menu, the viewfinder left running.
+key enter
+wait sys.menu
+open camera
+wait com.phone.camera/ 10000
+sleep 3000
+key f4
+wait sys.idle
+
+# Pay: only Feiqian's start (the scan is timed by video).
+key enter
+wait sys.menu
+open wallet
+wait com.phone.wallet/ 10000
+sleep 1000
+key f4
+wait sys.idle
+
+# Scroll: the contacts list, 30 rows down and back with the Down key.
+key enter
+wait sys.menu
+open contacts
+wait com.phone.contacts/list 10000
+key down 30
+key up 30
+key f4
+wait sys.idle
+
+# Switch: Messages, Hongyan and Contacts opened again (warm) in this order,
+# the three apps used last, Contacts in front; each time the one used
+# longest ago is brought back with the task switcher (F3, the third row,
+# OK).
+key enter
+wait sys.menu
+open messages
+wait com.phone.messages/ 10000
+key f4
+wait sys.idle
+key enter
+wait sys.menu
+open chat
+wait com.phone.chat/ 10000
+key f4
+wait sys.idle
+key enter
+wait sys.menu
+open contacts
+wait com.phone.contacts/ 10000
+key f3
+wait sys.tasks
+key down 2
+key enter
+wait com.phone.messages/
+key f3
+wait sys.tasks
+key down 2
+key enter
+wait com.phone.chat/
+key f3
+wait sys.tasks
+key down 2
+key enter
+wait com.phone.contacts/
+key f4
+wait sys.idle

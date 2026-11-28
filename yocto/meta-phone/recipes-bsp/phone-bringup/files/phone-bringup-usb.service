@@ -1,0 +1,17 @@
+[Unit]
+Description=Bring-up console over USB (serial ttyGS0, SSH at 172.16.42.1)
+DefaultDependencies=no
+Requires=sys-kernel-config.mount
+After=sys-kernel-config.mount systemd-udevd.service
+# The shell binds a gadget of its own to the same controller.
+Before=phone-display.service sysinit.target
+Wants=serial-getty@ttyGS0.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/libexec/phone-bringup/usb-console start
+ExecStop=/usr/libexec/phone-bringup/usb-console stop
+
+[Install]
+WantedBy=sysinit.target

@@ -1,0 +1,14 @@
+# kario-bsp from a checkout of one's own instead of the commit
+# phone-fajita.yml pins, as it is (uncommitted changes too): working on
+# kario and kario-bsp at once (38-contributing.md). The Makefile mounts
+# KARIO_BSP at /kario-bsp in kas-container:
+#   make yocto-build WORK=$HOME/yocto/fajita-work KASFILE=yocto/kas/phone-fajita.yml SKU=oneplus-fajita-t9 \
+#       KARIO_BSP=../kario-bsp KASEXTRA=yocto/kas/local-bsp.yml
+header:
+  version: 14
+
+repos:
+  kario-bsp:
+    url: null
+    branch: null
+    path: /kario-bsp

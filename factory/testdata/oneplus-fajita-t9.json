@@ -1,0 +1,64 @@
+{
+  "id": "oneplus-fajita-t9",
+  "board": "oneplus-fajita",
+  "device": "bar-t9",
+  "display": "s6e3fc2x01",
+  "keypad": "hid",
+  "memory_mb": 2048,
+  "web_gpu": true,
+  "modem": "modemmanager",
+  "region": "cn",
+  "product": "kario-std",
+  "width": 1080,
+  "height": 2180,
+  "scale": 4.5,
+  "touch": true,
+  "sound_switch": "Alert slider",
+  "suspend": true,
+  "power_key": true,
+  "gnss": "modemmanager",
+  "audio": {
+    "pcm": "plughw:0,2",
+    "card": "hw:0",
+    "verb": "HiFi",
+    "device": "Speaker",
+    "call_verb": "Voice Call",
+    "earpiece": "Earpiece",
+    "earpiece_pcm": "plughw:0,0",
+    "call_speaker": "Speaker1",
+    "call_speaker_pcm": "plughw:0,2",
+    "call_mic": "Mic"
+  },
+  "rtc": {
+    "read_only": true,
+    "offset": true,
+    "alarm": "relative"
+  },
+  "factory": {
+    "keys": [
+      "power",
+      "vol-down",
+      "vol-up"
+    ],
+    "panel": [
+      1080,
+      2340
+    ],
+    "parts": [
+      "bluetooth",
+      "camera-back",
+      "camera-front",
+      "fuel-gauge",
+      "haptics",
+      "wifi"
+    ],
+    "buttons": [
+      "pm8941_pwrkey",
+      "Volume keys"
+    ],
+    "optional": [
+      "camera.*"
+    ],
+    "storage_gb": 100
+  }
+}

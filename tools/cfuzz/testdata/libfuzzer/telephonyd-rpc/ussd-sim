@@ -1,0 +1,12 @@
+{"id":1,"method":"ussd.initiate","params":{"code":"*101#"}}
+{"id":2,"method":"ussd.respond","params":{"text":"1"}}
+{"id":3,"method":"ussd.cancel"}
+{"id":4,"method":"sim.ussd","params":{"text":"Your plan renews tomorrow.","request":false}}
+{"id":5,"method":"sim.network","params":{"sim_mcc":"334","net_mcc":"334","nitz_offset":-360,"nitz_dst":1,"spn":"x"}}
+{"id":6,"method":"sim.roam","params":{"net_mcc":"262","net_mnc":"02","operator":"Vodafone.de"}}
+{"id":7,"method":"sim.lock","params":{"pin":"1234"}}
+{"id":8,"method":"sim.unlock","params":{"pin":"12"}}
+{"id":9,"method":"sim.unlock","params":{"pin":"1234"}}
+{"id":10,"method":"sim.pin_lock","params":{"pin":"1234","on":true}}
+{"id":11,"method":"sim.change_pin","params":{"pin":"1234","new_pin":"2468"}}
+{"id":12,"method":"phonebook.read"}

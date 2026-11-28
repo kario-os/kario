@@ -1,0 +1,262 @@
+id = "qcm6490-flip"
+name = "QCM6490 翻盖参考机主板（开放设计，SG560D-EM 模组，主线设备树）"
+soc = "QCM6490（SC7280 家族）"
+# The open reference flip phone's board (24-sku-framework.md §9.10): the
+# candybars' module (qcm6490-ref) on a carrier in the lower half, the
+# inner panel, the outer display, the earpiece and the camera in the upper
+# half over the hinge's flex. As qcm6490-ref, no machine of this layer
+# builds it (kario-qcm6490 comes with the public BSP layer) and the overlay
+# is made for, and its labels checked against, the Fairphone 5's tree.
+machine = "kario-qcm6490"
+dtb = "qcm6490-fairphone-fp5.dtb"
+modem = "modemmanager"
+ims = "81voltd"
+gnss = "modemmanager"
+gpu = true
+# A power key of its own on the lower half's side (PMK8350's KPDPWR),
+# reachable with the lid shut: it lights the outer display's picture anew.
+power_key = true
+backlight = "backlight"
+keyboard_backlight = "white:kbd_backlight"
+light_sensor = "vcnl4000"
+# Values of the design, none yet on a built board.
+unverified = ["ims", "gnss", "backlight", "keyboard_backlight", "light_sensor", "input.lid", "rtc.offset",
+              "usb.host", "usb.vbus_ma", "wiring.keypad_irq", "wiring.panel_vcc", "wiring.panel_iovcc", "wiring.outer_enable",
+              "wiring.outer_vcom", "wiring.lid_gpio"]
+
+# The Hall switch's input device: the overlay's gpio-keys node of
+# lid_gpio, labelled so.
+[input]
+lid = "Lid"
+# The volume keys of the parts below, which the line's test has pressed.
+keys = ["vol-up", "vol-down"]
+
+[rtc]
+read_only = true
+offset = true
+
+# The USB-C port (usb_1, ucsi_glink's Type-C port) is a host too; usb_2
+# inside is the fingerprint sensor's, which the kernel keeps as it is.
+[usb]
+host = true
+vbus_ma = 500
+controller = "a600000.usb"
+
+# As qcm6490-ref's, and the lid's Hall switch on GPIO 90: like the
+# keypad's GPIO 77, a pin the SoC's PDC wakes it by (sc7280_pdc_map, sku.py
+# check), outside the QUP pins and free in the Fairphone 5's trees of 6.18
+# and 7.1-rc1 (whose front camera's reset is GPIO 78). The outer display
+# is on the spare spi10 (GPIO 40-43), its enable on GPIO 82; its VCOM is
+# the LPG's first PWM channel (the candybars' notification LED: the flip
+# has none, its outer display shows what the LED would). For a 16.7 ms
+# period the LPG driver picks its 32 kHz clock, 9 bits, and makes 64.1 Hz,
+# inside the panel's 57-66 Hz; the 32 kHz clock runs while the SoC sleeps,
+# where a period it made from 19.2 MHz would stop or keep the crystal on.
+[wiring]
+keypad_bus = "i2c9"
+keypad_irq = "tlmm 77 8"    # IRQ_TYPE_LEVEL_LOW
+panel_dsi = "mdss_dsi"
+panel_dsi_out = "mdss_dsi0_out"
+panel_reset = "tlmm 44 1"   # GPIO_ACTIVE_LOW
+panel_vcc = "vreg_l11c"
+panel_iovcc = "vreg_l12c"
+dsi_vdda = "vreg_l6b"
+outer_spi = "spi10"
+outer_enable = "tlmm 82 0"  # GPIO_ACTIVE_HIGH
+outer_vcom = "pm8350c_pwm 0 16666667"
+lid_gpio = "tlmm 90 1"      # GPIO_ACTIVE_LOW: low while the magnet is near
+
+[[part]]
+kind = ["modem", "gnss"]
+name = "QCM6490 modem (MPSS) and its GNSS"
+bus = "soc"
+compatible = "qcom,sc7280-mpss-pas"
+driver = "drivers/remoteproc/qcom_q6v5_pas.c"
+
+[[part]]
+kind = "mobile-data"
+name = "QCM6490 IPA (mobile data)"
+bus = "soc"
+compatible = "qcom,sc7280-ipa"
+driver = "drivers/net/ipa/ipa_main.c"
+
+[[part]]
+kind = "gpu"
+name = "Adreno 643"
+bus = "soc"
+compatible = "qcom,adreno"
+driver = "drivers/gpu/drm/msm/adreno/adreno_device.c"
+
+[[part]]
+kind = "display"
+name = "QCM6490 display controller (DPU), the inner panel's"
+bus = "soc"
+compatible = "qcom,sc7280-dpu"
+driver = "drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c"
+
+[[part]]
+kind = "video-codec"
+name = "QCM6490 video codec (Venus)"
+bus = "soc"
+compatible = "qcom,sc7280-venus"
+driver = "drivers/media/platform/qcom/venus/core.c"
+
+[[part]]
+kind = "wifi"
+name = "WCN6750 Wi-Fi 6E"
+bus = "soc"
+compatible = "qcom,wcn6750-wifi"
+driver = "drivers/net/wireless/ath/ath11k/ahb.c"
+
+[[part]]
+kind = "bluetooth"
+name = "WCN6750 Bluetooth 5.2"
+bus = "uart"
+compatible = "qcom,wcn6750-bt"
+driver = "drivers/bluetooth/hci_qca.c"
+
+[[part]]
+kind = "sound-card"
+name = "QCM6490 sound card (LPASS, AudioReach)"
+bus = "soc"
+compatible = "qcom,qcm6490-idp-sndcard"
+driver = "sound/soc/qcom/sc8280xp.c"
+
+[[part]]
+kind = ["codec", "headphone-jack"]
+name = "WCD9370 codec, 3.5 mm jack with MBHC detection"
+bus = "soundwire"
+compatible = "qcom,wcd9370-codec"
+driver = ["sound/soc/codecs/wcd937x.c", "sound/soc/codecs/wcd-mbhc-v2.c"]
+
+[[part]]
+kind = "amplifier"
+name = "MAX98357A loudspeaker amplifier"
+bus = "i2s"
+compatible = "maxim,max98357a"
+driver = "sound/soc/codecs/max98357a.c"
+
+[[part]]
+kind = "camera"
+facing = "back"
+name = "Sony IMX258 13 MP on two CSI-2 lanes over the hinge (outside of the upper half)"
+bus = "csi"
+compatible = "sony,imx258"
+driver = "drivers/media/i2c/imx258.c"
+
+[[part]]
+kind = "focus"
+name = "DW9714 voice coil (the camera's focus, QR codes at 10 cm)"
+bus = "i2c"
+compatible = "dongwoon,dw9714"
+driver = "drivers/media/i2c/dw9714.c"
+
+[[part]]
+kind = "camera-receiver"
+name = "QCM6490 CAMSS (CSI-2 receiver, raw Bayer)"
+bus = "soc"
+compatible = "qcom,sc7280-camss"
+driver = "drivers/media/platform/qcom/camss/camss.c"
+
+[[part]]
+kind = "isp"
+name = "QCM6490 Spectra ISP"
+bus = "soc"
+driver = "none"
+
+[[part]]
+kind = "flash"
+name = "PM8350C flash LED (the camera's)"
+bus = "spmi"
+compatible = "qcom,spmi-flash-led"
+driver = "drivers/leds/flash/leds-qcom-flash.c"
+
+[[part]]
+kind = ["light", "proximity"]
+name = "Vishay VCNL4040 light and proximity (inner face, by the earpiece)"
+bus = "i2c"
+compatible = "vishay,vcnl4040"
+driver = "drivers/iio/light/vcnl4000.c"
+
+[[part]]
+kind = "accelerometer"
+name = "Bosch BMA400 accelerometer (step counter)"
+bus = "i2c"
+compatible = "bosch,bma400"
+driver = "drivers/iio/accel/bma400_i2c.c"
+
+[[part]]
+kind = "haptics"
+name = "TI DRV2605L with an LRA"
+bus = "i2c"
+compatible = "ti,drv2605l"
+driver = "drivers/input/misc/drv260x.c"
+
+[[part]]
+kind = "lid"
+name = "TI DRV5032 Hall switch (lid, SW_LID) on GPIO 90, its magnet in the upper half"
+bus = "gpio"
+compatible = "gpio-keys"
+driver = "drivers/input/keyboard/gpio_keys.c"
+
+[[part]]
+kind = "fingerprint"
+name = "Capacitive area sensor as the OK key's surface (8 x 8 mm in a 12 mm cap), matching on its USB 2.0 full-speed MCU (libfprint in a sandboxed process)"
+bus = "usb"
+driver = "none"
+
+[[part]]
+kind = "usb-host"
+name = "QCM6490 second USB 2.0 controller (usb_2), the fingerprint sensor's"
+bus = "soc"
+compatible = "qcom,snps-dwc3"
+driver = "drivers/usb/dwc3/dwc3-qcom.c"
+
+[[part]]
+kind = "power-switch"
+name = "Fingerprint sensor's load switch on GPIO 83, switched from user space"
+bus = "gpio"
+compatible = "regulator-output"
+driver = ["drivers/regulator/userspace-consumer.c", "drivers/regulator/fixed.c"]
+
+[[part]]
+kind = ["charger", "fuel-gauge", "typec"]
+name = "PM7250B charger, fuel gauge and USB-C through pmic_glink"
+bus = "soc"
+compatible = "qcom,qcm6490-pmic-glink"
+driver = ["drivers/soc/qcom/pmic_glink.c", "drivers/power/supply/qcom_battmgr.c", "drivers/usb/typec/ucsi/ucsi_glink.c"]
+
+[[part]]
+kind = "rtc"
+name = "PMK8350 RTC"
+bus = "spmi"
+compatible = "qcom,pmk8350-rtc"
+driver = "drivers/rtc/rtc-pm8xxx.c"
+
+[[part]]
+kind = "keyboard-backlight"
+name = "PM8350C LPG (the outer display's VCOM and front light, keyboard backlight, backlight PWM)"
+bus = "spmi"
+compatible = "qcom,pm8350c-pwm"
+driver = "drivers/leds/rgb/leds-qcom-lpg.c"
+
+[[part]]
+kind = "backlight"
+name = "Inner panel's backlight: pwm-backlight on a PWM-dimmed boost LED driver"
+bus = "pwm"
+compatible = "pwm-backlight"
+driver = "drivers/video/backlight/pwm_bl.c"
+
+[[part]]
+kind = "buttons"
+name = "PMK8350 power key and volume down (KPDPWR, RESIN)"
+bus = "spmi"
+compatible = "qcom,pmk8350-pwrkey"
+driver = "drivers/input/misc/pm8941-pwrkey.c"
+
+[[part]]
+kind = "buttons"
+name = "Volume up on a GPIO"
+bus = "gpio"
+compatible = "gpio-keys"
+driver = "drivers/input/keyboard/gpio_keys.c"

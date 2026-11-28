@@ -1,0 +1,73 @@
+{
+  "id": "qemu-t9",
+  "board": "qemuarm64",
+  "device": "bar-t9",
+  "display": "qemu-480x640",
+  "keypad": "qemu-kbd",
+  "memory_mb": 2048,
+  "web_gpu": false,
+  "modem": "sim",
+  "region": "cn",
+  "product": "kario-std",
+  "touch": true,
+  "leds": {
+    "notify": {
+      "name": "white:status"
+    }
+  },
+  "fingerprint": "sim",
+  "nfc": "sim",
+  "gnss": "fifo:gnss.nmea",
+  "rtc": {
+    "read_only": false,
+    "offset": false,
+    "alarm": "relative"
+  },
+  "usb": {
+    "host": true,
+    "vbus_ma": 500
+  },
+  "factory": {
+    "keys": [
+      "0",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "back",
+      "call",
+      "clear",
+      "down",
+      "end",
+      "left",
+      "ok",
+      "pound",
+      "right",
+      "soft-left",
+      "soft-right",
+      "star",
+      "up"
+    ],
+    "panel": [
+      480,
+      640
+    ],
+    "parts": [
+      "bluetooth",
+      "camera-back",
+      "sound-card",
+      "wifi"
+    ],
+    "keypad": {
+      "chip": "usb"
+    },
+    "optional": [
+      "bluetooth"
+    ]
+  }
+}

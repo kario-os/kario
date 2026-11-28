@@ -1,0 +1,57 @@
+{
+  "carriers": [
+    {
+      "name": "中国移动",
+      "mcc": "460",
+      "mnc": ["00", "02", "04", "07", "08", "13"],
+      "apns": [
+        {"id": "cmnet", "name": "中国移动 (China Mobile) NET", "apn": "cmnet", "types": ["default", "ia", "supl", "xcap"], "ip_type": "ipv4v6"},
+        {"id": "cmwap", "name": "中国移动 (China Mobile) WAP&MMS", "apn": "cmwap", "types": ["mms"], "ip_type": "ipv4v6",
+         "mmsc": "http://mmsc.monternet.com", "mms_proxy": "10.0.0.172", "mms_port": 80},
+        {"id": "ims", "name": "中国移动 (China Mobile) NET IMS", "apn": "ims", "types": ["ims"], "ip_type": "ipv4v6"}
+      ]
+    },
+    {
+      "name": "中国联通",
+      "mcc": "460",
+      "mnc": ["01", "06", "09"],
+      "apns": [
+        {"id": "3gnet", "name": "中国联通 (China Unicom) NET", "apn": "3gnet", "types": ["default", "ia", "supl", "xcap"], "ip_type": "ipv4v6"},
+        {"id": "3gwap", "name": "中国联通 (China Unicom) WAP&MMS", "apn": "3gwap", "types": ["mms"], "ip_type": "ipv4v6",
+         "mmsc": "http://mmsc.myuni.com.cn", "mms_proxy": "10.0.0.172", "mms_port": 80},
+        {"id": "ims", "name": "中国联通 (China Unicom) NET IMS", "apn": "ims", "types": ["ims"], "ip_type": "ipv4v6"}
+      ]
+    },
+    {
+      "name": "中国电信",
+      "mcc": "460",
+      "mnc": ["03", "05", "11"],
+      "apns": [
+        {"id": "ctnet", "name": "中国电信 (China Telecom) NET", "apn": "ctnet", "types": ["default", "ia", "supl", "xcap"], "ip_type": "ipv4v6"},
+        {"id": "ctwap", "name": "中国电信 (China Telecom) WAP&MMS", "apn": "ctwap", "types": ["mms"], "ip_type": "ipv4v6",
+         "mmsc": "http://mmsc.vnet.mobi", "mms_proxy": "10.0.0.200", "mms_port": 80},
+        {"id": "ims", "name": "中国电信 (China Telecom) NET IMS", "apn": "ims", "types": ["ims"], "ip_type": "ipv4v6"}
+      ]
+    },
+    {
+      "name": "中国电信",
+      "mcc": "460",
+      "mnc": ["01"],
+      "spn": "China Telecom",
+      "apns": [
+        {"id": "ctnet", "name": "CTNET", "apn": "ctnet", "types": ["default", "xcap"], "ip_type": "ipv4v6",
+         "auth": "pap-chap", "user": "ctnet@mycdma.cn", "password": "vnet.mobi"},
+        {"id": "ims", "name": "IMS", "apn": "ims", "types": ["ims"], "ip_type": "ipv4v6"}
+      ]
+    },
+    {
+      "name": "中国广电",
+      "mcc": "460",
+      "mnc": ["15"],
+      "apns": [
+        {"id": "cbnet", "name": "中国广电 (CBN) NET", "apn": "cbnet", "types": ["default", "ia", "supl", "xcap"], "ip_type": "ipv4v6"},
+        {"id": "ims", "name": "中国广电 (CBN) NET IMS", "apn": "ims", "types": ["ims"], "ip_type": "ipv4v6"}
+      ]
+    }
+  ]
+}

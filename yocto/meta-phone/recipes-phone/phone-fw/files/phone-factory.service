@@ -1,0 +1,22 @@
+[Unit]
+Description=Factory mode's test runner: the factory screen's checks and the station's API on the USB link (docs/40 §10)
+ConditionPathExists=/run/phone/factory/on
+After=phone-factory-gate.service phone-keystored.socket phone-telephonyd.service phone-audiod.socket
+Requires=phone-factory-gate.service
+Wants=phone-keystored.socket phone-telephonyd.service phone-audiod.socket
+
+[Service]
+# Small Go heaps: no transparent huge pages (see phone-shell DisableHugePages).
+Environment=GODEBUG=disablethp=1
+# The station's port opens once the Shell gives the USB link its address
+# (10.71.0.1), the firewall letting through only it and DHCP. A runner
+# that finds the keystore provisioned exits 3, and stays down.
+ExecStart=/usr/bin/phone-factory-test --serve
+Restart=on-failure
+RestartSec=1
+RestartPreventExitStatus=3
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,11 @@
+{
+  "Connected to %s · heartbeat every %d s (push heartbeat %d s)": "Conectada a %s · latido cada %d s (latido de push %d s)",
+  "Disconnect": "Desconectar",
+  "Enter the server as host:port": "Escribe el servidor como host:puerto",
+  "Heartbeats sent: %d": "Latidos enviados: %d",
+  "Keepalive Sample": "Ejemplo de conexión propia",
+  "Last message: %s": "Último mensaje: %s",
+  "Not connected": "Sin conexión",
+  "Not connected: %v": "No conectada: %v",
+  "Server (host:port)": "Servidor (host:puerto)"
+}

@@ -1,0 +1,27 @@
+{
+  "id": "com.phone.music",
+  "name": "音乐",
+  "icon": "乐",
+  "icon_image": "icon.png",
+  "description": "媒体库 · 后台播放",
+  "exec": "phone-app-music",
+  "order": 27,
+  "permissions": [],
+  "background": [
+    "audio"
+  ],
+  "locales": {
+    "zh-Hant": {
+      "name": "音樂",
+      "description": "媒體庫 · 背景播放"
+    },
+    "en": {
+      "name": "Music",
+      "description": "Media library · background playback"
+    },
+    "es": {
+      "name": "Música",
+      "description": "Biblioteca multimedia · reproducción en segundo plano"
+    }
+  }
+}

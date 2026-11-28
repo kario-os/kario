@@ -1,0 +1,50 @@
+[Unit]
+Description=Phone shell on the display through the image's pixel renderer (only with phone.gui=1 on the kernel command line)
+ConditionKernelCommandLine=phone.gui=1
+# The renderer slot: phone-paint, or phone-gui in an image built to compare.
+ConditionPathExists=/usr/lib/phone/renderer
+After=phone-mediad.socket phone-keystored.socket phone-imed.socket phone-telephonyd.service phone-audiod.socket phone-pushd.service phone-chatsrv.service phone-storesrv.service systemd-udev-settle.service getty@tty1.service iwd.service bluetooth.service
+# Factory mode's mark is written (or not) before the Shell looks for it.
+After=phone-factory-gate.service
+Wants=phone-mediad.socket phone-keystored.socket phone-imed.socket phone-telephonyd.service phone-audiod.socket phone-pushd.service phone-chatsrv.service phone-storesrv.service
+# The panel belongs to the shell: no login prompt on the first virtual
+# console drawing over it or reading the keyboard.
+Conflicts=getty@tty1.service
+
+[Service]
+# Every app runs in a systemd scope of its own (phone-apps.slice; memory,
+# pids, cpu, freezer), so nothing of theirs sits in this service's group
+# and a crashed shell can be restarted while they live on: their
+# connections wait in the fd store and the new shell takes them over. A
+# stop signals the shell alone, which ends the apps itself; what is left
+# in this group after it (the renderer, its input opener, helpers) is
+# killed, on a restart too: a renderer left over keeps the display's DRM
+# master, and the next shell's renderer cannot start
+# (11-platform-architecture.md §14).
+Environment=PHONE_APP_SCOPES=1 PHONE_FDSTORE=1
+# The store holds each running app's connection and the system's copy of
+# each app's own connection (net.keepalive): at most two an app. No phone
+# runs 256 apps at once (the low-memory killer ends background ones long
+# before); a place costs systemd a few hundred bytes, and the 512 come back
+# to a restarted shell under the 1024 files a service may open. The shell
+# keeps within the number systemd passes it ($FDSTORE): own connections
+# take at most a quarter, never an app's place (21-push.md §8.2).
+FileDescriptorStoreMax=512
+NotifyAccess=main
+KillMode=mixed
+Restart=on-failure
+RestartSec=1
+Environment=HOME=/root
+Environment=PHONE_CHAT_SERVER=http://127.0.0.1:8791
+Environment=PHONE_STORE_SERVER=http://127.0.0.1:8793
+# The cloud's store and update server, when the product layer names them
+# (phone-services); the simulated store otherwise, and no update server.
+EnvironmentFile=-/usr/share/phone/services.env
+# The form factor comes from the image's SKU (share/phone/sku.json).
+# /run/phone/healthy: the update health check's sign that this system came up.
+ExecStart=/usr/bin/phone-shell --services system --gui auto --health-file /run/phone/healthy
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=multi-user.target

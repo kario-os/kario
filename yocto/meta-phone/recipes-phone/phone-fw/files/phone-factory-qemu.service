@@ -1,0 +1,18 @@
+[Unit]
+Description=Factory mode's test on the emulator (kario.factory-test=1 or =again, yocto/qemu-factory.sh)
+# Only the emulator's test passes kario.factory-test: it runs the runner's
+# automatic checks, takes a device away, provisions the phone as the
+# station would and checks the refusals that follow; the second boot
+# checks that a provisioned phone boots as ever.
+ConditionKernelCommandLine=kario.factory-test
+After=phone-factory.service phone-factory-gate.service phone-smsd.service phone-pushd.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/phone/factory-test.sh
+StandardOutput=journal+console
+StandardError=journal+console
+TimeoutStartSec=infinity
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,25 @@
+{
+  "id": "com.example.netcheck",
+  "name": "网络检查",
+  "icon": "网",
+  "description": "TypeScript 应用自己的网络对着测试服务器：流式读响应、取消请求、Cookie、WebSocket 回声（自测用）",
+  "version": "1.0",
+  "runtime": "js",
+  "main": "main.js",
+  "permissions": ["net"],
+  "privacy": {},
+  "locales": {
+    "zh-Hant": {
+      "name": "網路檢查",
+      "description": "TypeScript 應用程式自己的網路對著測試伺服器：串流讀取回應、取消請求、Cookie、WebSocket 回聲（自我測試用）"
+    },
+    "en": {
+      "name": "Network check",
+      "description": "A TypeScript app's own network against a test server: a response read as a stream, a request aborted, cookies, a WebSocket echo (for the selftest)"
+    },
+    "es": {
+      "name": "Comprobación de red",
+      "description": "La red propia de una app en TypeScript contra un servidor de pruebas: una respuesta leída como flujo, una petición cancelada, cookies, un eco WebSocket (para la autoprueba)"
+    }
+  }
+}

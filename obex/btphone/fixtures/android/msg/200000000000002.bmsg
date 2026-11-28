@@ -1,0 +1,39 @@
+BEGIN:BMSG
+VERSION:1.0
+STATUS:READ
+TYPE:MMS
+FOLDER:telecom/msg/inbox
+BEGIN:VCARD
+VERSION:3.0
+FN:上官燕
+N:上官燕
+TEL:136-5555-0202
+END:VCARD
+BEGIN:BENV
+BEGIN:VCARD
+VERSION:3.0
+FN:
+N:
+TEL:+8613800138099
+END:VCARD
+BEGIN:BBODY
+CHARSET:UTF-8
+LENGTH:344
+BEGIN:MSG
+Date: Sun, 15 Nov 2026 20:00:00 +0800
+Subject: 照片
+From: 136-5555-0202
+To: +8613800138099
+Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="--=_31415926"
+
+----=_31415926
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+
+看看这张，去年在杭州拍的
+----=_31415926--
+END:MSG
+END:BBODY
+END:BENV
+END:BMSG

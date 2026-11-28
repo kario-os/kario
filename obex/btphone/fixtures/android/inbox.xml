@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<MAP-msg-listing version="1.0">
+<msg handle="100000000000005" subject="周日一起去西湖吗？" datetime="20261116T193000" sender_name="诸葛明" sender_addressing="+8613655550201" recipient_name="" recipient_addressing="" type="SMS_GSM" size="46" text="yes" reception_status="complete" attachment_size="0" priority="no" read="yes" sent="no" protected="no"/>
+<msg handle="100000000000004" subject="快递到了，放在门卫" datetime="20261116T101500+0800" sender_name="" sender_addressing="1065555000" recipient_name="" recipient_addressing="" type="SMS_GSM" size="27" text="yes" reception_status="complete" attachment_size="0" priority="no" read="no" sent="no" protected="no"/>
+<msg handle="200000000000002" subject="照片" datetime="20261115T200000" sender_name="上官燕" sender_addressing="136-5555-0202" recipient_name="" recipient_addressing="" type="MMS" size="34120" text="yes" reception_status="complete" attachment_size="0" priority="no" read="yes" sent="no" protected="no"/>
+</MAP-msg-listing>

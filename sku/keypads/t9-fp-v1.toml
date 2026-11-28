@@ -1,0 +1,43 @@
+id = "t9-fp-v1"
+name = "九宫格键盘 v1（OK 键带指纹）"
+form = "t9"
+chip = "tca8418"
+address = 0x34
+rows = 5
+cols = 5
+# The flip's keypad (24-sku-framework.md §9.10.5): t9-v1's matrix with a
+# fingerprint sensor as the OK key's surface, a capacitive area sensor
+# under the cap's coating that reads a finger resting on it, without a
+# press (pressing the dome under the cap is what types OK). Every press of
+# OK touches it, so the system powers it only while the system's biometric
+# prompt is open (31 §4.1). Its sensing area is as large as the cap takes: a
+# 160x160 pixel sensor at 508 dpi (FPC1025's class) in a 12 mm square cap.
+fingerprint = "ok-key"
+fingerprint_mm = [8.0, 8.0]
+fingerprint_cap_mm = [12.0, 12.0]
+
+# Matrix position "row,col" -> key (keys.toml), as t9-v1's.
+[matrix]
+"0,0" = "soft-left"
+"0,1" = "up"
+"0,2" = "soft-right"
+"0,3" = "call"
+"0,4" = "end"
+"1,0" = "left"
+"1,1" = "ok"
+"1,2" = "right"
+"1,3" = "clear"
+"1,4" = "back"
+"2,0" = "1"
+"2,1" = "2"
+"2,2" = "3"
+"2,3" = "down"
+"3,0" = "4"
+"3,1" = "5"
+"3,2" = "6"
+"3,3" = "7"
+"3,4" = "8"
+"4,0" = "9"
+"4,1" = "star"
+"4,2" = "0"
+"4,3" = "pound"

@@ -1,0 +1,254 @@
+id = "qcm6490-ref"
+name = "QCM6490 参考机主板（开放设计，SG560D-EM 模组，主线设备树）"
+soc = "QCM6490（SC7280 家族）"
+# The open reference phones' board (24-sku-framework.md §9): a QCM6490
+# module (Quectel SG560D-EM: the SoC, its PMICs, memory, the modem's RF,
+# Wi-Fi/Bluetooth and GNSS on one LGA) on a carrier of our own. No
+# machine of this layer builds it: kario-qcm6490 is to come with the
+# public BSP layer (§8.7.6), so the machine's checks are skipped and no
+# image is built. Until the carrier has a tree of its own, the overlay is
+# made for, and its labels checked against, the Fairphone 5's: the same
+# SoC and PMICs, the one QCM6490 phone mainline describes whole.
+machine = "kario-qcm6490"
+dtb = "qcm6490-fairphone-fp5.dtb"
+modem = "modemmanager"
+# VoLTE: most networks the phone is for have switched 2G/3G off.
+ims = "81voltd"
+gnss = "modemmanager"
+gpu = true
+# A power key of its own on the top edge (PMK8350's KPDPWR); the end key
+# is a key of the keypad.
+power_key = true
+# pwm-backlight on the LPG's fourth PWM, as Qualcomm's QCM6490 IDP drives
+# its panel's; the keyboard's on an LPG channel (leds-qcom-lpg names it by
+# colour and function); the light sensor's IIO device (vcnl4000 for every
+# chip of that driver).
+backlight = "backlight"
+keyboard_backlight = "white:kbd_backlight"
+light_sensor = "vcnl4000"
+# Values of the design, none yet on a built board.
+unverified = ["ims", "gnss", "backlight", "keyboard_backlight", "light_sensor", "leds.notify", "rtc.offset",
+              "usb.host", "usb.vbus_ma", "wiring.keypad_irq", "wiring.panel_vcc", "wiring.panel_iovcc"]
+
+# The other LPG channel: one white LED (an RGB one would take three, and
+# the keyboard's backlight and the panel's PWM would not fit).
+[leds]
+notify = "white:status"
+
+# The USB-C port is a host too (ucsi_glink's Type-C port switches usb_1's
+# role); PM7250B's OTG boost gives the devices 500 mA on VBUS.
+[usb]
+host = true
+vbus_ma = 500
+
+# PMK8350's RTC (rtc-pm8xxx): read-only on mainline, as the Fairphone 5's
+# (no allow-set-time).
+# The volume keys of the parts below, which the line's test has pressed.
+[input]
+keys = ["vol-up", "vol-down"]
+
+[rtc]
+read_only = true
+offset = true
+
+# Where the SKU's modules connect, as device tree labels of the base tree.
+# The keypad (and the sensors, NFC and haptics of [[part]]) share the
+# Fairphone 5's spare i2c9 (GPIO 36/37); its interrupt is GPIO 77, as the
+# flip's: a pin the SoC's PDC wakes it by (sc7280_pdc_map, sku.py check),
+# free in that tree and outside the QUP pins. The panel takes the
+# Fairphone 5's DSI wiring: reset GPIO 44, VCC from L11C (2.8 V), IOVCC
+# from L12C (1.65 V, inside the ST7701's 1.65-3.3 V).
+[wiring]
+keypad_bus = "i2c9"
+keypad_irq = "tlmm 77 8"    # GPIO 77, IRQ_TYPE_LEVEL_LOW
+panel_dsi = "mdss_dsi"
+panel_dsi_out = "mdss_dsi0_out"
+panel_reset = "tlmm 44 1"   # GPIO 44, GPIO_ACTIVE_LOW
+panel_vcc = "vreg_l11c"
+panel_iovcc = "vreg_l12c"
+dsi_vdda = "vreg_l6b"
+
+# The hardware beyond the fields above, each with the mainline driver that
+# binds it (sku.py parts lists them; §9 has their status).
+[[part]]
+kind = ["modem", "gnss"]
+name = "QCM6490 modem (MPSS) and its GNSS"
+bus = "soc"
+compatible = "qcom,sc7280-mpss-pas"
+driver = "drivers/remoteproc/qcom_q6v5_pas.c"
+
+[[part]]
+kind = "mobile-data"
+name = "QCM6490 IPA (mobile data)"
+bus = "soc"
+compatible = "qcom,sc7280-ipa"
+driver = "drivers/net/ipa/ipa_main.c"
+
+[[part]]
+kind = "gpu"
+name = "Adreno 643"
+bus = "soc"
+compatible = "qcom,adreno"
+driver = "drivers/gpu/drm/msm/adreno/adreno_device.c"
+
+[[part]]
+kind = "display"
+name = "QCM6490 display controller (DPU)"
+bus = "soc"
+compatible = "qcom,sc7280-dpu"
+driver = "drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c"
+
+[[part]]
+kind = "video-codec"
+name = "QCM6490 video codec (Venus)"
+bus = "soc"
+compatible = "qcom,sc7280-venus"
+driver = "drivers/media/platform/qcom/venus/core.c"
+
+[[part]]
+kind = "wifi"
+name = "WCN6750 Wi-Fi 6E"
+bus = "soc"
+compatible = "qcom,wcn6750-wifi"
+driver = "drivers/net/wireless/ath/ath11k/ahb.c"
+
+[[part]]
+kind = "bluetooth"
+name = "WCN6750 Bluetooth 5.2"
+bus = "uart"
+compatible = "qcom,wcn6750-bt"
+driver = "drivers/bluetooth/hci_qca.c"
+
+[[part]]
+kind = "sound-card"
+name = "QCM6490 sound card (LPASS, AudioReach)"
+bus = "soc"
+compatible = "qcom,qcm6490-idp-sndcard"
+driver = "sound/soc/qcom/sc8280xp.c"
+
+[[part]]
+kind = ["codec", "headphone-jack"]
+name = "WCD9370 codec, 3.5 mm jack with MBHC detection"
+bus = "soundwire"
+compatible = "qcom,wcd9370-codec"
+driver = ["sound/soc/codecs/wcd937x.c", "sound/soc/codecs/wcd-mbhc-v2.c"]
+
+[[part]]
+kind = "amplifier"
+name = "MAX98357A loudspeaker amplifier"
+bus = "i2s"
+compatible = "maxim,max98357a"
+driver = "sound/soc/codecs/max98357a.c"
+
+[[part]]
+kind = "camera"
+facing = "back"
+name = "Sony IMX258 13 MP"
+bus = "csi"
+compatible = "sony,imx258"
+driver = "drivers/media/i2c/imx258.c"
+
+[[part]]
+kind = "focus"
+name = "DW9714 voice coil (back camera's focus)"
+bus = "i2c"
+compatible = "dongwoon,dw9714"
+driver = "drivers/media/i2c/dw9714.c"
+
+[[part]]
+kind = "camera"
+facing = "front"
+name = "OmniVision OV8858 8 MP"
+bus = "csi"
+compatible = "ovti,ov8858"
+driver = "drivers/media/i2c/ov8858.c"
+
+[[part]]
+kind = "camera-receiver"
+name = "QCM6490 CAMSS (CSI-2 receiver, raw Bayer)"
+bus = "soc"
+compatible = "qcom,sc7280-camss"
+driver = "drivers/media/platform/qcom/camss/camss.c"
+
+[[part]]
+kind = "isp"
+name = "QCM6490 Spectra ISP"
+bus = "soc"
+driver = "none"
+
+[[part]]
+kind = "flash"
+name = "PM8350C flash LED (back camera)"
+bus = "spmi"
+compatible = "qcom,spmi-flash-led"
+driver = "drivers/leds/flash/leds-qcom-flash.c"
+
+[[part]]
+kind = ["light", "proximity"]
+name = "Vishay VCNL4040 light and proximity"
+bus = "i2c"
+compatible = "vishay,vcnl4040"
+driver = "drivers/iio/light/vcnl4000.c"
+
+[[part]]
+kind = "accelerometer"
+name = "Bosch BMA400 accelerometer (step counter)"
+bus = "i2c"
+compatible = "bosch,bma400"
+driver = "drivers/iio/accel/bma400_i2c.c"
+
+[[part]]
+kind = "haptics"
+name = "TI DRV2605L with an LRA"
+bus = "i2c"
+compatible = "ti,drv2605l"
+driver = "drivers/input/misc/drv260x.c"
+
+[[part]]
+kind = "nfc"
+name = "NXP PN7150"
+bus = "i2c"
+compatible = "nxp,nxp-nci-i2c"
+driver = "drivers/nfc/nxp-nci/i2c.c"
+
+[[part]]
+kind = ["charger", "fuel-gauge", "typec"]
+name = "PM7250B charger, fuel gauge and USB-C through pmic_glink"
+bus = "soc"
+compatible = "qcom,qcm6490-pmic-glink"
+driver = ["drivers/soc/qcom/pmic_glink.c", "drivers/power/supply/qcom_battmgr.c", "drivers/usb/typec/ucsi/ucsi_glink.c"]
+
+[[part]]
+kind = "rtc"
+name = "PMK8350 RTC"
+bus = "spmi"
+compatible = "qcom,pmk8350-rtc"
+driver = "drivers/rtc/rtc-pm8xxx.c"
+
+[[part]]
+kind = ["led", "keyboard-backlight"]
+name = "PM8350C LPG (notification LED, keyboard backlight, backlight PWM)"
+bus = "spmi"
+compatible = "qcom,pm8350c-pwm"
+driver = "drivers/leds/rgb/leds-qcom-lpg.c"
+
+[[part]]
+kind = "backlight"
+name = "Panel backlight: pwm-backlight on a PWM-dimmed boost LED driver"
+bus = "pwm"
+compatible = "pwm-backlight"
+driver = "drivers/video/backlight/pwm_bl.c"
+
+[[part]]
+kind = "buttons"
+name = "PMK8350 power key and volume down (KPDPWR, RESIN)"
+bus = "spmi"
+compatible = "qcom,pmk8350-pwrkey"
+driver = "drivers/input/misc/pm8941-pwrkey.c"
+
+[[part]]
+kind = "buttons"
+name = "Volume up on a GPIO"
+bus = "gpio"
+compatible = "gpio-keys"
+driver = "drivers/input/keyboard/gpio_keys.c"

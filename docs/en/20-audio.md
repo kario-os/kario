@@ -1,0 +1,469 @@
+> English translation of [the Chinese original](../20-audio.md). The Chinese text is authoritative; keep both in sync.
+
+# Audio service (R23)
+
+> Phone calls, alarms, music and Hongyan voice all need sound. Implemented: the system service `phone-audiod`, audio focus, system notification sounds, the music app, background playback, recording, app-provided audio streams (shared memory, passed via fd, §3.1), Hongyan voice messages, video sound (mediad writes into the same kind of ring buffer), plus the sound card on the device and verification by recording in QEMU. Lossless music (FLAC, WAV, AIFF, ALAC, APE, WavPack, cue sheets), DSD (DSF, DFF, SACD images), sending each track to the sound card at its own format (bit-perfect, DoP, native DSD), gapless playback and ReplayGain are in §9: unit tests ✓ and selftest ✓ on the development machine, **not tried on a real device** (no real USB DAC, no SACD disc image). Call audio routing on a real phone (ALSA UCM: earpiece, speaker, mute; the OnePlus 6T) is in §10: unit tests ✓, **not tried on a phone**. Mono audio, the left/right balance and the speech service the screen reader uses (its engine is simulated and makes no sound) are in §11. Which output plays media, calls and ringtones while several are connected (a 3.5 mm headset, a USB-C DAC dongle, Bluetooth), what plugging and unplugging do, each output's own volume and the output picker are in §12: unit tests ✓, developer-machine selftest ✓, **not tried on a phone**. Bluetooth sound (A2DP, HFP), real recording devices and the like are listed in §7 and are **not implemented**.
+
+## 0. Conclusions
+
+- **Apps cannot touch the sound card.** There is no `/dev/snd` in the sandbox (Landlock only allows `/dev/null`, `/dev/zero` and the two random-number devices), and only the Shell can connect to the audio service's socket (permissions 0600). An app can only ask the broker to "play a given item from the media library", or control its own playback streams.
+- **The system decides when sound is made.** Every sound belongs to a category, and categories have priorities: emergency alert > call > ringtone > alarm > media > notification sound. Music pauses automatically on an incoming call and resumes automatically after hanging up; a notification sound only ducks the music. Apps can only use the "media" category, so they cannot borrow a higher-priority category to interrupt others.
+- **Ringtones, alarms, ringback tones, busy tones and notification sounds are all played by the system**, so they sound even when the app is frozen or not running.
+- **Recording requires the user's authorization and comes with a status bar indicator.** Only the foreground app or an app in a call can record; as soon as an app leaves the foreground, the system stops its recording (Android 9+ and iOS behave the same way).
+- **Apps' own sound does not pass through the Shell.** The Shell checks permissions once, at setup, and hands the app a block of shared memory; after that, PCM data flows directly between the app and audiod (§3.1).
+- **The music app can play in the background.** With `background: ["audio"]` declared in the manifest, leaving the app while a song is playing does not freeze it; once playback is paused or finished, the app is frozen as usual the next time you leave it.
+- **Music plays at its own format.** While only music is sounding, audiod bypasses the 48 kHz mixer and opens the sound card at the track's own sample rate and depth; when nothing changes the samples (media volume at maximum, no ReplayGain, a card that takes the format) that is bit-perfect. DSD goes out natively when it can, as DoP when the user chose DoP, and otherwise converted to 176.4 kHz PCM. As soon as a notification sound plays, the mixer takes over again, and a second later the music goes direct again (§9.5).
+- The selftest on the development machine and the pixel renderer in all three form factors both pass (case counts in "Current verification baseline" in 57 (internal document)); the results on the device are in §6.
+
+## 1. Architecture
+
+```
+ App (sandboxed, no /dev/snd)
+   │ phone.Ui: media.list / audio.play / audio.control / audio.state / audio.route
+   ▼
+ Shell broker ── permissions, control of own streams only, forwards stream events to the owning app
+   │ System sounds: incoming-call ringtone, ringback tone, call, alarm, notification sound (switched on and off automatically by call and alarm state)
+   │ JSON-lines RPC + event subscription (unix socket, 0600)
+   ▼
+ phone-audiod ── mixer (48 kHz stereo, one frame every 20 ms) + focus policy + sources
+   │             while only music sounds: past the mixer, at the track's own format (§9.5)
+   ▼
+ Output sinks: alsa (aplay → sound card; each USB sound card has an aplay of its own, chosen by §12's policy) | file (WAV) | null
+```
+
+How this maps to Android and iOS:
+
+| Responsibility | Android | iOS | Us |
+|------|---------|-----|------|
+| Mixing, output | AudioFlinger | System audio service | The mixer in `phone-audiod` |
+| Who may make sound, interruption and resumption | Audio focus (AudioFocus) + AudioPolicy | Audio session categories + interruption notifications | Category priorities (§2); the policy lives in the service, and apps cannot set it themselves |
+| Background playback | Foreground service + media notification | `audio` background mode | `background: ["audio"]`, in effect only while the app is actually making sound |
+| Ringtones, alarms | System app + ring stream | System | Played directly by the Shell; apps are not involved |
+
+## 2. Categories and focus
+
+| Category | Used by | Priority | Effect on music |
+|------|------|:---:|------|
+| `alert` | Emergency alerts (cell broadcast, [32](32-messaging.md) §7); volume fixed at full, sounds in silent mode too | 6 | Paused, resumes afterward |
+| `call` | During a call (ringback tone, call audio, busy tone) | 5 | Paused, resumes afterward |
+| `ring` | SIM incoming call, VoIP incoming call | 4 | Paused, resumes afterward |
+| `alarm` | Alarm | 3 | Paused, resumes afterward |
+| `media` | Apps (music, etc.) | 2 | Only one stream at a time; a new one replaces the old one |
+| `notify` | Notification banners | 1 | Ducked to 30%, not paused |
+
+- A stream interrupted by a higher priority is marked `by_focus`. When the interruption ends, only streams marked this way are resumed; a stream the user paused is not resumed.
+- Each category has its own volume (the `volume` method).
+- The route `earpiece` / `speaker` is toggled by 「免提」 (Speaker) on the dialer screen and requires the `phone` permission. With a single output sink (development machine, QEMU) speaker mode just multiplies the call gain by 1.4; on a phone whose sound card is routed by an ALSA UCM profile (the OnePlus 6T) audiod moves the card to the earpiece or speaker call set-up (§10).
+
+## 3. App API
+
+| Capability | Parameters | Notes |
+|------|------|------|
+| `media.list` | — | Audio in the system media library: the music library's tracks (§9; the ID is `music:<path in the music library>`, with `#<number>` added for tracks of cue sheets and SACD images), then the 3 synthesized sample tracks. Besides title, artist and length, music tracks have `album`, `album_artist`, `track`, `disc`, `genre`, `year`, `folder`, `format` ("FLAC 24/96"), `quality`, `codec`, `rate`, `bits`, `channels`, `lossless`, `replaygain`, `cover` and `from` (`cue` / `sacd`) |
+| `audio.play` | `{media, next?, at_ms?, replaygain?, dsd?}` | Plays an item from the media library; the category is fixed to `media`; returns the stream. `next`: the track that follows without a gap; `at_ms`: where to start; `replaygain`: `track` / `album` / empty (off); `dsd`: `auto` / `dop` / `pcm` |
+| `audio.control` | `{id, op, at_ms?, next?, replaygain?, dsd?}` | `pause` / `resume` / `stop`; can only control the app's own streams. Music also has `seek` (`at_ms`), `queue` (replaces the track that follows; an empty `next` means none) and `options` (`dsd`) |
+| `audio.state` | — | The app's own streams: state, position, duration, whether paused by focus |
+| `audio.route` | `{route}` | `earpiece` / `speaker`; requires the `phone` permission |
+
+Every time a stream's state changes, the Shell sends an `audio` event (the stream as JSON) to the app that owns it. The app updates its UI accordingly, and when a track finishes it receives `ended` and automatically moves on to the next one. Music streams also carry `media` (the track playing now: it changes when the queued track takes over, and the app then queues the one after), `format` and `output` (how it reaches the card: `mixer 48 kHz`, `pcm S32_LE 96000 Hz 2ch bit-perfect`, `dop …`, `dsd …`). These fields and the music fields of `media.list` are defined by the Shell and the music app each on its own for now (`shell/music.go`, `apps/music/library.go`), not yet in `ui/caps.go`.
+
+### 3.1 App-provided audio streams
+
+| Capability | Permission | Notes |
+|------|------|------|
+| `audio.stream` `{name}` | — | Plays PCM that the app writes itself: voice messages, decoded VoIP audio, sound effects. The category is decided by the system: `call` while the app is in a call, `media` otherwise |
+| `audio.record` `{name}` | Microphone (runtime grant) | Microphone audio is written into the buffer, and the app reads it. Only the foreground app or an app in a call can use it, and recording stops immediately when the app leaves the foreground; while recording, the middle of the status bar shows 「● 麦克风」 (● Microphone) (orange in the pixel renderer) |
+
+How the data flows:
+
+```
+ App ──audio.stream──▶ Shell (checks permission, sets category) ──open──▶ audiod
+                                                                          │ creates a memfd: 48 kHz mono ring buffer, size sealed
+ App ◀──reply + fd (SCM_RIGHTS)── Shell ◀────────────reply + fd────────── audiod
+   │
+   └── From then on: the app writes / reads the shared memory, audiod reads / writes it every 20 ms; the Shell is no longer involved
+```
+
+- The buffer format is defined in `audio/ring.go`: a 64-byte header that records the read and write positions, followed by the samples. One producer, one consumer.
+- Neither side trusts the read and write positions written by the other: indices are taken modulo the capacity, so nothing the peer writes can push them out of bounds. The memfd's size is sealed (`F_SEAL_SHRINK`), so the peer cannot truncate the file and thereby make the other side crash with SIGBUS when it touches the mapped memory; the seals are checked before mapping, and an unsealed memfd is rejected. Each of these points has unit tests.
+- App SDK: `app.GoAudio(capability, name, callback)` returns an `AudioStream`; read and write its `Ring`, and call `Close` when done.
+- Video sound goes through the same kind of buffer, except that the writer is mediad instead of the app: on `video.open`, the Shell opens a `media`-category stream on the app's behalf and hands the fd to mediad, whose ffmpeg decodes the sound to 48 kHz mono and writes it in. The picture's clock is the number of samples audiod has already consumed, so when audio focus pauses this sound (an incoming call), the picture stops too ([19](19-core-apps.md) §2).
+- The microphone is currently simulated: a "speaking voice" that alternates between 365 Hz and 475 Hz. These are neither system sound frequencies nor notes from the sample tracks, so the recorded voice can be recognized even in the device's sound card output (§6).
+
+**Hongyan voice messages**:
+- In a chat, choose 「语音消息」 (Voice message) from the options menu (shortcut r) to open the recording screen, which shows the duration and a progress bar; the maximum is 1 minute;
+- Press OK to send, Back to cancel;
+- The recording is saved as WAV in the app's own data directory;
+- The bubble shows 「[语音 0:02]」 ([Voice 0:02]); select it and press OK to play it;
+- If you leave the app while recording, the system stops the recording, and when you come back the recording screen shows 「录音已中断」 (Recording interrupted).
+
+| Recording (indicator in the status bar) | The voice message after sending |
+|:--:|:--:|
+| ![](../img/px-app-voice-rec.png) | ![](../img/px-app-voice-sent.png) |
+
+The `progress` node (a progress bar: `fraction` 0–1, a label on the left, a description on the right) is a general-purpose capability that music progress, app store downloads and system updates (OTA) can all use. Each of the two renderers draws it in its own way, so apps don't have to assemble it from characters.
+
+## 4. System sounds
+
+All sounds are original tones synthesized in code; neither the Nokia ringtone (Nokia Tune) nor other vendors' notification sounds are used:
+
+| Sound | Content | When it plays |
+|------|------|------------|
+| Incoming-call ringtone | Three rising notes E5, G5, B5, looped | SIM incoming call, VoIP incoming call (when the system incoming-call screen appears); stops on answer or reject |
+| Alarm | 880 Hz triplet, looped | When the alarm goes off; stops on dismiss or snooze |
+| Ringback tone | 450 Hz, 1 second on, 4 seconds off (the signaling tone of China's telephone network) | After dialing out, while the other party's phone is ringing |
+| Busy tone | 450 Hz, 0.35 seconds on, 0.35 seconds off | The other party is busy |
+| Call audio | A low-frequency harmony that simulates the other party speaking | During a call on the simulated baseband (on a real device the baseband connects directly to the sound card; with a UCM call set-up audiod plays it as silence, §10) |
+| Notification sound | Two short notes (C6, E6) | When a notification banner appears; silent during a call |
+| Emergency alert | 853 Hz and 960 Hz together (the CMAS and EU-Alert attention signal), 2 s, half a second, half a second, looping | When the emergency-alert screen comes up; stops when it is closed |
+| Key click | One 2 kHz click (12 ms), notification category | Each key press with Settings › Accessibility › Key feedback set to sound (§11); not in silent mode |
+
+### 4.1 Volume keys, silent mode, vibration
+
+- **Volume keys** (side keys; F8, F9 on a USB keyboard) work on any screen, even with the keypad locked. While an incoming call is ringing, pressing either one silences the ringtone; the incoming-call screen shows 「铃声已静音」 (Ringtone silenced) and the call stays on screen, still ringing. While music is playing they adjust the media volume; otherwise they adjust the ringtone volume, and a toast shows the current volume.
+- **Media keys** (headset remote, keyboard media keys; plus F10 play / pause, F11 previous, F12 next on a USB keyboard) likewise work on any screen. Play / pause is handled directly by the system on the stream that is playing. Previous and next are up to the app (the app holds the playlist), so the system sends the playing app a `media` event (`next` / `previous`), the equivalent of a media session. During a call the keys belong to the call and leave the music alone. The idle screen shows 「正在播放 <曲名>」 (Now playing <title>).
+- **Silent mode** (「设置 › 静音模式」 (Settings › Silent mode)): the incoming-call ringtone and notification sounds turn into vibration, and the incoming-call screen shows 「静音模式 · 振动」 (Silent mode · Vibrate); alarms still sound.
+- **Sound mode and the sound switch** (`shell/soundmode.go`, unit tests and selftest ✓, **not tried on a phone**): the sound modes are Android's three: ring; vibrate (calls and notifications do not sound, they only vibrate: the silent mode above); silent (calls and notifications neither sound nor vibrate, the incoming-call screen shows 「静音模式 · 不振动」 (Silent mode · no vibration), and a flash message does not vibrate either). In all three, alarms still sound and vibrate, as on OnePlus phones; emergency alerts still sound too. A phone without a sound switch has ring and vibrate only, chosen with the silent mode switch. On a phone with one (the SKU's `sound_switch`, [24](24-sku-framework.md) §7.4; the OnePlus 6T's three-position alert slider: top silent, middle vibrate, bottom ring; or a two-position mute switch, `SW_MUTE_DEVICE`: silent and ring, no vibrate position) the switch sets the mode: the renderer reads its position while it runs (the current one at start with `EVIOCGABS` or `EVIOCGSW`, then each move, [23](23-renderer-protocol.md)) and the Shell sets the mode by it; the position at start comes without a toast, each move after with one (「振动」, 「静音」, 「响铃」: Vibrate, Silent, Ring); the status bar shows a vibrate or silent icon beside the network (📳, 🔕 on the text screen); 「设置 › 声音与振动」 (Settings › Sound and vibration) no longer offers the switch but shows 「声音模式」 (Sound mode) with the mode the switch set, saying 「由手机侧面的声音开关设定」 (Set by the sound switch on the side of the phone), and the Shell refuses the `silent` setting. Moving the switch while a call rings: off ring the ringtone stops (in vibrate it goes on vibrating); back to ring it sounds again (a call silenced with a volume key stays silent). Until the renderer reports a position (no such device, no renderer running) the silent mode switch still holds. There is no do-not-disturb mode to merge with.
+- **Vibration**: `hal/vibrator` drives the motor: the LED-class vibrator of Android kernels (`/sys/class/leds/vibrator`; write the duration first, then activate) or, without it, a mainline kernel's vibrator, an input device whose capabilities include the force feedback `FF_RUMBLE` (PMIC haptics, `gpio-vibrator`, `regulator-haptic`; the effect is uploaded with `EVIOCSFF`, then an `EV_FF` event starts it). In silent mode an incoming call vibrates every 1.5 seconds, and a notification once; a ringing alarm vibrates every 1.5 seconds, silent mode or not. The emulator has no motor and only records vibration requests (the selftest asserts them with `vibrated`). Unit tests cover writing the LED, finding the force-feedback device and the kernel structs' layout (64-bit); vibrating a real force-feedback device is **not tried on a phone**, and the struct layout on a 32-bit kernel is tested in code only, **not run**.
+- **Now playing**: while music is playing, the idle screen shows 「正在播放 …」 (Now playing …), and the system menu has 「暂停播放 / 继续播放」 (Pause playback / Resume playback) (`shell/volume.go`).
+
+### 4.2 App sound during calls
+
+Audio streams and recordings that an app opens during a call (VoIP or phone) all belong to the "call" category: they take priority for the duration of the call and don't stop when the app leaves the foreground. Once a Hongyan video call connects, it opens two of them: one plays the other party's voice (a simulated speech rhythm in the prototype), the other reads the microphone, and both are closed on hang-up.
+
+### 4.3 Voice message compression
+
+Voice messages are encoded with Opus (VoIP mode, at most 16 kbit/s, 20 ms frames, complexity 5) and stored as standard Ogg Opus files (RFC 7845) that any player can open: about 2 KB per second, one fiftieth of 48 kHz PCM (`voice.Encode` / `voice.Decode`, package `audio/voice`). The encoder is libopus transpiled to pure Go with ccgo (`github.com/kazzmir/opus-go`, BSD-3), with no cgo, so an app can encode inside its own sandbox. It lives in a separate package that only apps sending voice link (the chat app's binary grows by 1.7 MB because of it). On the development machine, encoding 10 seconds of voice takes 0.26 seconds; ffprobe identifies the result as 48 kHz mono Opus, and ffmpeg decodes it without errors. When decoding, the encoder's leading delay is removed according to the pre-skip in OpusHead and the tail is trimmed according to the granule position of the last page, so the decoded sample count is exactly the same as the recording, with a point-by-point correlation coefficient of about 0.8 against the original signal.
+
+## 5. Implementation
+
+| Part | Location | Notes |
+|------|------|------|
+| Mixer and focus | `audio/audio.go` | Streams, categories, focus, volume, routing, stereo mixing; while a single music stream sounds it is handed out to go to the sound card directly (`Solo`), taken back as soon as a notification sound comes and handed out again a second later; unit tests cover focus switching, tone frequencies, WAV reading/writing, stereo, the events of a queue moving on, handing out and taking back |
+| Sources | `audio/sources.go`, `mp3.go`, `opusfile/`, `vorbisfile/` | System notification sounds, synthesized sample tracks, WAV files, MP3 (decoded while playing; go-mp3, pure Go, Apache-2.0), Ogg Opus and Ogg Vorbis (`.opus`, `.ogg`, `.oga`, told apart by whether the first packet is `OpusHead` or `\x01vorbis`; decoded while playing, mono or stereo mixed down to mono. Opus uses the same pure-Go libopus as voice messages; Vorbis uses the pure-Go jfreymuth/oggvorbis (MIT), resampled to 48 kHz by nearest sample. Both decoders are linked only into phone-audiod; the Shell only reads the Ogg header and the last page to compute the length). Unit tests: a 440 Hz MP3, a 520 Hz stereo Opus and a 660 Hz Vorbis at 44.1 kHz decode with a frequency error within 10 Hz and the right length; a 22.05 kHz MP3 is rejected |
+| Service | `cmd/phone-audiod` (`programs/audiod`) | RPC: `play` (for music `track`, `next`, `start_ms`, `dsd`), `control` (for music also `seek`, `queue`, `options`), `state`, `volume`, `route`; stream events after subscribing; the `auto` sink uses ALSA when there is a sound card and `aplay` (a USB sound card when there is one), and is silent otherwise; the ALSA sink first finds out what the card takes from `aplay --dump-hw-params` and a USB card's `/proc/asound/cardN/stream0`, then decides how each song goes out (§9.5). When the sink fails (no sound device) the clock does not stop: the mixer, recordings and progress still move 20 ms a tick and those 20 ms of sound are lost; after a set-up fails the ALSA sink starts no `aplay` for it for 10 s, and writing it fails at once with the last reason (the line `aplay` printed, e.g. `audio open error: Invalid argument`); a write not taken within 2 s (`aplay` waiting for a card another program holds) fails too, and the time it held the loop is made up at once (the mixer and recordings move on, without sound). The log has one line when a failure starts, when its reason changes and when the sink is back (a second of writes going through), and `state` also returns `sink_error` (why there is no sound; absent while it plays). Unit tests: on a fake failing sink 50 ticks move a recording and music by 1 s each with one log line; after a write that stalled for 300 ms recordings and music are where the wall clock says; with a fake `aplay` (one that cannot open the card, one that reads nothing) the reason, the retry interval and the time-out; music does not run ahead when the card refuses the track's own format |
+| Mono, balance, speech service | `audio/audio.go`, `audio/tts`, `programs/audiod` | See §11 |
+| Lossless and DSD | `audio/flac`, `audio/tags`, `audio/cue`, `audio/dsd`, `audio/musicfile`, `audio/hifi` | See §9 |
+| Routing policy for several outputs | `audio/route`, `programs/audiod/outputs.go`, `usbaudio.go`, `jack.go`, `shell/audioout.go` | See §12 |
+| UCM call routing | `audio/ucm`, `programs/audiod/ucm.go` | See §10. Unit tests record each run's commands with a fake alsaucm: the first start since boot (by way of the call verb, and when the call verb cannot be set), calling out, the speaker on and off, mute, hanging up, two calls and hold, a restart mid-call, a profile without the speaker, media only; the real `Alsaucm` is tested against a fake alsaucm script for its arguments and errors; audiod's flags, following telephonyd (resuming after a restart mid-call against a fake telephonyd), switching the PCM |
+| Shell integration | `shell/audio.go`, `shell/music.go` | System sounds switched on and off automatically by call, incoming-call and alarm state; app capabilities; no freezing during background playback (`shell/freeze.go`); the music library (§9.7) |
+| Shared-memory ring buffer, simulated microphone | `audio/ring.go` | Unit tests: wraparound, end marker, rejecting a memfd without seals, a peer lying about the read/write positions |
+| fd passing | `wire/wire.go`, `rpc.go` | Unit tests: several messages carrying fds, fds not mismatched when the decoder reads ahead |
+| Voice messages | `apps/chat` | Recording, saving as WAV, playback |
+| Music app | `apps/music` | Track list, browsing by album, artist and folder, each track with its format; now playing (progress bar, pause / resume, previous / next, 10 s back / forward, stop, how it reaches the card); a list is the play queue and runs on into the next track without a gap; playback settings (ReplayGain, DSD output); track info (§9.8) |
+| Selftest script commands | `shell/headless.go` | `audio <category>`, `audio paused <category>`, `audio idle`, `require-audio` |
+| Device | `meta-phone/recipes-kernel/linux` | Kernel config fragment `phone-sound.cfg`: ALSA + virtio sound card |
+| | `phone-audiod.service` | System service; during the boot selftest it hands the sound card over to the selftest's own instance |
+| | `yocto/qemu-selftest.sh` | Adds a virtio sound card to QEMU and records the sound the device plays as WAV |
+| | `yocto/audio-check.py` | Analyzes the dominant frequency of the recording segment by segment, recognizes the ringtone, alarm, ringback tone and so on, and fails if any one is missing; `--plot` draws the chart in §6 |
+
+Sound-related assertions in the selftest:
+
+- When dialing out there is a ringback tone, after connecting there is call audio, and after hanging up it is quiet.
+- On a system incoming call the ringtone sounds, and after answering it turns into call audio.
+- When the alarm goes off there is alarm sound, and after dismissing it, it is quiet.
+- New case 「音乐」 (music):
+  - After starting playback and leaving the app, the process is still running 2 seconds later and has not been frozen;
+  - On an incoming call the ringtone sounds and the music pauses;
+  - After rejecting the call, the music resumes automatically;
+  - Back in the app, pressing pause makes the UI show 「已暂停」 (Paused).
+- Case 「音乐：无损与 DSD」 (music: lossless and DSD, §9.9): FLAC 24/96 goes to the card at 96 kHz; a cue album image shows as three tracks and the image itself is not listed; playing the first track from the album, the second and third follow without a key press; a DSF is converted to 176.4 kHz PCM.
+- Case 「音乐：电脑经 USB……」 (music: a computer over USB…): the computer sees the folders 「相册」「视频」「音乐」「文件」 (Photos, Videos, Music, Files), and an album folder copied into Music stays a folder ([27](27-usb-typec.md) §3.1).
+
+![Music: now playing](../img/px-app-music.png)
+
+## 6. On-device verification
+
+- **Kernel**: the config fragment enables ALSA and the virtio sound card (`CONFIG_SND_VIRTIO=y`), and `/dev/snd/pcmC0D0p` appears on the device.
+- **Service**: when `phone-audiod --sink auto` detects a sound card and `aplay`, it selects ALSA output (log: `sink alsa:plughw:0,0`). When the card cannot be opened the log has one line `phone-audiod: sink alsa:plughw:0,0: aplay plughw:0,0 S16_LE 48000 2: audio open error: Invalid argument: no sound until it plays again` and `state` has `sink_error`; audiod used to wait a second after each failure, which made music, voice messages, recordings and video 50 times too slow in the OnePlus 6T's chroot ([39](39-oneplus-6t.md) §13.4).
+- **QEMU**: `qemu-selftest.sh` gives each emulator `-audiodev wav` and `-device virtio-sound-pci`, which record the sound the device plays as WAV (`build/selftest/vm<n>/audio.wav`; the script's parts run in several emulators at once, [40](40-testing.md) §1).
+- **Analysis**: after `make yocto-selftest` finishes, `audio-check.py` counts the emulators' recordings together, one after another, takes the dominant frequency segment by segment (46 ms) and recognizes which system sound each segment is; if any of the ringtone, alarm, ringback tone or voice message is missing, it fails.
+  - Result: every `make yocto-selftest` run prints `AUDIO-CHECK: PASS`, passing together with the boot selftest.
+  - The voice message is recognized for 1.2 seconds, and only within the segment of the voice message case. The full chain is: simulated microphone → shared memory → Hongyan → WAV file → shared memory → mixer → virtio sound card → QEMU recording.
+  - The simulated microphone uses frequencies that neither sample track uses, and detection requires at least 0.6 seconds in a row; otherwise notes in the tracks would be mistaken for a voice message.
+
+![Sound played by the device: one point every 46 ms; the vertical axis is the dominant frequency](../img/qemu-audio-tones.png)
+
+The events in the chart correspond one-to-one to selftest cases:
+
+| Time | Sound | Case |
+|------|------|------|
+| 12 s | Ringtone, notification sound | Hongyan VoIP incoming call; background message banner |
+| 50 s | 450 Hz ringback tone, then call audio | Phone dials out, call connects |
+| 52 s | Ringtone | SIM incoming call |
+| 60 s | 880 Hz alarm sound | Alarm goes off |
+| 63–70 s | Sample tracks (gray dots) with a ringtone in between | Incoming call during music playback: the ringtone sounds, the music pauses, and after rejecting the call the music resumes |
+| 55, 71, 80 s | Notification sound | Banners for SMS and push messages |
+| 80 s | Ringtone | Push: Hongyan receives a VoIP push and reports an incoming call |
+| 88–89 s | 365 / 475 Hz (purple dots) | Hongyan plays back the voice message it just recorded |
+
+Under TCG emulation the guest cannot keep up with real time, so the sound card data is choppy (underruns). This recording is therefore only used to judge "did something sound, and which sound was it", not to assess audio quality.
+
+## 7. Not done yet
+
+| Item | Why it is needed | Plan |
+|------|------------|------|
+| Real recording device | The microphone is currently simulated | Connect to ALSA like the output side (`arecord`); production goes through PipeWire. QEMU's wav backend cannot capture and the development machine has no microphone, so this step has to be verified on a real device |
+| Headset buttons, playback controls on the lock screen | Currently there is only 「正在播放」 (Now playing) on the idle screen and pause / resume in the system menu | Done together with switching the output sink to PipeWire |
+| Real call audio | On a real device the call audio is connected directly between the baseband and the sound card, bypassing the mixer | OnePlus 6T: audiod switches the call set-ups of the UCM profile (§10), **not tried on a phone**; other boards get their `--ucm-*` from their device configuration |
+| Bluetooth sound, headphones, real earpiece / speaker routing | Essential on a real device | Earpiece / speaker: through UCM on the OnePlus 6T (§10, **not tried on a phone**). 3.5 mm headsets and USB audio devices: §12 (**not tried on a phone**). Bluetooth: the policy has Bluetooth outputs (§12), but there is no sink that takes sound to a Bluetooth headset (A2DP, HFP), **not implemented**; the plan is to switch the output sink to PipeWire (WirePlumber only does device management; the policy stays in `phone-audiod`) |
+| Echo cancellation | Speaker mode and VoIP | WebRTC AEC, inside the service |
+| Remaining music decoders (AAC); low-sample-rate MPEG-2 / 2.5 MP3 | Music | AAC carries patent royalties, so it goes through the real device's hardware decoder; MP3 supports only MPEG-1 Layer III (32 / 44.1 / 48 kHz): go-mp3 decodes low-sample-rate files incorrectly without reporting an error, so such files are rejected outright |
+| Volume while bit-perfect | Bit-perfect needs the media volume at maximum today; below it a track still goes at its own rate, but the volume is applied digitally (no longer bit-perfect, and DoP and native DSD become a PCM conversion) | Use the card's own hardware volume (the ALSA mixer's volume control, as HiBy and others do in USB exclusive mode), configured per board and DAC |
+| A real USB DAC, a DSD DAC | DoP, native DSD and the negotiation of discrete rates are only unit-tested against sample texts, **not tried on a real device** | Verify with a USB DAC that plays DSD (it takes over when plugged in, §12) |
+| Compatibility with SACD disc images | The parser is written from public descriptions and the test images come from our own writer: **not verified against real disc images** | Check against a few real images (stereo, multichannel, DST) and correct |
+| DST-compressed frames | Left to ffmpeg's DST decoder; we have no DST encoder, so the tests can only use "uncompressed" DST frames and the decoding of really compressed frames is **not verified** | Verify with real DST files or images |
+| APE decoding | Left to ffmpeg. File version 3.99 (what every encoder since 3.98 writes): two samples made with the official encoder, Monkey's Audio 13.50, decode back sample for sample on the development machine (ffmpeg 4.2, §9.9); with the device's ffmpeg 8.0 **not tried on a phone**. The layout before 3.98: 13.50 cannot write it, only hand-written headers are tested, its decoding is **not verified** | Add a small file made before 3.98, with a clear licence, to the tests; run these tests on the device |
+| Showing covers | Covers in the tags are found (the `cover` field), the music app does not show them yet | The Shell's image nodes accept `music:` covers (`shell/frame.go`, `shell/render.go`) |
+
+## 8. How OSS, ALSA and PipeWire relate
+
+We don't use OSS. OSS (Open Sound System) is an old interface from around 2000 that ALSA replaced starting with Linux 2.6. **ALSA is still the audio driver layer in the Linux kernel today**, and Android is built on it too (through the slimmed-down user-space library tinyalsa). What people call a "modern audio architecture" refers to the layer above ALSA:
+
+| Layer | Role | Us today | Production |
+|----|------|----------|------|
+| Kernel driver | Sound card, codec chips (ASoC on SoCs) | ALSA, QEMU's virtio sound card | ALSA ASoC, with a device tree written for each board |
+| Routing configuration | Switching the earpiece, speaker, headphone and call paths | None on the development machine and QEMU (only one output); on the OnePlus 6T audiod uses the card's UCM profile through alsaucm (§10) | ALSA UCM configuration files |
+| Sound server | Mixing, resampling, Bluetooth, low latency | phone-audiod does its own mixing, output via `aplay` | PipeWire (already the default in Fedora, Ubuntu and postmarketOS), responsible for devices, Bluetooth (BlueZ) and the echo cancellation module |
+| Policy | Who may make sound, who interrupts whom, who may record | phone-audiod (§2) | Still phone-audiod; PipeWire's session manager WirePlumber only does device management |
+
+So modernizing does not mean replacing ALSA. It means switching our output sink from `aplay` to PipeWire (R29), with the policy layer unchanged.
+
+## 9. Lossless music and DSD
+
+> The aim is a lossless player like HiBy Music: the common lossless formats and DSD, cue sheets, each track sent to the sound card at its own format, one track running into the next without a gap. Status: unit tests ✓ and selftest ✓ on the development machine; DSD DACs, USB DACs and real SACD images are **not tried on a real device** (§7).
+
+### 9.1 Formats and decoding
+
+| Format | Files | Decoded by | Notes |
+|------|------|--------|------|
+| FLAC | `.flac` | Our own pure-Go decoder (`audio/flac`, after RFC 9639) | 4–32 bits, any sample rate (192 kHz and beyond), 1–8 channels; seeks by the seek table when there is one and by bisecting between frame headers otherwise, to the exact sample. Unit tests: 16/44.1, 24/96, 24/192, mono, independent channels, fixed predictors only and high LPC orders decode sample for sample as ffmpeg does; seeking with and without a table is exact too. On the development machine a second of 24/96 stereo white noise (the hardest signal to compress) decodes in 17 ms |
+| WAV | `.wav` | Read by us (`audio/musicfile`, `audio/hifi`) | 8–32-bit integers, 32/64-bit floats, `WAVE_FORMAT_EXTENSIBLE`, RF64 beyond 4 GB; floats go out as 32-bit integers (so not bit-perfect) |
+| AIFF / AIFF-C | `.aif` `.aiff` `.aifc` | Read by us | Big-endian integers, `sowt` (little-endian), 32/64-bit floats |
+| ALAC | `.m4a` `.mp4` | ffmpeg (a separate process, as mediad uses for video) | The MP4 boxes (length, rate, depth, tags) are read by us; an `.m4a` holding AAC is refused (AAC carries royalties, §7) |
+| APE (Monkey's Audio) | `.ape` | ffmpeg | The header (both the 3.98+ and the older layout) and the APEv2 tag are read by us; decoding of file version 3.99 is verified with real files, of the older layout only the header is tested |
+| WavPack | `.wv` | ffmpeg | Block header, channel count and tags are read by us; WavPack 5's DSD mode is not supported |
+| MP3, Ogg Vorbis, Ogg Opus | `.mp3` `.ogg` `.oga` `.opus` | The existing pure-Go decoders | Now also at their own rate, in stereo; MP3 drops LAME's encoder delay and padding, so an album played through has no gaps |
+| DSD | `.dsf` `.dff` | Read by us (`audio/dsd`) | DSF (Sony) and DSDIFF (Philips); DSD64, 128, 256 |
+| DST | `.dff` (compressed), SACD images | ffmpeg's DST decoder, the frames taken out by us and wrapped as DSDIFF for it | Ten seconds at a time in an in-memory file (memfd), each batch starting one frame early and that frame's output dropped, so the joins are as continuous decoding; ffmpeg itself converts the DSD to PCM, at 176.4 kHz as we ask. Frames that DST marks "not coded" we play as DSD ourselves (ffmpeg lays such frames out wrongly) |
+| SACD images | `.iso` | Parsed by us (`audio/dsd`) | See §9.4 |
+
+ffmpeg is LGPL and runs only as a separate program; it decodes to 32-bit PCM, and 16- and 24-bit sources are only shifted left, so the samples stay as they are and the formats that go through ffmpeg can be bit-perfect too. Unit tests: a 24-bit WAV encoded to ALAC and WavPack decodes back through ffmpeg sample for sample, also after seeking. ffmpeg has no APE encoder, so the APE samples come from the official encoder, Monkey's Audio 13.50 (BSD-3-Clause, built from source on the development machine, in neither the repository nor the image), from a signal the test code generates: 0.3 s of 16/44.1 (16 KB) and 0.4 s of 24/192 (55 KB, two APE frames), both file version 3.99 (`audio/hifi/testdata`; how they were made is in `README.md` there). Through ffmpeg they decode back sample for sample as the generated signal, from the start and after seeking (also to just before an APE frame boundary and into the second APE frame). The device's ffmpeg enables only the decoders and demuxers needed (`yocto/kas/phone-qemuarm64.yml`): video's VP8, VP9, Opus, Vorbis and PNG, plus ALAC, APE, WavPack and DST, the MOV (MP4 / M4A), APE, WV and IFF (DSDIFF) demuxers, and 32-bit PCM output. OE-core's ffmpeg 8.0 carries one patch of the layer (`yocto/meta-phone/recipes-multimedia/ffmpeg/`, FFmpeg 8.1's fix): its Opus parser rejected the empty flush at the end of every Matroska / WebM file and logged "Error parsing Opus packet header." after every good decode, a line that went into mediad's log and failure dumps. Verified on the host by decoding the sample video with the same sources with and without the patch; in the image **not verified** (QEMU not run). None of them carries royalties: Apple open-sourced ALAC under Apache 2.0, APE and WavPack are free; DST is part of MPEG-4, with patents filed around 2000, to be confirmed by legal before production.
+
+### 9.2 Tags
+
+`audio/tags` reads Vorbis comments (FLAC, Ogg), ID3v2.2 / 2.3 / 2.4 (MP3, and the ID3 chunks in WAV, AIFF, DSF and DFF; unsynchronisation, extended headers and v2.4's data length flag are handled), ID3v1 and APEv2 (APE, WavPack); the MP4 iTunes tag boxes are read in `audio/musicfile`. Fields: title, artist, album, album artist, track number / total, disc number / total, genre, year, composer, ReplayGain (track and album gain and peak, Opus's `R128_*_GAIN`), an embedded cue sheet (FLAC's and APE's `CUESHEET`), the cover (whether there is one and its MIME type; the image is read when needed). Encoding: ID3 text marked Latin-1 is often GBK or UTF-8 in fact, so it is read as UTF-8 when it is valid UTF-8, as GBK when it reads as Chinese in GBK, and as Latin-1 otherwise. Unit tests cover each kind of tag, plus an ID3v2.4 tag written by ffmpeg to compare.
+
+### 9.3 Cue sheets
+
+`audio/cue` reads `FILE`, `TRACK`, `INDEX 00 / 01`, `TITLE`, `PERFORMER`, `SONGWRITER`, `ISRC`, `CATALOG` and `REM GENRE / DATE / DISCNUMBER / REPLAYGAIN_*`; encodings: UTF-8 (with or without a BOM), UTF-16 (with a BOM), GBK (GB 18030).
+
+- **Boundaries**: a track plays from its `INDEX 01` to the next track's `INDEX 01`; the pregap (`INDEX 00` to `01`) belongs to the track before (foobar2000's default), so neighbouring tracks join with nothing lost or repeated.
+- **Several files**: a track may span files (the rest of its file, then the next file's start up to the next track's `INDEX 01`); both of EAC's layouts (the gap at the start of the next file, or at the end of the previous one) come out right.
+- **Finding the files**: when the name `FILE` gives is not there, it tries the same name in another letter case, the same name with another extension (an image ripped as WAV and converted to FLAC / APE later), then the audio file named like the cue sheet. Names with `..` or an absolute path are refused: a cue sheet can only point into its own folder.
+- **The image is not listed on its own**: the library no longer lists the files a cue sheet plays.
+- **Gapless**: the next track of the same image does not get a decoder of its own: it takes over the previous track's and reads on (APE does not even restart ffmpeg); in a unit test three tracks played through are sample for sample the image, and so are three tracks of an APE image (the Monkey's Audio sample), with ffmpeg started once for all of them.
+
+### 9.4 DSD and SACD
+
+- **DSF**: read in its layout of 4096-byte blocks, channel after channel, with bytes stored least significant bit first turned around. **DSDIFF**: the `PROP` chunk inside `FRM8` (rate, channels, compression), the `DSD ` or `DST ` chunk, the `DSTI` frame index (checked before use; without it, the chunk headers are walked), title and artist in `DIIN`, the non-standard `ID3 ` chunk.
+- **SACD images**: the Scarlet Book is not public; the parser is written from public descriptions, with no GPL code (such as sacd-ripper) consulted. Sector 510's master TOC `SACDMTOC` (album data, where the stereo and multichannel area TOCs are), sector 511's `SACDText` (album title, artist), the area TOC `TWOCHTOC` / `MULCHTOC` (rate, frame format DST / plain DSD, channels, speaker layout, track count), and in its following sectors `SACDTRL1` (each track's first sector and sector count), `SACDTRL2` (start time and length, 75 frames a second) and `SACDTTxt` (each track's title and performer, in the character set the area declares: ISO 8859-1, Shift-JIS, KS C 5601, GB 2312, Big5). Audio sectors: a header byte, the packet infos (frame start, data type, length), a timecode for each frame that starts in the sector, then the packets; the audio packets joined make the frames (plain DSD: 4704 bytes a channel, interleaved by byte; DST: one coded frame). A track's frames are taken by their timecodes; a seek estimates the sector by proportion, then backs off.
+- **Which area**: the stereo area when there is one; with only a multichannel area, that one, mixed down to stereo (centre and surrounds at −3 dB, the LFE left out).
+- **Test images** come from our own writer in the tests (`audio/dsd/dsdtest`, stereo plain DSD plus multichannel DST, GB 2312 text), so they show only that both sides agree; **compatibility with real disc images is not verified** (§7).
+- **To PCM** (`audio/dsd`'s `Decimator`): one Kaiser-windowed sinc low-pass FIR (about 80 dB stop band), computed only at the output samples; the input being 1-bit, each byte of the filter is one table lookup (the table holds those 8 taps' sum for each of the 256 byte values). DSD64 → 176.4 kHz: 512 taps, −6 dB at 37 kHz; → 88.2 kHz: 1024 taps, −6 dB at 28 kHz; DSD128 / 256 multiply the taps and keep the shape. DSD's 0 dB (50 % modulation) comes out at −6 dBFS; no gain is added, so nothing clips. Unit tests: a 1 kHz test tone at DSD64 / 128 / 256 converts with a signal-to-noise ratio up to 20 kHz above 70 dB and its level within 0.3 dB; the idle pattern converts to silence. On the development machine (Xeon E5-2670 v3) a second of stereo DSD64 to 176.4 kHz takes 28 ms; the cost on a phone is **not measured on a real device**, and DSD256 takes four times as much.
+- **DoP** (`audio/dsd`): each 24-bit sample carries 16 DSD bits of its channel in its lower two bytes (the earliest at the top), under a marker byte alternating 0x05 / 0xFA; DSD64 at 176.4 kHz, DSD128 at 352.8 kHz. **Native DSD**: ALSA's `DSD_U8`, `DSD_U16_LE/BE`, `DSD_U32_LE/BE`, each frame holding 1 / 2 / 4 bytes of each channel, the earliest byte at the top. Both packings have unit tests (markers alternating and kept across calls, byte order).
+
+### 9.5 To the sound card: bit-perfect, DoP, native DSD
+
+While a single music stream sounds and nothing else needed mixing for a second, audiod skips the mixer and opens the sound card at the song's format (`aplay` restarted with its format, rate and channels), writing every 20 ms; when a notification sound or ringtone comes it goes back to the 48 kHz stereo mixer, and a second later back again (at a switch, about 0.2 s still in the card's buffer is lost; starting playback has that much delay too). `hifi.Negotiate` decides how, from the track's format, what the card takes (formats, channels and rate range from `aplay --dump-hw-params`; for a USB card the exact rates of each alternate setting in `/proc/asound/cardN/stream0`), the total gain (media volume × ReplayGain) and the DSD setting:
+
+| Track | When | How it goes |
+|------|------|--------|
+| PCM (FLAC, WAV, ALAC…) | The card takes the rate | At its own rate; the container is the one that just holds it (S16_LE for 16 bits, S24_3LE for 24, otherwise the top of S32_LE, the samples unchanged); mono is doubled; bit-perfect when the total gain is exactly 1 and the source is not floats |
+| PCM | The total gain is not 1 | At its own rate, with the volume applied in 32 bits and TPDF dither for 16/24-bit output; no longer bit-perfect |
+| PCM | The card lacks the rate (a USB DAC without 88.2 kHz, say) | Back to the mixer, resampled to 48 kHz |
+| DSD | Gain 1, at most two channels, ALSA offers a native DSD format | Native DSD (with the setting "native when it can") |
+| DSD | Gain 1, the user chose DoP, the card takes 24-bit PCM at the DSD rate / 16 | DoP |
+| DSD | Otherwise (volume applied, multichannel, PCM chosen) | Converted to 176.4 kHz PCM (88.2 kHz if that is not taken); if neither, the mixer |
+| DST | — | The 176.4 kHz PCM ffmpeg decodes, sent as PCM (not counted as bit-perfect) |
+
+- A next track of the same format is written on into the same `aplay` (no gap); another format reopens the card (a very short pause, as in every bit-perfect player).
+- DoP is never switched on by itself: a DAC that does not know DoP plays it as loud noise, so the user chooses it in "Playback settings"; native DSD is used only when the driver says it takes it.
+- A USB sound card (a playback interface in `/proc/asound/cardN/stream0`) is one of §12's outputs: it plays media once plugged in, through an aplay of its own, negotiated against its own `stream0`.
+- Bit-perfect needs the media volume at maximum, except on a USB device with a volume control of its own: media's volume sets its hardware volume and leaves the samples alone (§12.4). Hardware volume on the built-in card is **not implemented** (§7).
+- The emulator's virtio sound card has no DSD, and the development machine has no sound card (its sink is null, which takes everything, so the selftest there sees the choice made for "takes everything"). The negotiation rules have unit tests (a QEMU-like card, a sample USB DAC with a DSD alternate setting, null); **DoP and native DSD on a real DAC are not tried on a real device**.
+
+### 9.6 Gapless playback and ReplayGain
+
+- When the app starts a track it passes the next one (`next`); audiod opens it at once in the background (the ffmpeg formats start decoding early too, a few seconds ahead). When this track has been read, the same read goes on into the next, the stream's `media` becomes the next track, and the app queues the one after. The next track of the same image takes over the decoder (§9.3).
+- The mixer's path (while other sounds play) runs on the same way, without resetting the resampler.
+- ReplayGain is chosen in the app (by track / by album / off); the Shell takes that gain from its index (the other kind when the tags lack it), held down by the peak so it cannot clip, and audiod applies it on both paths.
+
+### 9.7 The music library
+
+- Music lives in `media/music`, folders kept (an album folder copied from a computer stays a folder, [27](27-usb-typec.md) §3.1). At most 8 levels deep; names starting with a dot and symbolic links are skipped. The computer's side lists, reads, makes folders and copies in within the library's `os.Root`, never outside it.
+- The index is in memory, refreshed by file size and modification time at every listing, from headers only (`audio/musicfile`); MP3s are no longer decoded through to find their length. A cue sheet is read again when its folder or a file it plays changes.
+- Order: folder, album, disc, track number. Tracks without an album name go into 「本机音乐」 (Music on this phone).
+
+### 9.8 The music app
+
+- The home screen is all tracks, each with its artist and format ("FLAC 24/96", "DSF DSD64", "SACD DSD64"); `a` opens albums, `r` artists, `f` folders, `g` playback settings (all in the options menu too). An album page shows the album artist and the best format ("SACD", "24/96"), tracks in disc and track order.
+- The list a track was started from is the play queue, each track running into the next without a gap.
+- Now playing: title, artist · album, state, the format and how it reaches the card (「比特完美 · 96 kHz」 (Bit-perfect · 96 kHz), 「DoP（PCM 承载 DSD）送到声卡」 (DoP to the sound card), 「DSD 转成 PCM · 176.4 kHz」 (DSD converted to PCM · 176.4 kHz), 「和系统声音一起混音（48 kHz）」 (Mixed with system sounds at 48 kHz)) and a progress bar; `p` play / pause, `←` `→` previous / next, `b` `f` 10 s back / forward, `i` track info, `s` stop.
+- Playback settings: ReplayGain (off / by track / by album) and DSD output (native when it can / DoP / always PCM), kept in the app's data directory.
+- Back in the foreground, the app reads the library again, so music a computer just copied in shows up at once.
+
+### 9.9 Tests
+
+| What | Where | Result |
+|------|------|------|
+| FLAC decoding | `audio/flac` unit tests | Sample for sample as ffmpeg (7 sets of encoder settings), exact seeks |
+| Headers, lengths, tags | `audio/musicfile`, `audio/tags` unit tests | FLAC 24/96, WAV 16 / 24 / 32 / float, AIFF, ALAC, WavPack, MP3, Vorbis and Opus made with ffmpeg, lossless lengths exact to the sample; APE: file version 3.99 samples made with Monkey's Audio 13.50 (16/44.1, 24/192, lengths exact to the sample, APEv2 tags), the layout before 3.98 only as hand-made headers (3.97, 3.92, 3.80 at two compression levels: the three APE frame lengths) |
+| Cue sheets | `audio/cue`, `audio/musicfile` unit tests | UTF-8, with a BOM, GBK, UTF-16, both multi-file layouts, the fallbacks for finding files, paths out of the folder refused |
+| DSD, SACD | `audio/dsd` unit tests | DSF, DSDIFF (plain / DST, with and without an index), SACD images (stereo plus multichannel DST, GB 2312 text, seeking), the conversion's SNR and level, DoP and native DSD packing; the DST wrapping gives ffmpeg's decoder the right number of frames |
+| Playback, gapless, output | `audio/hifi` unit tests | A 24-bit WAV output bit-perfect as it is; three cue tracks played through are sample for sample the image, the decoder handed on; renegotiation at a format change; two SACD tracks played through; uncoded frames of a DST area played as DSD; ALAC and WavPack lossless through ffmpeg; every sample ffmpeg decodes from the APE samples is the generated signal's (from the start, after seeks, across APE frames), three cue tracks of the 16-bit one as an image are sample for sample the image with ffmpeg started once, and its second track played alone (starting on a CD frame, not a whole microsecond) is too; DST batches and their joins give the right frame count; the negotiation rules; the 48 kHz mixer path's frequency, level and ReplayGain; the resampler's stop band |
+| Mixer | `audio` unit tests | Stereo, the events of a queue moving on, handing out / taking back |
+| Selftest | 「音乐：无损与 DSD」 in `shell/selftest.script` | Development machine ✓: the sample music (`audio/testdata`: FLAC 24/96, a GBK cue sheet with its FLAC image, a DSF's header and one period, which `scripts/stage.sh` makes into 4.6 s of DSD64); FLAC 24/96 shows 「96 kHz 原采样率输出」 (at its own rate, 96 kHz: the volume is not at maximum there), the album's three tracks follow one another by themselves, the DSF shows 「DSD 转成 PCM · 176.4 kHz」 (DSD converted to PCM) |
+| Device | — | **Not tried on a real device**: no USB DAC or DSD DAC attached, no real SACD image or DST file; the tests through ffmpeg (ALAC, APE, WavPack) have run only with the development machine's ffmpeg |
+
+## 10. Call audio routing: ALSA UCM (OnePlus 6T)
+
+> Status: unit tests ✓, `scripts/yocto-check.py` ✓, the image not rebuilt, **not tried on a phone**. The development machine, QEMU and other boards are unchanged: without `--ucm-card` audiod leaves the sound card alone and does not connect to telephonyd.
+
+A phone's sound card has to have its paths connected for each use: music goes to the speaker, a call to the earpiece and the microphone. These switches are written in the card's ALSA UCM profile: each use is a verb (`HiFi`, `Voice Call`), and a verb can enable several devices (`Speaker`, `Earpiece`, `Mic`). The call's own sound does not pass through audiod: the baseband's voice is connected to the sound card inside the DSP, and q6voiced opens the q6voice PCM during calls to get that path running. It neither changes the verb nor picks the earpiece or the speaker, though. On Nura that is callaudiod's job (GPL-3.0, so it cannot go into the image); Kario has phone-audiod do it:
+
+| When | The 6T's UCM set-up | audiod's mix plays to |
+|----------|----------------|-------------------|
+| No call | `HiFi` + `Speaker` | `plughw:0,2` (MultiMedia3, the TFA9894 speaker) |
+| A call (dialing, ringing at the other end, connected, held) | `Voice Call` + `Earpiece` + `Mic` | `plughw:0,0` (MultiMedia1, the earpiece): the ringback tone and the ringtone of a call coming in during a call sound in the earpiece |
+| A call with the speaker on in the call screen | `Voice Call` + `Speaker1` + `Mic` | `plughw:0,2` |
+| The call muted | Either of the above without `Mic` | Unchanged |
+
+- **Where the call state comes from**: with a call verb configured, audiod subscribes to telephonyd as phone-smsd does: on connecting it asks for the `calls` list, then follows each `call` event. The states that count are those q6voiced uses with ModemManager: a call dialing, ringing at the other end or connected has sound; a held call keeps the call set-up too (switching back and forth would break up the sound). A call still ringing in does not count, and its ringtone comes from the speaker as before; a call coming in while another is going on (call waiting) changes nothing.
+- **Speaker**: the dialer's 「免提」 (Speaker) reaches audiod through `audio.route` (which used to only multiply the call gain by 1.4), and audiod moves to the speaker set-up. When the last call ends the card goes back to `HiFi` and the speaker is noted as off, so the next call starts on the earpiece (the shell already sends `earpiece` at that moment; both agree).
+- **Mute**: telephonyd keeps mute per call (`tel.mute`), and audiod sees it in telephonyd's events. When every call with sound is muted, the microphone leaves the set-up (`_disdev Mic`): the baseband takes the microphone without passing through audiod, and the q6voice driver has no control for muting what it sends, so the path itself is cut. A held call sends nothing and does not count. Mute stays across switching between earpiece and speaker.
+- **How UCM is driven**: one `alsaucm` run per change (the 6T image has `alsa-utils-alsaucm`), behind the interface `ucm.Tool`. alsaucm forgets everything when it exits and UCM reads nothing back from the card, so a run first sets the current set-up up again (those controls to the values they already have, which changes nothing) to tell UCM what to tear down, then moves to the new one: `alsaucm -c hw:0 set _verb HiFi set _enadev Speaker set _verb "Voice Call" set _enadev Earpiece set _enadev Mic`. Within one verb new devices are enabled before old ones are disabled: when a device the profile lacks makes alsaucm fail, the old device is still on and the call does not go silent. If the speaker cannot be set up the call stays on the earpiece and the speaker is noted as off (the dialer ignores `audio.route`'s errors, so its button still shows it on).
+- **Restarts**: the current set-up and whether the speaker is on are kept in `/run/phone/audiod-ucm.json` (gone when the phone reboots). An audiod restarted mid-call takes the card over from that file and does not touch it until telephonyd has said what calls there are: if the call goes on nothing runs, if it ended meanwhile the card goes back to `HiFi`. While telephonyd is away the card stays as it is. The first start after boot (no such file) runs the profile's boot sequence first (`set _boot ""`: the earpiece and microphone volumes of the 6T's profile; the image has no alsactl, so nothing ran it before), then sets up `HiFi` by way of the call verb (`set _verb "Voice Call" set _verb HiFi set _enadev Speaker`). The detour is for the first call after boot: the SLIMbus channel the 6T's earpiece uses (`SLIM RX0 MUX` set to `AIF1_PB`) is set by `Voice Call` alone, and neither `HiFi` nor any disable sequence sets it back; q6voiced opens the voice PCM as soon as ModemManager says a call is dialing or connected, before telephonyd's event has reached audiod and moved the card to `Voice Call`, so the channel was not set yet, the DSP refused (`Unable to set hw params for PLAYBACK: Invalid argument`), q6voiced did not try again, and neither side heard anything on that call; the later calls found the channel set and had sound (report 008, [39](39-oneplus-6t.md) §14.20). When the call verb cannot be set, `HiFi` is set directly and the error logged (`phone-audiod: call verb: …`). audiod starts when the Shell first connects to it, as the Shell starts, so this is done within seconds of boot. Unit tests ✓, failing on the old code; **not tried on a phone**.
+- **The simulated far end**: the 「通话声」 (call audio) the shell plays during a call (§4) is meant for the simulated baseband. With a call set-up audiod plays it as silence: the stream is still there, and music still pauses for it.
+- **Configuration**: `--ucm-card`, `--ucm-verb`, `--ucm-device`, `--ucm-call-verb`, `--ucm-earpiece`, `--ucm-earpiece-pcm`, `--ucm-speaker`, `--ucm-speaker-pcm` and `--ucm-mic`, passed from the machine's `PHONE_AUDIO_*` variables by `phone-qcom-audio`'s drop-in ([39](39-oneplus-6t.md) §10); the former `ExecStartPre` is gone. Without `--ucm-call-verb` only media is set up at boot; without `--ucm-speaker` calls always stay on the earpiece. The `state` method also returns `ucm` (the current set-up).
+- **One source for a board's audio**: the board file's `[audio]` (`sku/boards/oneplus-fajita.toml`; its rules in [24](24-sku-framework.md) §2), which `tools/sku.py` writes into `sku.json`'s `audio`. Each field below is one of the machine's variables, and `tools/sku.py check` (`make sku-check`) requires both to be equal, refusing a change to one side only, so the whole-phone image's audiod and the chroot use the same values:
+
+  | `[audio]` | Machine variable | 6T |
+  |-----------|------------------|----|
+  | `pcm` | `PHONE_AUDIO_PCM` | `plughw:0,2` |
+  | `card` | `PHONE_AUDIO_UCM_CARD` | `hw:0` |
+  | `verb`, `device` | `PHONE_AUDIO_UCM_VERB`, `PHONE_AUDIO_UCM_DEVICE` | `HiFi`, `Speaker` |
+  | `call_verb` | `PHONE_AUDIO_UCM_CALL_VERB` | `Voice Call` |
+  | `earpiece`, `earpiece_pcm` | `PHONE_AUDIO_UCM_EARPIECE`, `PHONE_AUDIO_EARPIECE_PCM` | `Earpiece`, `plughw:0,0` |
+  | `call_speaker`, `call_speaker_pcm` | `PHONE_AUDIO_UCM_CALL_SPEAKER`, `PHONE_AUDIO_CALL_SPEAKER_PCM` | `Speaker1`, `plughw:0,2` |
+  | `call_mic` | `PHONE_AUDIO_UCM_CALL_MIC` | `Mic` |
+
+  Two more are no machine variables, only the phone test kit's (`phone.env`): `quiet_controls` (mixer controls) and `quiet_level`. The selftest's and the pixel run's media cases really play through the speaker, so the kit turns those controls down to that level before the run and sets them back to their values after it ([24](24-sku-framework.md) §6.2); the 6T's are `RX0 Digital` to `RX4 Digital` and `15%`, but the speaker's amplifier (TFA9894) is on QUAT_MI2S, not on those RX paths, so whether they reach the speaker is **not verified** ([39](39-oneplus-6t.md) §14.5).
+
+- **The audiod the Shell starts itself** (`phone-shell --services spawn`, the selftest): `--sink alsa:<pcm>` when the image's `sku.json` has `audio`, else `--sink auto`. `auto` picks card 0's first PCM (`plughw:0,0`), on the 6T the earpiece's MultiMedia1, to which `HiFi` connects no back end (dmesg: `MultiMedia1: ASoC: no backend DAIs enabled`), so `aplay` cannot open it. When `audio` has a `card` and a `verb` it also gets the system audiod's `--ucm-*` (`programs/shellcmd`'s `privateAudio`): the media set-up always; the call set-ups only when its telephonyd uses the SKU's own modem (an interactive `--services spawn`), the selftest's calls being the simulated baseband's, whose far end audiod plays itself without switching the card. So during the whole-phone image's boot selftest (the system's audiod does not run), in a selftest the phone kit runs on the whole phone (the kit stops the system's audiod first, [24](24-sku-framework.md) §6.2) and in the chroot, the Shell's own audiod sets `HiFi` up, as the system's does. Before, it got no `--ucm-*`, and there nothing set `HiFi` up and nothing could be heard (the clock went on, see §5); unit test ✓, which fails with the old code. A SKU simulated on the developer machine (no id) still uses `auto`. **Not tried on a phone**.
+- **The chroot** ([39](39-oneplus-6t.md) §13.4, **not tried on a phone**): with this phone's own image (which has alsaucm and the UCM profile) the Shell's own audiod above sets the card up with the image's alsaucm, as on the whole phone, and in `shell-start` switches to `Voice Call` during calls too; `setup` only notes it for `teardown`. With an image without alsaucm (the QEMU one) `setup` sets `[audio]`'s set-up with Nura's alsaucm (`alsaucm -c hw:0 set _verb HiFi set _enadev Speaker`); the card's mixer state is in the kernel, which the chroot's audiod sees, and the call verb is not switched. The values come from the kit's `phone.env` (written with `sku.json` by `tools/sku.py files` from the same table; sh on the phone cannot parse JSON). With no alsaucm anywhere `setup` says sound cannot play and how to install it (`apk add alsa-utils`). `teardown` takes the set-up down with the alsaucm that made it (`... set _disdev Speaker set _verb Inactive`). A board without `[audio]` gets no set-up.
+- **What the 6T's profile lacks**: sdm845-mainline's `Voice Call` (1b8d290e, still the branch's head on 2026-11-18) has only `Earpiece` and `Mic`. The speaker `Speaker1` is Kario's addition (`fajita-voicecall-speaker.conf`, appended to `VoiceCall.conf` at install time): it sends the call to QUAT_MI2S_RX, where the TFA9894 sits, with the same mixer control as the Xiaomi Poco F1's `Voice Call` (the same SoC and kernel); the image kernel's `q6voice-dai.c` has that control. It is not called `Speaker` because `HiFi` already has one, and PulseAudio 17 fails on a device of the same name in two verbs (which is why upstream renamed `HiFi`'s `Mic` to `Mic1`).
+- **Headphones**: none on the 6T. audiod now reads the jack (§12.5), and calls can go to a headset (`--ucm-call-headphones`), but the 6T has no 3.5 mm jack in the first place (the kernel still registers a "OnePlus 6T Headset Jack" input device, and audiod reads it; with no jack it should never report an insertion, **not verified**), mainline USB is device only, so no USB-C headset (analogue or digital) can be attached, and `Voice Call` has no headphone device; so the 6T's configuration has no headphone flags. Bluetooth call audio is **not implemented**.
+
+What to look at on the phone ([39](39-oneplus-6t.md) §8):
+
+- Playback in the chroot (**not tried on a phone**): after `setup`, `chroot /var/lib/kario-chroot/root alsaucm -c hw:0 set _verb HiFi set _enadev Speaker` (with the QEMU image Nura's alsaucm, which `setup` has run) and then `aplay -D plughw:0,2 <wav file>`: the speaker sounds and dmesg has no `no backend DAIs`; then run the four cases music, Hongyan voice message, recorder and video ([39](39-oneplus-6t.md) §14.5), with no `sink` or `alsaucm` error in `phone-audiod.log`, or one line.
+- After the call connects, is there sound in the earpiece, and does the other party hear you: `cat /run/phone/audiod-ucm.json`, and any `call routing` errors in `journalctl -u phone-audiod`. The first call after boot too ([39](39-oneplus-6t.md) §14.20 step 3): before it, `amixer -c0 cget name='SLIM RX0 MUX'` says `AIF1_PB`.
+- Speaker: does `Speaker1` bring the call to the speaker, and how much echo is there (mainline q6voice has no ACDB calibration as on Android, so the speaker may have no echo cancellation).
+- Mute: with `Mic` out, does the other party really hear nothing, and does unmuting bring the microphone back? Cutting the codec's input may stop the SLIMbus transmit port; if it does not come back, the code has to change to set `DEC7 Volume` while muted (`--ucm-mic` cannot be left empty: the microphone would then not be in the call set-up at all).
+- Are the volumes the boot sequence sets right?
+- Ringback: 2G and 3G networks usually send their own ringback tone and the shell plays a local one as well, so the two may overlap; during call waiting the whole ringtone sounds in the earpiece, and if that is too loud calls coming in during a call need a tone of their own.
+
+## 11. Accessibility: mono, left/right balance and the speech service
+
+> Implemented on 2026-11-21. Unit tests (`audio`'s `TestMonoAndBalance`, `audio/tts`, `programs/audiod`, `shell`'s `TestScreenReader`) ✓, developer-machine selftest cases 「辅助功能·听觉」 (Accessibility: hearing) and 「辅助功能·屏幕阅读器」 (Accessibility: screen reader) ([13](13-prototype.md) §5); **not tried on a phone** (balance and mono not listened to on real earphones). The speech engine is **not implemented** (below).
+
+- **Mono and balance**: Settings › Accessibility › Hearing's mono audio and left/right balance are kept by the Shell ([19](19-core-apps.md) §1.4) and handed to the mixer through audiod's `channels` method (`Mixer.SetChannels`; when audiod comes up and on change, not when at the defaults): mono adds the two channels and plays the sum on both sides (one ear or one earphone hears everything), the balance from −1 to 1 turns the other side down by as much as it moves (Android's way: 30% to the left plays the right at 70%, the left as it is); both can be on together. The `state` method also reports `mono` and `balance`. With either on, music no longer goes past the mixer to the card (§9.5's bit-perfect, DoP and native DSD stop; it is mixed at 48 kHz), because that path does not change the channels.
+- **Captions**: nothing the phone plays has text yet: video (`video.open`) decodes only picture and sound, mediad does not read WebM's subtitle tracks, voice messages have no transcription; so captions are **not implemented**, as the Settings page says.
+- **The speech service**: what the screen reader ([19](19-core-apps.md) §1.4) says goes through audiod's `speech.say` (`text`, `lang`, `interrupt`: cut what is being said, else wait after it), `speech.stop` and `speech.state` (the engine, whether it is simulated, whether it is speaking, the last 64 lines said). The service is `audio/tts`: an `Engine` interface (`Say` says a line and returns how long it takes, `Stop`), with the queueing and interrupting in the service. It lives in audiod because speech is sound: a real engine's voice has to be mixed with the other sounds and follow the focus (ducking music as a notification does), which audiod already does; the engine itself is CPU-heavy, so a real one would run in a process of its own that audiod starts (as ffmpeg is).
+- **The engine**: there is only `Simulated`: it makes no sound, writes each line into audiod's log (`tts (simulated, no voice): zh-Hans: …`), estimates how long it takes at a screen reader's rate (Chinese characters 4 a second, other words 2.5 a second, 0.2 s for punctuation), and queues and interrupts as a real one would. A real engine is **not implemented**, because none of the candidates looked at on 2026-11-21 is at once able to speak Chinese and English, licensed for the zero-GPLv3 images and small:
+
+  | Engine | Licence | Languages | Size | Verdict |
+  |------|--------|------|------|------|
+  | eSpeak NG | GPL-3.0-or-later | many (Chinese included) | small | cannot go into the zero-GPLv3 images ([23](23-renderer-protocol.md) §7) |
+  | SVOX Pico (AOSP `external/svox`) | Apache-2.0 | English (US, UK), German, Spanish, French, Italian, **no Chinese** | about 1 MB a language (en-US's voice 794 KB) | fine for English and Spanish, not Chinese |
+  | CMU Flite | BSD-style | English | small | no Chinese |
+  | sherpa-onnx (Apache-2.0, without eSpeak NG since 2.0) + onnxruntime (MIT) + a Chinese VITS model | permissive code; `vits-icefall-zh-aishell3` (a 30 MB archive) trained on AISHELL-3 (Apache-2.0), the model file's own licence not stated; `vits-melo-tts-zh_en` (Chinese and English, about 160 MB) from MeloTTS (MIT); `matcha-icefall-zh-baker`'s data is non-commercial only | Chinese (melo English too) | tens to hundreds of MB, plus onnxruntime | not small, the models' licences need checking, speed on a phone **not verified** |
+
+  Plan: Pico for English and Spanish; for Chinese, first confirm the licence of the `vits-icefall-zh-aishell3` model file (ask k2-fsa), then measure sherpa-onnx's speed and memory on a phone, and if it fits ship it as an optional Chinese engine (a package of its own, as the input method's dictionaries are). Until then the screen reader makes **no sound** on a phone.
+
+## 12. Several outputs at once: a 3.5 mm headset, a USB DAC, Bluetooth
+
+> Implemented 2026-11-27. Unit tests (`audio/route`, `audio`, `audio/ucm`, `programs/audiod`, `shell`'s `TestAudioOutputs`) ✓, developer-machine selftest 「音频输出」 (Audio output) ✓ (stand-in devices); **not tried on a phone**: no phone with a 3.5 mm jack was at hand (the OnePlus 6T has none, and its mainline kernel's USB is device only), and no real USB DAC has been attached. Hot-plugging `usb-audio` in QEMU is **not implemented** (§12.8).
+
+The reference phone (the QCM6490 reference: a WCD9370 codec, a 3.5 mm jack with MBHC detection, `sku/boards/qcm6490-ref.toml`) has both a 3.5 mm jack and USB-C: a user may plug a USB-C DAC dongle (USB Audio Class) in while a 3.5 mm headset is in, and connect Bluetooth headphones as well. The policy is in `audio/route` (no I/O, all unit-tested); audiod tells it what is connected and plays where it says.
+
+### 12.1 What plays where
+
+| Sound | Where it goes | Compared with Android |
+|------|---------|---------|
+| Media (music, video, apps' audio streams), notification sounds, key clicks | The output the user picked in the output picker; with none picked ("automatic") the external output (headset, USB, Bluetooth) connected last; the speaker when there is none | The same (the device connected last wins) |
+| Ringtones, alarms, emergency alerts | The speaker, plus the external output media is on, both at once: heard from a phone on the table, and by someone wearing headphones | The same (the ringtone sounds on the speaker and the headset together) |
+| VoIP calls (sound through the mixer: Hongyan's video calls, the ringback tone) | The external output media is on, with its microphone if it has one, else the phone's; the earpiece while media is on the speaker (the speaker on a phone without an earpiece); the speaker with the call screen's speakerphone on | The same |
+| Cellular calls (the modem's voice goes from the DSP straight to the phone's codec) | As above, but only the earpiece, the speaker and the 3.5 mm jack can be reached: with media on a USB or Bluetooth device the call goes to a 3.5 mm headset if one is in, else the earpiece | Android can use a USB headset (Qualcomm's DSP has a USB audio port); the mainline kernel has no such path, **not implemented** |
+
+- A pick in the output picker holds until that output is unplugged (back to automatic), a new device is connected (the new device wins, as on Android), or automatic is picked again.
+- The earpiece plays calls only; the picker does not list it.
+
+### 12.2 Plugging in, unplugging
+
+- **Plugging in**: the new device plays media at once (music playing moves over there and then, not at the next track), with the toast 「正在 FiiO KA3 上播放」 (Playing on FiiO KA3). The same device reported again (the jack's microphone switch arriving after its headphone switch, say) is only updated, not plugged anew.
+- **Unplugging the output media plays on**: media pauses (Android's "becoming noisy"), with the toast 「FiiO KA3 已断开，已暂停」 (FiiO KA3 disconnected: paused). Media a ringtone or a call holds paused just then becomes paused by the user too, so it does not resume on the speaker by itself when the ringtone stops. The pause happens before the next 20 ms, so no sound leaks out of the speaker.
+  - Unlike Android: Android pauses only when the sound would fall to the speaker (unplugging USB with a wired headset still in goes on in the wired headset); Kario pauses whenever the output unplugged is the one playing, since the headset left may not be worn.
+- **Unplugging another output**: nothing changes.
+
+### 12.3 The output picker
+
+- The options menu and the command palette (`/` and 「音频输出」, Audio output) have 「音频输出：<the one in use>」 (Audio output: …), shown only while more than the speaker is connected. It opens with 「自动：最后连接的设备」 (Automatic: the device connected last) first, then the speaker and each device connected; the one in use says 「· 使用中」 (· in use).
+- The volume keys' toast says which output it sets: 「媒体音量 60% · FiiO KA3」 (Media volume 60% · FiiO KA3).
+- Kario has no pull-down control centre and no volume panel as Android has (the volume is a one-line toast), so the picker is in the options menu and the command palette. A phone of buttons only (the 6T without a keyboard) cannot open the options menu; an entry for such phones is **not done** (in the power menu, or a way in for touch).
+
+### 12.4 Each output's own volume
+
+- Media's volume is kept per output: the speaker's is the old 「媒体音量」 (Media volume) setting; a headset's is kept as `wired`; a USB device's as `usb:<vendor>:<product>` (the same in any port); a Bluetooth device's by its address. All are kept in the Shell's settings (`output_volumes`); the Shell hands them all to audiod when it connects, and audiod switches the volume itself when the output changes, without waiting for the Shell.
+- A headset, USB or Bluetooth device never set starts at the speaker's volume, 50% at most, so it is not loud when first plugged in.
+- 「设置 › 声音与振动」 (Settings › Sound & vibration) shows and sets the media volume of the output in use.
+- **Absolute volume**: on a USB device with a volume control of its own (a simple ALSA mixer control with a playback volume: `PCM`, `Master`, `Headphone`, `Speaker` first, else the first there is), media's volume sets that (`amixer -M`, the scale even to the ear) and media's volume in the mixer stays at 1: music stays bit-perfect (§9.5) without the volume at maximum. If setting it fails, the volume goes back into the mixer.
+- The ringtone, notification and alarm volumes stay one each, not per output.
+
+### 12.5 Where the devices come from
+
+| Device | How it is found | How it plays |
+|------|---------|-------|
+| The 3.5 mm jack | The card's jack detection (the codec's MBHC) is an input device with switches ("… Headset Jack"): the one whose `/sys/class/input/event*/device/capabilities/sw` has `SW_HEADPHONE_INSERT`; `EVIOCGSW` reads its state at the start, then its events are read (the headphone, line-out and microphone switches; a report counts once at its `EV_SYN`; read as a 64-bit kernel's `input_event`) | The built-in card, through UCM: `--ucm-headphones` (the media device, such as `Headphones`), `--ucm-headphones-pcm`; for a ringtone the speaker and headphone devices together (when in the same verb); calls use `--ucm-call-headphones`, and with a headset's microphone `--ucm-call-headset-mic` replaces `--ucm-mic`, also the one left out while muted |
+| USB audio devices | `/proc/asound` is looked at every half second: the cards with a `usbid` and `Playback:` in `stream0` (snd-usb-audio's); `Capture:` in `stream0` as well makes a headset with a microphone. The kernel adds and removes these directories itself, so no udev is needed (nor a udev socket for audiod). A USB microphone that only records is not an output | An aplay of its own, `plughw:<card>,0`. A device with a UCM profile (alsa-ucm-conf has `HiFi` for some USB devices) is first set up with `alsaucm -c hw:<card> set _verb HiFi`; without one the generic profile is used (it simply plays). Rates are negotiated against the exact rates of each altset in its `stream0` (§9.5); on the mixer's path `plughw` converts. Once it is unplugged its aplay is stopped |
+| Bluetooth | The policy has such outputs, but nothing reports them yet (the A2DP and HFP sinks are **not implemented**) | — |
+| The selftest's stand-ins | audiod takes `output.sim` when run with `--sim-outputs` (the audiod the Shell starts for its selftest), and `sim` is true in `outputs`; a phone's and QEMU's audiod run without it, and the case is skipped (`require-sim-outputs`) | The built-in sink |
+
+audiod's interface: `outputs` (what is connected; where media, a VoIP call, a cellular call and the ringtone go; which microphone a call uses; media's volume on its output and whether it is absolute; whether a USB device uses UCM or the generic profile); `output.pick {id}` (`""` is automatic); `volume` takes an `output` (an output's key, empty for the speaker); `state` has `outputs` too. Each change broadcasts an `outputs` event; `noisy` is the output whose going paused media.
+
+### 12.6 What a board configures
+
+A board with a 3.5 mm jack adds `--ucm-headphones` (and `--ucm-headphones-pcm` when media is not on the same PCM), `--ucm-call-headphones` and `--ucm-call-headset-mic` to audiod's flags, with values from its UCM profile. No board does yet: the QCM6490 reference has no `[audio]` (its sound card configuration is not written), and the 6T has no jack. When one does: the board file's `[audio]` gets `headphones`, `headphones_pcm`, `call_headphones` and `call_headset_mic`, `tools/sku.py` the matching machine variables (`PHONE_AUDIO_UCM_HEADPHONES` and so on), the machine's audiod drop-in (the 6T's is `phone-audiod-ucm.conf.in` in `recipes-bsp`, a part moving to a repository of its own) passes the flags, and so does `programs/shellcmd`'s `privateAudio`. The kernel needs `CONFIG_SND_USB_AUDIO` and a USB host controller; the 6T's mainline kernel's USB is device only, so USB audio cannot be attached to a 6T.
+
+### 12.7 Tests
+
+| What | Where | Result |
+|------|------|------|
+| The policy | `audio/route` unit tests | A headset, a USB DAC and Bluetooth connected one after another each play media, and calls follow (with its microphone if it has one); with media on USB a cellular call goes to the jack, without a jack to the earpiece; the ringtone sounds in both places; only unplugging the output in use pauses; the pick, a new device winning over it, unplugging the picked one going back to automatic; the speakerphone; the same device reported again |
+| The mixer | `audio`'s `TestNoisy` | Media paused by an unplug does not resume by itself when the ringtone stops |
+| UCM | `audio/ucm`'s `TestJack`, `TestNoJackInProfile` | Media to the headphones, both devices on for a ringtone, a call on the headphones and the headset's microphone, muting leaves out the headset's microphone, headphones without one use the phone's, unplugging during a call goes back to the earpiece; nothing changes without the jack's devices in the profile |
+| audiod | `programs/audiod`'s `TestScanUSB`, `TestPlaybackControl`, `TestJack`, `TestOutputsPlugUnplug`, `TestTargets`, `TestTargetsJack`, `TestSim` | A fake `/proc/asound` (the built-in card, a DAC, a USB headset, a USB microphone), fake sysfs and input events, a fake amixer: plugging in moves media at once, each output's volume, absolute volume set in hardware with the samples untouched, unplugging an output not in use does not pause, unplugging the one in use pauses and stays paused after a ringtone; a ringtone writes to both cards' aplay, media only to the DAC's, a cellular call to the built-in card's; the jack's three set-ups through UCM |
+| Shell | `shell`'s `TestAudioOutputs` | The toasts; the volume keys set the output in use and keep it per output; settings show the output in use's; the picker's list |
+| Selftest | `shell/selftest.script`'s 「音频输出」 (Audio output) | Developer machine ✓: with music playing a stand-in headset and then a stand-in USB DAC are plugged in, and media moves to each; a VoIP call goes to the DAC with the phone's microphone; unplugging the DAC pauses the music with a toast; play resumes it on the headset; the command palette opens the picker and the speaker is picked; unplugging the headset not in use does not stop the music; it all goes back as it was |
+| On a phone | — | **Not tried on a phone** |
+
+### 12.8 Not done yet
+
+- **Really hot-plugging a USB DAC in QEMU**: QEMU has `-device usb-audio` (USB Audio Class 1, 48 kHz stereo, playback only), and the test scripts have a QMP socket (`qemu-buttons.py` already touches the screen through it). To do: `CONFIG_SND_USB_AUDIO` and `CONFIG_USB_XHCI_HCD` in the guest kernel; `-device qemu-xhci` and a second `-audiodev` in `qemu-selftest.sh`; a new kind of request in the selftest (as `PHONE-SELFTEST-TOUCH`) that `qemu-buttons.py` answers with QMP `device_add usb-audio,id=…` and `device_del`; a case checking that audiod finds `usb:<card>`, the music moves there and pauses when it is pulled out. It cannot be attached from boot: audiod would put all media on USB, and the virtio card `audio-check.py` records would have no music. QEMU was not to be run this time, so this is only written here, **not implemented**.
+- Bluetooth sinks (A2DP, HFP, §7).
+- Cellular calls on a USB or Bluetooth headset (needs the DSP's USB port, or audiod relaying the modem's PCM).
+- A real microphone (§7): "which microphone a call uses" is only the policy's answer for now; recording is still simulated.
+- The output picker's entry on a phone of buttons only (§12.3).
+- The boards' configuration (§12.6).
+

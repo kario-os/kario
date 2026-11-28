@@ -1,0 +1,16 @@
+# phone-paint composing on the GPU by default (42-gpu-rendering.md §3,
+# L1): the image's sku.json says paint_gpu = compose, over the board's off,
+# so the renderer on the panel starts the GPU path; where the GPU does not
+# start, or fails later, it draws on the CPU as without this overlay, and
+# PHONE_PAINT_GPU in its environment still decides (PHONE_PAINT_GPU=0: the
+# CPU). Only for a SKU whose board has a GPU (phone-sku refuses others).
+# For the phone tests of 39-oneplus-6t.md §8.1 before the board's paint_gpu
+# changes; the image is the SKU's but for that line of sku.json:
+#   make yocto-build WORK=$HOME/yocto/fajita-work KASFILE=yocto/kas/phone-fajita.yml SKU=oneplus-fajita-t9 KASEXTRA=yocto/kas/paint-gpu.yml
+# PHONE_PAINT_GPU_DEFAULT = "raster" (local.conf) rasterizes on the GPU too (L2).
+header:
+  version: 14
+
+local_conf_header:
+  zz-paint-gpu: |
+    PHONE_PAINT_GPU_DEFAULT = "compose"

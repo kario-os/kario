@@ -1,0 +1,27 @@
+{
+  "id": "com.example.smslite",
+  "name": "简讯",
+  "icon": "讯",
+  "icon_image": "icon.png",
+  "description": "示例第三方短信应用：可以设为默认短信应用",
+  "version": "1.0",
+  "exec": "phone-app-smslite",
+  "order": 61,
+  "permissions": [
+    "sms"
+  ],
+  "locales": {
+    "zh-Hant": {
+      "name": "簡訊精簡版",
+      "description": "範例第三方簡訊應用程式：可以設為預設簡訊應用程式"
+    },
+    "en": {
+      "name": "SMS Lite",
+      "description": "A sample third-party SMS app that can be the default SMS app"
+    },
+    "es": {
+      "name": "SMS Lite",
+      "description": "Una app de SMS de terceros de ejemplo que puede ser la app de SMS predeterminada"
+    }
+  }
+}

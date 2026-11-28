@@ -1,0 +1,9 @@
+{"id":1,"method":"log.import","params":{"entries":[{"number":"13800000001","dir":"in","result":"answered","at":1700000000,"duration":30},{"number":"x"}]}}
+{"id":2,"method":"log.delete","params":{"ids":["i1","nope",3]}}
+{"id":3,"method":"sim.slow","params":{"dial_ms":3000,"answer_ms":5000}}
+{"id":4,"method":"dial","params":{"number":"10086"}}
+{"id":5,"method":"nope"}
+not json
+[1]
+
+{"id":"x","method":7,"params":[]}

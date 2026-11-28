@@ -1,0 +1,85 @@
+# The pictures of 33-app-guidelines.md §1.3 (scripts/guideline-shots.sh runs
+# this with the sample as the developer's app, in each language): the steps
+# wait for screens by id, or for text that is the same in every language, so
+# one script serves all; the clock is set so that the pictures do not change.
+sleep 800
+at sys.idle 5000
+type /
+type Guidelines
+key enter
+at com.example.guidelines/main
+
+== 33 每个功能在「选项」菜单里都找得到
+nfc clock 09:41
+fill menu-do
+key enter
+at com.example.guidelines/menu-do
+key tab
+sleep 300
+snap menu-do
+key esc
+key esc
+fill menu-dont
+key enter
+at com.example.guidelines/menu-dont
+key tab
+sleep 300
+snap menu-dont
+key esc
+key esc
+
+== 33 删除在菜单里，不是每一项后面一个按钮
+nfc clock 09:41
+fill list-do
+key enter
+at com.example.guidelines/list-do
+snap list-do
+key esc
+fill list-dont
+key enter
+at com.example.guidelines/list-dont
+snap list-dont
+key esc
+
+== 33 输入框加 submit，不另放「确定」按钮
+nfc clock 09:41
+fill input-do
+key enter
+at com.example.guidelines/input-do
+snap input-do
+key esc
+fill input-dont
+key enter
+at com.example.guidelines/input-dont
+snap input-dont
+key esc
+
+== 33 状态用样式，不用表情和字符画
+nfc clock 09:41
+fill status-do
+key enter
+at com.example.guidelines/status-do
+snap status-do
+key esc
+fill status-dont
+key enter
+at com.example.guidelines/status-dont
+snap status-dont
+key esc
+
+== 33 付款用系统的可信确认，不自己画密码键盘
+nfc clock 09:41
+fill pay-do
+key enter
+at com.example.guidelines/pay-do
+key enter
+wait com.example.guide
+snap pay-do
+key esc
+sleep 500
+key esc
+fill pay-dont
+key enter
+at com.example.guidelines/pay-dont
+snap pay-dont
+key esc

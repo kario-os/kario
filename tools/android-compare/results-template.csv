@@ -1,0 +1,75 @@
+id,axis,what,unit,kario,android
+task.dial.keys,keys,Dial Zhang San by T9 search: key presses,presses,kario-half.sh task: renderer inputs between two dumps,android-half.sh task: getevent key-down events
+task.dial.s,keys,Dial: first key down to the screen settled,s,240 fps video: compare.py frames,240 fps video: compare.py frames
+task.dial.touches,keys,Dial: touches (must be 0),touches,renderer touches between two dumps,getevent touch contacts
+task.sms.keys,keys,"T9 SMS to Zhang San, text wo dao le: key presses",presses,renderer inputs between two dumps,getevent key-down events
+task.sms.s,keys,SMS: first key down to sent,s,240 fps video,240 fps video
+task.sms.touches,keys,SMS: touches (must be 0),touches,renderer touches,getevent
+task.chat.keys,keys,"Reply hao de to Li Si's message (Hongyan / WeChat): key presses",presses,renderer inputs between two dumps,getevent key-down events
+task.chat.s,keys,Chat reply: first key down to sent,s,240 fps video,240 fps video
+task.chat.touches,keys,Chat reply: touches (must be 0),touches,renderer touches,getevent
+task.pay.keys,keys,"Scan to pay (Feiqian demo / Alipay, nothing paid), to the scanner: key presses",presses,renderer inputs between two dumps,getevent key-down events
+task.pay.s,keys,Scan to pay: first key down to the scanner's live viewfinder,s,240 fps video (vivid on the 6T: no sensor to start),240 fps video
+task.pay.confirm_s,keys,Scan to pay: the viewfinder on the printed code to the payment confirmation,s,- (no camera driver on the 6T),240 fps video
+task.pay.touches,keys,Scan to pay: touches (must be 0),touches,renderer touches,getevent
+task.camera.keys,keys,Open the camera: key presses,presses,renderer inputs between two dumps,getevent key-down events
+task.camera.s,keys,Camera: first key down to a live viewfinder,s,240 fps video (vivid on the 6T: no sensor to start),240 fps video
+task.camera.touches,keys,Camera: touches (must be 0),touches,renderer touches,getevent
+task.scroll.keys,keys,Contacts: down 30 rows and back to the top: key presses,presses,renderer inputs between two dumps,getevent key-down events
+task.scroll.s,keys,Scroll: first key down to the screen settled,s,240 fps video,240 fps video
+task.scroll.touches,keys,Scroll: touches (must be 0),touches,renderer touches,getevent
+task.switch.keys,keys,"Messages, messenger, Contacts open: bring back each in turn: key presses",presses,renderer inputs between two dumps,getevent key-down events
+task.switch.s,keys,Switch: first key down to the third app settled,s,240 fps video,240 fps video
+task.switch.touches,keys,Switch: touches (must be 0),touches,renderer touches,getevent
+video.response_ms,keys,Key down to the first change on screen (every marked key),ms,240 fps video,240 fps video
+keys.p50,keys,"Key to screen, the system's own measure: median",ms,renderer: kernel event to page flip (real keys),(none without root; Perfetto input events where the build has them)
+keys.p95,keys,Key to screen: 95th percentile,ms,renderer: kernel event to page flip,(as above)
+frames.p50,hardware,Frame time during the timed tasks: median,ms,renderer frame_ms (draw and hand-over),gfxinfo histogram (IntendedVsync to FrameCompleted)
+frames.p95,hardware,Frame time: 95th percentile,ms,renderer frame_ms,gfxinfo histogram
+frames.p99,hardware,Frame time: 99th percentile,ms,renderer frame_ms,gfxinfo histogram
+frames.jank_pct,hardware,Frames that missed their refresh,%,renderer: late flips / flips in motion,gfxinfo: janky frames / frames rendered
+frames.n,hardware,Frames counted,frames,renderer,gfxinfo histogram
+play.frames.p95,hardware,"Frame time, the scripted tasks (tasks.play): 95th percentile",ms,kit perf with --play tasks.play,(none)
+play.frames.jank_pct,hardware,"Frames that missed their refresh, the scripted tasks",%,kit perf with --play tasks.play,(none)
+play.keys.p95,hardware,"Key to screen, the scripted tasks: 95th percentile",ms,kit perf with --play tasks.play,(none)
+start.cold.phone,hardware,Cold start: Phone,ms,renderer: process start to first page on the panel,am start -W TotalTime (COLD)
+start.cold.sms,hardware,Cold start: Messages,ms,renderer,am start -W
+start.cold.messenger,hardware,Cold start: Hongyan / WeChat,ms,renderer,am start -W
+start.cold.camera,hardware,Cold start: Camera,ms,renderer,am start -W
+start.cold.contacts,hardware,Cold start: Contacts,ms,renderer,am start -W
+start.cold.payment,hardware,Cold start: Feiqian / Alipay,ms,renderer,am start -W
+start.warm.phone,hardware,Warm start: Phone,ms,240 fps video (key down to the page),am start -W TotalTime (WARM or HOT)
+start.warm.sms,hardware,Warm start: Messages,ms,240 fps video,am start -W
+start.warm.messenger,hardware,Warm start: Hongyan / WeChat,ms,240 fps video,am start -W
+start.warm.camera,hardware,Warm start: Camera,ms,240 fps video,am start -W
+start.warm.contacts,hardware,Warm start: Contacts,ms,240 fps video,am start -W
+start.warm.payment,hardware,Warm start: Feiqian / Alipay,ms,240 fps video,am start -W
+mem.total_mb,hardware,RAM the kernel has,MB,/proc/meminfo MemTotal,/proc/meminfo MemTotal
+mem.used_idle_mb,hardware,"Used after a reboot and 10 minutes idle (MemTotal - MemAvailable)",MB,/proc/meminfo,/proc/meminfo
+mem.used_apps_mb,hardware,Used with the switch task's three apps open,MB,/proc/meminfo,/proc/meminfo
+mem.pss_mb,hardware,PSS of all processes with the three apps open,MB,kit mem (the system's processes and the apps),dumpsys meminfo: used pss
+mem.kept,hardware,The switch task's apps still running after it,apps,dump: apps running,pidof
+mem.kills,hardware,Apps killed for memory since the boot,apps,dump: low_memory_kills,(by hand: dumpsys activity exit-info)
+standby.hours,standby,"Screen off, Wi-Fi off, SIM in, messenger logged in",h,kit power-start / power-stop,android-half.sh standby-start / standby-stop
+standby.drop_pct,standby,Battery level drop,%,power supply capacity,dumpsys battery level
+standby.avg_ma,standby,Average current,mA,fuel gauge charge counter,batterystats discharge (else the charge counter)
+standby.mah_day,standby,Drain per day,mAh,average current x 24,average current x 24
+standby.days,standby,Days of standby on its own battery at this drain,days,battery design capacity / drain per day,batterystats capacity / drain per day
+standby.suspends,standby,Suspends,,suspend_stats,(none without root)
+standby.wakeups,standby,Wake-ups,,"the Shell's 'sleep: woke after' lines",batterystats wakeup reasons
+standby.top_wake,standby,The commonest wake-up and its count,,the Shell's sleep lines,batterystats wakeup reasons
+standby.msgs,standby,Messages the second account sent in the period,msgs,traffic.sh log,traffic.sh log
+standby.delivery_s,standby,"Spot checks: sent to shown in the notification, median",s,by hand (stopwatch or video),by hand
+update.kernel,updates,Kernel version,,uname (kit facts),uname -r
+update.os,updates,System and version,,os-release (kit facts),getprop ro.build.version.release
+update.patch,updates,Security patch level or image date,,image build date (by hand),getprop ro.build.version.security_patch
+update.ab,updates,A/B updates (install in the background; roll back),,by hand (39-oneplus-6t.md §14.13),getprop ro.build.ab_update
+update.promise,updates,Updates the vendor promises,,by hand,by hand (vendor's page)
+update.last,updates,Latest update offered (date),,by hand,by hand (Settings > System update)
+facts.model,facts,Phone,,kit facts,getprop ro.product.model
+facts.soc,facts,SoC,,by hand,getprop ro.soc.model / ro.board.platform
+facts.cpus,facts,CPU cores,,kit facts (CPU part),/proc/cpuinfo and cpufreq
+facts.ram_mb,facts,RAM,MB,kit facts,/proc/meminfo
+facts.screen,facts,Screen,,by hand (or the 480x640 target),wm size
+facts.battery_mah,facts,Battery design capacity,mAh,kit facts (charge_full_design),batterystats capacity
+facts.input,facts,Keys,,by hand (the 6T: a Bluetooth 9-key pad),by hand

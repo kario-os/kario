@@ -1,0 +1,14 @@
+{
+  "Choose a contact": "Elegir un contacto",
+  "Delete conversation": "Borrar conversación",
+  "Message": "Mensaje",
+  "No messages": "No hay mensajes",
+  "Not deleted: %v": "No borrado: %v",
+  "Not sent: %v": "No enviado: %v",
+  "Number": "Número",
+  "SMS Lite": "SMS Lite",
+  "Sent": "Enviado",
+  "Verification code: %s": "Código de verificación: %s",
+  "Wait for a verification code": "Esperar un código de verificación",
+  "Waiting for a message with a code…": "Esperando un mensaje con un código…"
+}

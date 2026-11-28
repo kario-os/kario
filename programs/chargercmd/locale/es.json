@@ -1,0 +1,15 @@
+{
+  "Charger unplugged: powering off": "Cargador desconectado: apagando",
+  "Charging": "Cargando",
+  "Charging - too low to start": "Cargando: batería demasiado baja para encender",
+  "Charging, %d%%": "Cargando, %d%%",
+  "Charging, %d%% - too low to start": "Cargando, %d%%: demasiado baja para encender",
+  "Fast charging": "Carga rápida",
+  "Fast charging, %d%%": "Carga rápida, %d%%",
+  "Full": "Carga completa",
+  "Hold the power key to start": "Mantén pulsado el botón de encendido para encender",
+  "No battery found": "No se encontró la batería",
+  "Powering off…": "Apagando…",
+  "Starting at %d%%": "Se encenderá al %d%%",
+  "Starting…": "Encendiendo…"
+}

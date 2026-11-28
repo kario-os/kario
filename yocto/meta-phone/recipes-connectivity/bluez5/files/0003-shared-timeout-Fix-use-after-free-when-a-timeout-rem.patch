@@ -1,0 +1,70 @@
+From 70197a083fa64cec6fff1aabc75f835aed6bc953 Mon Sep 17 00:00:00 2001
+From: Luiz Augusto von Dentz <luiz.von.dentz@intel.com>
+Date: Fri, 30 Oct 2026 09:44:26 -0400
+Subject: [PATCH] shared/timeout: Fix use-after-free when a timeout removes
+ itself
+
+If the callback of a timeout_add() timer removes it, e.g. the tester
+test timeout restarting it for teardown, its data is freed before
+timeout_callback() reads the id, and the id may already be reused by a
+timeout added in the callback, which then gets removed instead.
+
+Keep the data while the callback runs and free it afterwards if it was
+removed, and add a unit test for it.
+
+Fixes: efe0efc925db ("shared/timeout: Add timeout_add_seconds abstraction")
+Assisted-by: OpenCode:claude-opus-5.5 valgrind
+
+Upstream-Status: Backport [https://github.com/bluez/bluez/commit/70197a083fa64cec6fff1aabc75f835aed6bc953]
+(without its unit test: unit/test-mainloop.c is newer than 5.86)
+---
+ src/shared/timeout-mainloop.c | 23 +++++++++++++++++++--
+ 1 file changed, 21 insertions(+), 2 deletions(-)
+
+diff --git a/src/shared/timeout-mainloop.c b/src/shared/timeout-mainloop.c
+index e6f9c5e826..3dfcdee814 100644
+--- a/src/shared/timeout-mainloop.c
++++ b/src/shared/timeout-mainloop.c
+@@ -20,14 +20,28 @@ struct timeout_data {
+ 	timeout_destroy_func_t destroy;
+ 	unsigned int timeout;
+ 	void *user_data;
++	bool running;
++	bool removed;
+ };
+ 
+ static void timeout_callback(int id, void *user_data)
+ {
+ 	struct timeout_data *data = user_data;
++	bool ret;
+ 
+-	if (data->func(data->user_data) &&
+-			!mainloop_modify_timeout(data->id, data->timeout))
++	data->running = true;
++	ret = data->func(data->user_data);
++	data->running = false;
++
++	/* The callback removed the timeout, so data was only kept around to
++	 * be checked here and its id may already be reused.
++	 */
++	if (data->removed) {
++		free(data);
++		return;
++	}
++
++	if (ret && !mainloop_modify_timeout(data->id, data->timeout))
+ 		return;
+ 
+ 	mainloop_remove_timeout(data->id);
+@@ -40,6 +54,11 @@ static void timeout_destroy(void *user_data)
+ 	if (data->destroy)
+ 		data->destroy(data->user_data);
+ 
++	if (data->running) {
++		data->removed = true;
++		return;
++	}
++
+ 	free(data);
+ }
+ 

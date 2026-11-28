@@ -1,0 +1,126 @@
+# The libFuzzer targets fuzzed 5 minutes each, every Monday and by hand:
+# Actions › fuzz-weekly › Run workflow, or gh workflow run fuzz-weekly
+# (docs/17-app-sandbox.md §9.2). Nothing waits for it: no pull request,
+# branch or release. Each target runs in a job of its own (make
+# fuzz-libfuzzer) from its committed seeds and the corpus grown before,
+# kept in the cache under the key fuzz uses, so the two carry on from each
+# other. A failing input fails its target's job; it and the grown corpus
+# are uploaded (crashers-<target>, corpus-<target>). platform only replays
+# the seeds (make fuzz-libfuzzer-replay). Like platform, it ends by pruning
+# the runs past the newest 3 of each workflow.
+name: fuzz-weekly
+
+on:
+  schedule:
+    - cron: '23 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fuzz-weekly
+  cancel-in-progress: false
+
+env:
+  CXX23: g++-14
+  MINUTES: 5
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      targets: ${{ steps.plan.outputs.targets }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: The libFuzzer targets (make fuzz-list)
+        id: plan
+        run: |
+          targets=$(make -s fuzz-list ONLY='^libfuzzer:' | jq -Rnc '[inputs | select(length > 0)]')
+          if [ "$targets" = "[]" ]; then echo "::error::make fuzz-list has no libFuzzer target"; exit 1; fi
+          echo "targets=$targets" >> "$GITHUB_OUTPUT"
+          {
+            echo "### fuzz-weekly"
+            echo
+            echo "$(jq length <<< "$targets") targets, $MINUTES minutes each:"
+            jq -r '.[] | "- `\(.)`"' <<< "$targets"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  fuzz:
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(needs.plan.outputs.targets) }}
+    env:
+      TARGET: ${{ matrix.target }}
+      ASAN_SYMBOLIZER_PATH: /usr/lib/llvm-19/bin/llvm-symbolizer
+    steps:
+      - uses: actions/checkout@v4
+      # clang 19 at least, as fuzz.yml says; llvm-19 for the symbolizer.
+      - name: Toolchain (the harnesses' C++23; clang and its libFuzzer runtime)
+        run: sudo apt-get update && sudo apt-get install -y g++-14 clang-19 libclang-rt-19-dev llvm-19
+      # The corpus directory and cache key as fuzz.yml's for the same target.
+      - name: Where the target keeps its corpus
+        id: corpus
+        run: |
+          dir=$RUNNER_TEMP/corpus/${TARGET#libfuzzer:}
+          mkdir -p "$dir" "$RUNNER_TEMP/crashers"
+          name=$(printf '%s' "$TARGET" | tr -c 'A-Za-z0-9._-' '_')
+          {
+            echo "dir=$dir"
+            echo "name=$name"
+            echo "key=fuzz-corpus-$name"
+          } >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.corpus.outputs.dir }}
+          key: ${{ steps.corpus.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ${{ steps.corpus.outputs.key }}-
+      - name: Fuzz ${{ matrix.target }}
+        env:
+          CORPUS: ${{ steps.corpus.outputs.dir }}
+        run: |
+          echo "corpus: $(find "$CORPUS" -type f | wc -l) inputs from earlier runs"
+          make fuzz-libfuzzer ONLY="^$TARGET\$\$" FUZZTIME="${MINUTES}m" LF_CC=clang-19 LF_CXX=clang++-19 \
+            FUZZCORPUS="$RUNNER_TEMP/corpus" FUZZOUT="$RUNNER_TEMP/crashers"
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: ${{ steps.corpus.outputs.dir }}
+          key: ${{ steps.corpus.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+      # libFuzzer's failing input as raw bytes (crash-, leak-, timeout-,
+      # oom-): /tmp/fuzz/bin/lf-<target> <file> after make
+      # fuzz-libfuzzer-harnesses replays it.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: crashers-${{ steps.corpus.outputs.name }}
+          path: ${{ runner.temp }}/crashers/
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: corpus-${{ steps.corpus.outputs.name }}
+          path: ${{ steps.corpus.outputs.dir }}
+          if-no-files-found: ignore
+
+  # The run history: only the newest 3 runs of each workflow stay, with
+  # their logs and artifacts (scripts/ci-prune.sh, as platform's prune).
+  prune:
+    if: always()
+    needs: [fuzz]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Delete the runs past the newest 3 of each workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: sh scripts/ci-prune.sh "$GITHUB_REPOSITORY" 3

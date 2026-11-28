@@ -1,0 +1,27 @@
+{
+  "id": "com.example.hellots",
+  "name": "TypeScript 示例",
+  "icon": "TS",
+  "icon_image": "icon.png",
+  "description": "TypeScript 应用：kario build 编译，kario-jsrt 运行",
+  "version": "1.0",
+  "runtime": "js",
+  "main": "main.js",
+  "order": 92,
+  "permissions": [],
+  "folder": "apps",
+  "locales": {
+    "zh-Hant": {
+      "name": "TypeScript 範例",
+      "description": "TypeScript 應用程式：kario build 編譯，kario-jsrt 執行"
+    },
+    "en": {
+      "name": "TypeScript sample",
+      "description": "A TypeScript app: compiled by kario build, run by kario-jsrt"
+    },
+    "es": {
+      "name": "Ejemplo en TypeScript",
+      "description": "Una app en TypeScript: la compila kario build y la ejecuta kario-jsrt"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "%s · Menu": "%s · Menú",
+  "Add one": "Agregar uno",
+  "Americano": "Americano",
+  "Croissant": "Croissant",
+  "Done": "Listo",
+  "Host server signature check: passed": "Verificación de firma en el servidor anfitrión: correcta",
+  "Latte": "Latte",
+  "Morning Light Coffee": "Café Luz de la Mañana",
+  "Order": "Pedido",
+  "Order number %s": "Pedido n.º %s",
+  "Order something first": "Primero pide algo",
+  "Pay": "Pagar",
+  "Payment not completed: %s": "No se completó el pago: %s",
+  "Payment successful": "Pago realizado",
+  "Remove one": "Quitar uno",
+  "Scan failed: %s": "No se pudo escanear: %s",
+  "Scan the QR code on the table to order": "Escanea el código QR de la mesa para pedir",
+  "Scan to order": "Escanear para pedir",
+  "Total %s": "Total: %s",
+  "Welcome": "Bienvenido"
+}

@@ -1,0 +1,14 @@
+{
+  "Test server (http://127.0.0.1:…), OK runs the checks": "測試伺服器（http://127.0.0.1:…），按 OK 開始檢查",
+  "Network check": "網路檢查",
+  "Stream: no body": "串流讀取：沒有回應內容",
+  "Stream: %d bytes in %d chunks, read as they came": "串流讀取：%d 位元組，分 %d 塊，邊到邊讀",
+  "Stream: %d bytes in %d chunks, all at once": "串流讀取：%d 位元組，分 %d 塊，一次全到",
+  "Abort: the request was answered": "取消：請求得到了回應",
+  "Abort: %s": "取消：%s",
+  "Cookies: before %s, sent back %s, without “include” %s": "Cookie：之前 %s，送回 %s，不帶「include」%s",
+  "WebSocket: echoed “%s”, closed %d": "WebSocket：回聲「%s」，關閉 %d",
+  "%s failed: %s": "%s 失敗：%s",
+  "All %d checks passed": "%d 項檢查全部通過",
+  "%d of %d checks failed": "%d 項失敗，共 %d 項"
+}

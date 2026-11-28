@@ -1,0 +1,33 @@
+#!/bin/sh
+# console-file <name> <file> [<from>|end]: <file> on stdout (the console)
+# for the host, each line in one write as
+#     PHONE-FILE <name> <n> <Adler-32 of the line> <line>
+# and then
+#     PHONE-FILE-END <name> <lines> <Adler-32 of them all, each with its newline>
+# The kernel prints on the same console past the tty, so one of its lines
+# can land inside such a line: the host (yocto/qemu-console.py) takes it out
+# where the sums then hold, and fails, naming the line, where they do not.
+# <from>: only the lines from that one on, no end line (a log written as it
+# goes, printed as it grows); "end": only the end line. A line's carriage
+# returns and escapes are left out: the host takes those out of the console.
+# Busybox awk (the image has no gawk): POSIX awk, a %x of at most 16 bits.
+[ $# -ge 2 ] || { echo "usage: console-file <name> <file> [<from>|end]" >&2; exit 2; }
+LC_ALL=C awk -v name="$1" -v mode="${3:-}" '
+BEGIN { for (i = 1; i < 256; i++) ord[sprintf("%c", i)] = i; A = 1; B = 0 }
+{
+	gsub(/[\r\033]/, "")
+	a = 1; b = 0; n = length($0)
+	for (i = 1; i <= n; i++) {
+		c = ord[substr($0, i, 1)]
+		a = (a + c) % 65521; b = (b + a) % 65521
+		A = (A + c) % 65521; B = (B + A) % 65521
+	}
+	A = (A + 10) % 65521; B = (B + A) % 65521
+	if (mode == "" || (mode != "end" && NR >= mode + 0)) {
+		printf "PHONE-FILE %s %d %04x%04x %s\n", name, NR, b, a, $0
+		fflush()
+	}
+}
+END {
+	if (mode == "" || mode == "end") printf "PHONE-FILE-END %s %d %04x%04x\n", name, NR, B, A
+}' "$2"

@@ -1,0 +1,28 @@
+# The OnePlus 6T in the A/B layout (43-phone-partitions.md; built, not
+# tried on a phone): the root file system in system_a and system_b,
+# opened read-only through dm-verity by phone-initramfs, which the A/B
+# boot image carries with the root's signed verity descriptor; the data on
+# userdata; RAUC updates the slot not running, its boot image with it,
+# and ABL keeps the slot (rauc-abl over phone-abslot). Flashed with
+# yocto/fajita-flash.sh --layout ab:
+#   make yocto-build WORK=$HOME/yocto/fajita-work KASFILE=yocto/kas/phone-fajita-ab.yml SKU=oneplus-fajita-t9
+header:
+  version: 14
+  includes:
+    - yocto/kas/phone-fajita.yml
+
+local_conf_header:
+  # As phone-qemuarm64.yml's system updates, without its wic disk: the
+  # keys from yocto/ota-keys.sh (make ota-keys), never from git.
+  ota: |
+    SKIP_META_RAUC_FEATURE_CHECK = "1"
+    PHONE_LAYOUT = "ab"
+    PHONE_OTA_KEYS = "${TOPDIR}/../ota-keys"
+    RAUC_KEYRING_FILE = "ca.cert.pem"
+    BAD_RECOMMENDATIONS += "rauc-mark-good"
+    PHONE_IMAGE_PACKAGES:append = " rauc phone-ota phone-qcom-rauc"
+    IMAGE_CLASSES += "phone-verity phone-abboot"
+    # veritysetup only, on OpenSSL; the initramfs has no udev.
+    PACKAGECONFIG:pn-cryptsetup = "veritysetup openssl"
+    PACKAGECONFIG:remove:pn-cryptsetup = "udev"
+    PACKAGECONFIG:pn-cryptsetup-native = "veritysetup openssl"

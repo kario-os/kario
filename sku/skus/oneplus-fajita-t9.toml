@@ -1,0 +1,17 @@
+# The OnePlus 6T as a 9-key bar phone, the main test phone (24-sku-framework.md
+# §6): its panel and buttons are the board's, a USB or Bluetooth keyboard is
+# the keypad. The memory tier is what the Shell budgets for, as on the
+# products; the phone has 6 or 8 GB.
+id = "oneplus-fajita-t9"
+board = "oneplus-fajita"
+device = "bar-t9"
+memory = "2g"
+region = "cn"
+product = "kario-std"
+
+# The line's hardware test (40-testing.md §10): mediad cannot drive the
+# cameras yet, so their checks may fail; the internal disks of the 128 GB
+# model hold at least this much (to confirm on the phone).
+[factory]
+optional = ["camera.*"]
+storage_gb = 100

@@ -1,0 +1,18 @@
+[Unit]
+Description=Cloud services test (only with phone.cloud-test on the kernel command line, yocto/qemu-cloud.sh)
+ConditionKernelCommandLine=phone.cloud-test
+# After the system is up, so no default dependencies.
+DefaultDependencies=no
+After=multi-user.target network-online.target
+Wants=network-online.target
+Conflicts=shutdown.target
+Before=shutdown.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/phone/cloud-test
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=multi-user.target

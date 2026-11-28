@@ -1,0 +1,14 @@
+# QEMU as a full-keyboard bar phone (landscape).
+id = "qemu-qwerty"
+board = "qemuarm64"
+display = "qemu-640x480"
+keypad = "qemu-kbd"
+device = "bar-qwerty"
+memory = "4g"
+region = "cn"
+product = "kario-pro"
+
+# The line's hardware test (40-testing.md §10): btvirt makes the
+# emulator's Bluetooth controller only for the selftest.
+[factory]
+optional = ["bluetooth"]

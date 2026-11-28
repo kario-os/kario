@@ -1,0 +1,14 @@
+{
+  "Test server (http://127.0.0.1:…), OK runs the checks": "测试服务器（http://127.0.0.1:…），按 OK 开始检查",
+  "Network check": "网络检查",
+  "Stream: no body": "流式读：没有响应体",
+  "Stream: %d bytes in %d chunks, read as they came": "流式读：%d 字节，分 %d 块，边到边读",
+  "Stream: %d bytes in %d chunks, all at once": "流式读：%d 字节，分 %d 块，一下子全到",
+  "Abort: the request was answered": "取消：请求得到了回答",
+  "Abort: %s": "取消：%s",
+  "Cookies: before %s, sent back %s, without “include” %s": "Cookie：之前 %s，发回 %s，不带「include」%s",
+  "WebSocket: echoed “%s”, closed %d": "WebSocket：回声「%s」，关闭 %d",
+  "%s failed: %s": "%s 失败：%s",
+  "All %d checks passed": "%d 项检查全部通过",
+  "%d of %d checks failed": "%d 项失败，共 %d 项"
+}
